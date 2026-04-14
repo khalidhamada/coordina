@@ -1,0 +1,36 @@
+node_modules/
+vendor/
+
+# Local editor/workspace metadata
+.vscode/
+.idea/
+*.code-workspace
+
+# Local environment and sensitive development files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Playwright and local browser automation artifacts
+.playwright-cli/
+.playwright-mcp/
+playwright-report/
+test-results/
+blob-report/
+
+# AI assistant and local prompting workflow files
+.codex/
+.codex-staging/
+.copilot/
+AGENTS.md
+docs/memory/
+.github/copilot-instructions.md
+
+# OS noise
+.DS_Store
+Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

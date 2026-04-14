@@ -1,0 +1,12 @@
+{
+  "name": "coordina/plugin",
+  "description": "WordPress-native work management plugin foundations.",
+  "type": "wordpress-plugin",
+  "license": "proprietary",
+  "autoload": {
+    "psr-4": {
+      "Coordina\\": "src/"
+    }
+  },
+  "require": {}
+}

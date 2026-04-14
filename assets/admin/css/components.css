@@ -1,0 +1,398 @@
+.coordina-notice { 
+	padding: 14px 16px; 
+	border-radius: 10px; 
+	font-weight: 500;
+	border: 1px solid transparent;
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	transition: all 120ms ease;
+}
+
+.coordina-notice.is-success { 
+	background: linear-gradient(135deg, #f0faf6 0%, #eef9f5 100%);
+	color: var(--coordina-success);
+	border-color: rgba(13, 148, 85, 0.15);
+	box-shadow: 0 1px 3px rgba(13, 148, 85, 0.06);
+}
+
+.coordina-notice.is-error { 
+	background: linear-gradient(135deg, #fff7f6 0%, #fff5f3 100%);
+	color: var(--coordina-danger);
+	border-color: rgba(199, 31, 22, 0.15);
+	box-shadow: 0 1px 3px rgba(199, 31, 22, 0.06);
+}
+
+.coordina-notice.is-warning {
+	background: linear-gradient(135deg, #fffcf8 0%, #fff5ed 100%);
+	color: var(--coordina-warning);
+	border-color: rgba(179, 89, 0, 0.15);
+	box-shadow: 0 1px 3px rgba(179, 89, 0, 0.06);
+}
+
+.coordina-notice.is-info {
+	background: linear-gradient(135deg, #f5f9ff 0%, #edf3ff 100%);
+	color: var(--coordina-info);
+	border-color: rgba(31, 94, 255, 0.15);
+	box-shadow: 0 1px 3px rgba(31, 94, 255, 0.06);
+}
+
+.coordina-filter-bar,
+.coordina-form-grid,
+.coordina-summary-grid,
+.coordina-columns { display: grid; gap: 16px; }
+.coordina-filter-bar { grid-template-columns: minmax(220px, 1.5fr) minmax(180px, 1fr) minmax(180px, 1fr) auto; align-items: end; }
+.coordina-summary-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.coordina-summary-grid--my-work { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.coordina-columns { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); }
+.coordina-card--wide { min-width: 0; }
+.coordina-summary-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.coordina-table-wrap { overflow-x: auto; box-shadow: var(--coordina-shadow-xs); border-radius: 12px; }
+.coordina-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.coordina-table th,
+.coordina-table td { vertical-align: top; padding: 14px 12px; border-bottom: 1px solid var(--coordina-border); }
+.coordina-table th { vertical-align: top; padding: 12px 12px; border-bottom: 1px solid var(--coordina-border); }
+.coordina-table thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--coordina-text-muted); background: var(--coordina-surface-muted); font-weight: 600; }
+.coordina-table tbody tr:hover { background: rgba(31, 94, 255, 0.02); }
+.coordina-sort-button,
+.coordina-link-button { background: none; border: 0; padding: 0; color: var(--coordina-info); cursor: pointer; text-align: left; }
+.coordina-sort-button:hover,
+.coordina-link-button:hover { text-decoration: underline; }
+
+.coordina-empty-state,
+.coordina-loading,
+.coordina-empty-inline { color: var(--coordina-text-muted); }
+.coordina-work-list,
+.coordina-approval-list,
+.coordina-notification-list { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
+.coordina-work-list li,
+.coordina-approval-list li,
+.coordina-notification-list li { 
+	border: 1px solid var(--coordina-border); 
+	border-radius: 10px; 
+	padding: 14px; 
+	background: var(--coordina-surface);
+	box-shadow: 0 1px 2px rgba(19, 26, 35, 0.03);
+	transition: all 140ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.coordina-work-list li:hover,
+.coordina-approval-list li:hover,
+.coordina-notification-list li:hover {
+	border-color: var(--coordina-info);
+	box-shadow: 0 4px 12px rgba(31, 94, 255, 0.06);
+	transform: translateY(-2px);
+}
+
+.coordina-notification-list li.is-unread { 
+	border-color: var(--coordina-info);
+	background: linear-gradient(135deg, #fafbff 0%, #edf3ff 100%);
+	box-shadow: 0 2px 8px rgba(31, 94, 255, 0.08);
+}
+
+.coordina-form label { display: grid; gap: 6px; margin-bottom: 14px; }
+.coordina-form input[type="text"],
+.coordina-form input[type="search"],
+.coordina-form input[type="datetime-local"],
+.coordina-form select,
+.coordina-form textarea,
+.coordina-filter-bar input,
+.coordina-filter-bar select,
+.coordina-bulk-bar select {
+	width: 100%;
+	min-height: 40px;
+	border: 1px solid var(--coordina-border);
+	border-radius: 8px;
+	padding: 10px 12px;
+	box-sizing: border-box;
+	background: var(--coordina-surface);
+	color: var(--coordina-text);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	font-size: 13px;
+	transition: all 120ms ease;
+	box-shadow: 0 1px 2px rgba(19, 26, 35, 0.02);
+}
+
+.coordina-form input[type="text"]:hover,
+.coordina-form input[type="search"]:hover,
+.coordina-form input[type="datetime-local"]:hover,
+.coordina-form select:hover,
+.coordina-form textarea:hover,
+.coordina-filter-bar input:hover,
+.coordina-filter-bar select:hover,
+.coordina-bulk-bar select:hover {
+	border-color: var(--coordina-border-strong);
+	box-shadow: 0 2px 6px rgba(19, 26, 35, 0.04);
+}
+
+.coordina-form input[type="text"]:focus,
+.coordina-form input[type="search"]:focus,
+.coordina-form input[type="datetime-local"]:focus,
+.coordina-form select:focus,
+.coordina-form textarea:focus,
+.coordina-filter-bar input:focus,
+.coordina-filter-bar select:focus,
+.coordina-bulk-bar select:focus {
+	border-color: var(--coordina-info);
+	box-shadow: 0 0 0 3px rgba(31, 94, 255, 0.08);
+}
+
+.coordina-form textarea { min-height: 110px; }
+.coordina-checkbox { display: flex !important; align-items: center; gap: 10px; }
+.coordina-checkbox input { width: auto; min-height: auto; }
+.coordina-overlay { position: fixed; inset: 0; background: rgba( 29, 35, 39, 0.4 ); z-index: 9998; }
+.coordina-modal,
+.coordina-drawer { position: fixed; z-index: 9999; box-shadow: var(--coordina-shadow-md); }
+.coordina-modal { top: 8vh; left: 50%; transform: translateX(-50%); width: min(720px, calc(100vw - 32px)); max-height: 84vh; overflow: auto; }
+.coordina-drawer { top: 0; right: 0; width: min(560px, 100vw); height: 100vh; overflow: auto; }
+.coordina-tab { 
+	border: 1px solid var(--coordina-border); 
+	background: #fff;
+	border-radius: 8px; 
+	padding: 10px 14px; 
+	margin: 0 8px 8px 0; 
+	color: var(--coordina-text-muted); 
+	transition: all 140ms cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: 0 1px 2px rgba(19, 26, 35, 0.02);
+	font-weight: 500;
+	font-size: 13px;
+	cursor: pointer;
+}
+.coordina-tab:hover { 
+	transform: translateY(-1px); 
+	border-color: var(--coordina-info);
+	color: var(--coordina-info);
+	box-shadow: 0 2px 6px rgba(31, 94, 255, 0.1);
+}
+.coordina-tab.is-active { 
+	background: linear-gradient(135deg, #f0f6ff 0%, #edf3ff 100%);
+	color: var(--coordina-info); 
+	border-color: rgba(31, 94, 255, 0.25); 
+	box-shadow: 0 1px 3px rgba(31, 94, 255, 0.1);
+}
+.coordina-drawer-section { margin-top: 16px; }
+.coordina-settings-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.coordina-settings-tabs .coordina-tab { margin: 0; }
+.coordina-settings-panel { display: grid; gap: 16px; }
+.coordina-settings-panel__intro { margin: 4px 0 0; color: var(--coordina-text-muted); }
+.coordina-settings-block { 
+	display: grid; 
+	gap: 14px; 
+	padding: 16px; 
+	border: 1px solid var(--coordina-border); 
+	border-radius: 10px; 
+	background: linear-gradient(135deg, #fafbfc 0%, #f9fafc 100%);
+	box-shadow: 0 1px 2px rgba(19, 26, 35, 0.02);
+	transition: all 120ms ease;
+}
+.coordina-settings-block:hover {
+	border-color: var(--coordina-border-strong);
+	box-shadow: 0 2px 6px rgba(19, 26, 35, 0.04);
+}
+.coordina-settings-block.is-notice { 
+	background: linear-gradient(135deg, #f8fafb 0%, #f6f8fa 100%); 
+	border-color: var(--coordina-border-subtle);
+}
+.coordina-form-grid--settings { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.coordina-settings-form .coordina-settings-panel .coordina-form-grid select,
+.coordina-settings-form .coordina-settings-panel .coordina-form-grid input[type="text"],
+.coordina-settings-form .coordina-settings-panel .coordina-form-grid input[type="search"],
+.coordina-settings-form .coordina-settings-panel .coordina-form-grid input[type="number"],
+.coordina-settings-form .coordina-settings-panel .coordina-form-grid input[type="date"],
+.coordina-settings-form .coordina-settings-panel .coordina-form-grid textarea {
+	min-height: 36px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	font-size: 13px;
+}
+.coordina-settings-form .coordina-settings-panel .coordina-form-grid textarea {
+	min-height: 96px;
+}
+.coordina-task-groups { display: grid; gap: 18px; margin-top: 16px; }
+.coordina-task-group { display: grid; gap: 12px; }
+.coordina-project-cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.coordina-project-card { display: grid; gap: 12px; }
+.coordina-project-card h3 { margin: 0; font-size: 18px; line-height: 1.25; }
+.coordina-project-card__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.coordina-project-card__check { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--coordina-text-muted); }
+.coordina-project-card__description { margin: 0; color: var(--coordina-text-muted); }
+.coordina-project-card__meta { display: grid; gap: 6px; font-size: 12px; color: var(--coordina-text-muted); }
+.coordina-project-card__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.coordina-project-card__progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+
+/* Demo data seeding UI */
+.coordina-demo-data-layout {
+	grid-template-columns: 1fr !important;
+}
+
+.coordina-demo-data-layout > section {
+	grid-column: 1 / -1;
+}
+
+.coordina-demo-data-buttons {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: 1fr;
+}
+
+.coordina-demo-data-buttons button {
+	padding: 16px 18px;
+	text-align: left;
+	display: grid;
+	gap: 6px;
+	border: 1px solid var(--coordina-border);
+	border-radius: 10px;
+	background: #fff;
+	cursor: pointer;
+	transition: all 120ms cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: var(--coordina-shadow-xs);
+}
+
+.coordina-demo-data-buttons button:hover {
+	border-color: var(--coordina-border-strong);
+	box-shadow: var(--coordina-shadow-sm);
+	transform: translateY(-2px);
+}
+
+.coordina-demo-data-buttons button strong {
+	display: block;
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--coordina-text);
+}
+
+.coordina-demo-data-buttons button span {
+	display: block;
+	font-size: 12px;
+	color: var(--coordina-text-muted);
+	font-weight: 400;
+}
+
+.coordina-demo-data-buttons button.button-primary {
+	background: linear-gradient(135deg, #1f5eff 0%, #2b68ff 100%);
+	border-color: rgba(31, 94, 255, 0.2);
+	color: #fff;
+}
+
+.coordina-demo-data-buttons button.button-primary strong,
+.coordina-demo-data-buttons button.button-primary span {
+	color: #fff;
+}
+
+.coordina-demo-data-features {
+	display: grid;
+	gap: 10px;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	font-size: 13px;
+	color: var(--coordina-text);
+	line-height: 1.6;
+}
+
+.coordina-demo-data-features li {
+	padding: 0;
+	margin: 0;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.coordina-demo-data-danger {
+	margin-top: 8px;
+}
+
+.coordina-settings-block--danger {
+	border-color: rgba(199, 31, 22, 0.15);
+	background: linear-gradient(135deg, #fff5f3 0%, #fff4f3 100%);
+}
+
+.coordina-settings-block--danger h3 {
+	color: var(--coordina-danger);
+}
+.coordina-project-card__progress-track { display: block; height: 6px; border-radius: 999px; overflow: hidden; background: var(--coordina-border); }
+.coordina-project-card__progress-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1f5eff 0%, #2b68ff 100%); }
+.coordina-my-work-main,
+.coordina-my-work-side,
+.coordina-my-work-stack { display: grid; gap: 18px; }
+.coordina-my-work-item { display: flex; gap: 14px; justify-content: space-between; align-items: flex-start; }
+.coordina-my-work-item__main { display: grid; gap: 8px; min-width: 0; }
+.coordina-cell-primary { display: grid; gap: 4px; }
+.coordina-cell-secondary { font-size: 12px; color: var(--coordina-text-muted); line-height: 1.45; }
+.coordina-drawer-summary { display: grid; gap: 12px; padding: 0 0 10px; border-bottom: 1px solid rgba(190, 200, 219, 0.45); }
+.coordina-form-section { display: grid; gap: 14px; }
+.coordina-form-advanced { 
+	margin-top: 16px; 
+	border: 1px solid var(--coordina-border); 
+	border-radius: 10px; 
+	padding: 14px; 
+	background: linear-gradient(135deg, var(--coordina-surface-muted) 0%, var(--coordina-surface-soft) 100%);
+}
+
+.coordina-card--notice {
+	background: linear-gradient(135deg, var(--coordina-surface-muted) 0%, var(--coordina-surface-soft) 100%);
+	border-color: var(--coordina-border);
+}
+
+@media (max-width: 960px) {
+	.coordina-filter-bar,
+	.coordina-columns { grid-template-columns: 1fr; }
+
+	.coordina-my-work-item {
+		flex-direction: column;
+	}
+}
+
+@media (max-width: 782px) {
+	.coordina-shell__header,
+	.coordina-action-bar,
+	.coordina-modal__header,
+	.coordina-drawer__header,
+	.coordina-section-header { flex-direction: column; }
+	.coordina-modal { top: 16px; }
+}
+
+.coordina-notices {
+	position: fixed;
+	top: 52px;
+	right: 24px;
+	width: min(420px, calc(100vw - 32px));
+	z-index: 10001;
+}
+
+.coordina-notice {
+	box-shadow: var(--coordina-shadow-md);
+	border-radius: 10px;
+}
+
+.coordina-timeline {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 1rem;
+}
+
+.coordina-timeline li {
+	padding-inline-start: 1rem;
+	border-inline-start: 2px solid #d0d7de;
+}
+
+.coordina-file-picker {
+	display: grid;
+	gap: 0.5rem;
+}
+
+.coordina-file-picker [data-role="selected-file-label"] {
+	display: inline-flex;
+	align-items: center;
+	min-height: 40px;
+	padding: 0.5rem 0.75rem;
+	background: #f6f8fa;
+	border: 1px solid #d0d7de;
+	border-radius: 8px;
+}
+
+.coordina-form-grid__wide {
+	grid-column: 1 / -1;
+}

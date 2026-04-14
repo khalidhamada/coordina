@@ -1,0 +1,5 @@
+/*
+Deprecated entrypoint.
+Admin styles are now split into smaller files under assets/admin/css/.
+Keep future edits localized to those modules instead of rebuilding a monolithic stylesheet.
+*/

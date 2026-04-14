@@ -1,0 +1,144 @@
+/* Icon System - Working version with Unicode symbols
+   Uses standard Unicode characters that work with all system fonts
+   No external font dependencies, renders reliably across browsers */
+
+/* Status badge icons */
+.coordina-status-badge.status-done::before,
+.coordina-status-badge.status-completed::before,
+.coordina-status-badge.status-approved::before,
+.coordina-status-badge.status-good::before,
+.coordina-status-badge.status-clear::before {
+	content: '✓';
+	color: var(--coordina-success);
+	font-weight: 700;
+	margin-right: 0.4em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.coordina-status-badge.status-blocked::before,
+.coordina-status-badge.status-overdue::before,
+.coordina-status-badge.status-rejected::before {
+	content: '✕';
+	color: var(--coordina-danger);
+	font-weight: 700;
+	margin-right: 0.4em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.coordina-status-badge.status-at-risk::before {
+	content: '⚠';
+	color: var(--coordina-danger);
+	margin-right: 0.4em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.coordina-status-badge.status-waiting::before,
+.coordina-status-badge.status-under-review::before,
+.coordina-status-badge.status-awaiting-info::before {
+	content: '⏱';
+	color: var(--coordina-warning);
+	margin-right: 0.4em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.coordina-status-badge.status-in-progress::before {
+	content: '⟳';
+	color: var(--coordina-warning);
+	margin-right: 0.4em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Notice/Alert icons */
+.coordina-notice.is-success::before {
+	content: '✓';
+	color: var(--coordina-success);
+	font-weight: 700;
+	margin-right: 0.6em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.coordina-notice.is-error::before {
+	content: '✕';
+	color: var(--coordina-danger);
+	font-weight: 700;
+	margin-right: 0.6em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.coordina-notice.is-warning::before {
+	content: '⚠';
+	color: var(--coordina-warning);
+	font-weight: 700;
+	margin-right: 0.6em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.coordina-notice.is-info::before {
+	content: 'ⓘ';
+	color: var(--coordina-info);
+	margin-right: 0.6em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Priority indicators */
+.priority-high::before {
+	content: '▲';
+	color: var(--coordina-danger);
+	margin-right: 0.3em;
+	display: inline-block;
+	font-size: 0.85em;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.priority-medium::before {
+	content: '●';
+	color: var(--coordina-warning);
+	margin-right: 0.4em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.priority-low::before {
+	content: '▼';
+	color: var(--coordina-info);
+	margin-right: 0.3em;
+	display: inline-block;
+	font-size: 0.85em;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Task completion indicator */
+.task-complete::before {
+	content: '✓';
+	color: var(--coordina-success);
+	font-weight: 700;
+	margin-right: 0.4em;
+	display: inline-block;
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Font smoothing for all icon content */
+.coordina-status-badge::before,
+.coordina-notice::before,
+.priority-high::before,
+.priority-medium::before,
+.priority-low::before,
+.task-complete::before {
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessibility */
+.coordina-notice[aria-disabled="true"],
+.coordina-status-badge[aria-disabled="true"] {
+	opacity: 0.6;
+}

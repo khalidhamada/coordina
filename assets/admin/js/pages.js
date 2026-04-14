@@ -1,0 +1,1131 @@
+(function () {
+const app = window.CoordinaAdminApp || {};
+
+if (!app.root || !app.state) {
+	return;
+}
+
+const { state, modules, currentModule, escapeHtml, __, nice, dateLabel, todayKey, defaultCalendarFilters, defaultWorkloadFilters, getPageMeta, canAccessPage } = app;
+
+function pageHeading(pageKey, actions, fallback) {
+	const meta = getPageMeta(pageKey);
+	const title = (fallback && fallback.title) || meta.title || '';
+	const description = (fallback && fallback.description) || meta.description || '';
+	const purpose = meta.priority === 'secondary'
+		? `<span class="coordina-page-kicker">${escapeHtml(__('Support view', 'coordina'))}</span>`
+		: meta.priority === 'primary'
+			? `<span class="coordina-page-kicker">${escapeHtml(__('Primary workflow', 'coordina'))}</span>`
+			: '';
+	return `<div class="coordina-action-bar"><div>${purpose}<h2>${escapeHtml(title)}</h2>${description ? `<p>${escapeHtml(description)}</p>` : ''}</div>${actions ? `<div class="coordina-action-bar__actions">${actions}</div>` : ''}</div>`;
+}
+
+function openProjectButton(projectId, label, tab) {
+	if (Number(projectId || 0) <= 0) {
+		return `<span class="coordina-empty-inline">${escapeHtml(label || __('Standalone', 'coordina'))}</span>`;
+	}
+	return `<button class="coordina-link-button" data-action="open-route" data-page="coordina-projects" data-project-id="${projectId}" data-project-tab="${tab || 'overview'}">${escapeHtml(label || __('Project workspace', 'coordina'))}</button>`;
+}
+
+function openTaskButton(taskId, label, projectId, projectTab) {
+	return `<button class="coordina-link-button" data-action="open-task-page" data-id="${taskId}" data-project-id="${projectId || ''}" data-project-tab="${projectTab || ''}">${escapeHtml(label || __('Task', 'coordina'))}</button>`;
+}
+
+function openMilestoneButton(milestoneId, label, projectId, projectTab) {
+	return `<button class="coordina-link-button" data-action="open-milestone-page" data-id="${milestoneId}" data-project-id="${projectId || ''}" data-project-tab="${projectTab || ''}">${escapeHtml(label || __('Milestone', 'coordina'))}</button>`;
+}
+
+function openRiskIssueButton(riskIssueId, label, projectId, projectTab) {
+	return `<button class="coordina-link-button" data-action="open-risk-issue-page" data-id="${riskIssueId}" data-project-id="${projectId || ''}" data-project-tab="${projectTab || ''}">${escapeHtml(label || __('Risk or issue', 'coordina'))}</button>`;
+}
+
+function modulePage() {
+	const module = currentModule();
+	const shell = state.shell || { statuses: {}, capabilities: {} };
+	const items = state.collection && state.collection.items ? state.collection.items : [];
+	const statuses = shell.statuses[module.statuses] || [];
+	const options = statuses.map((status) => `<option value="${status}" ${state.filters.status === status ? 'selected' : ''}>${escapeHtml(nice(status))}</option>`).join('');
+	const savedOptions = [`<option value="">${escapeHtml(__('Saved views', 'coordina'))}</option>`].concat(state.savedViews.map((view) => `<option value="${view.id}">${escapeHtml(view.view_name)}</option>`)).join('');
+	const chips = statuses.slice(0, 4).map((status) => `<span class="coordina-summary-chip"><strong>${items.filter((item) => item.status === status).length}</strong>${escapeHtml(nice(status))}</span>`).join('');
+	const caps = shell.capabilities || {};
+	const canManageModule = module.key === 'projects' ? caps.canManageProjects : module.key === 'tasks' ? caps.canManageTasks : module.key === 'requests' ? caps.canManageRequests : ['risks-issues', 'milestones'].includes(module.key) ? caps.canManageProjects : true;
+	const bulk = state.selection.length && canManageModule && module.bulk ? `<div class="coordina-bulk-bar coordina-card"><span>${state.selection.length} ${escapeHtml(__('selected', 'coordina'))}</span><select name="bulk-status">${module.bulk.map((status) => `<option value="${status}">${escapeHtml(nice(status))}</option>`).join('')}</select><button class="button" data-action="bulk-status">${escapeHtml(__('Change status', 'coordina'))}</button></div>` : '';
+	const canCreate = module.createEnabled !== false && canManageModule;
+	const emptyAction = canCreate ? `<button class="button button-primary" data-action="open-create">${escapeHtml(__('Create now', 'coordina'))}</button>` : '';
+	const empty = module.key === 'approvals'
+		? `<section class="coordina-card coordina-empty-state"><h3>${escapeHtml(__('No approvals are waiting right now', 'coordina'))}</h3><p>${escapeHtml(__('Approvals appear here automatically when linked tasks, requests, projects, or other governed work needs a decision.', 'coordina'))}</p></section>`
+		: `<section class="coordina-card coordina-empty-state"><h3>${escapeHtml(__('Nothing here yet', 'coordina'))}</h3><p>${escapeHtml(canCreate ? __('Create a record or adjust the current filters.', 'coordina') : __('Adjust the current filters or open the parent workspace to add new records.', 'coordina'))}</p>${emptyAction}</section>`;
+	const pager = state.collection && state.collection.totalPages > 1 ? `<div class="coordina-pagination"><button class="button" data-action="page" data-page="${Math.max(1, state.collection.page - 1)}" ${state.collection.page <= 1 ? 'disabled' : ''}>${escapeHtml(__('Previous', 'coordina'))}</button><span>${state.collection.page} / ${state.collection.totalPages}</span><button class="button" data-action="page" data-page="${Math.min(state.collection.totalPages, state.collection.page + 1)}" ${state.collection.page >= state.collection.totalPages ? 'disabled' : ''}>${escapeHtml(__('Next', 'coordina'))}</button></div>` : '';
+	const createButton = canCreate ? `<button class="button button-primary" data-action="open-create">${escapeHtml(__('New', 'coordina'))} ${escapeHtml(module.singular)}</button>` : '';
+	const actions = `<button class="button" data-action="open-notifications">${escapeHtml(__('Notifications', 'coordina'))}</button><button class="button" data-action="save-view">${escapeHtml(__('Save view', 'coordina'))}</button>${createButton}`;
+	const listView = module.key === 'projects' && typeof app.renderProjectCards === 'function'
+		? app.renderProjectCards(items, canManageModule)
+		: app.renderTable(module, items, module.key);
+	return `<section class="coordina-page">${pageHeading(state.page, actions, { title: module.title })}${app.renderFilterBar(module, options, savedOptions)}<div class="coordina-summary-row coordina-summary-row--subtle">${chips}</div>${bulk}${items.length ? listView : empty}${pager}</section>`;
+}
+
+function workspaceBoard() {
+	const items = state.workspace && state.workspace.taskCollection ? state.workspace.taskCollection.items || [] : [];
+	const columns = ['new', 'to-do', 'in-progress', 'waiting', 'done'];
+	return `<section class="coordina-board-grid">${columns.map((status) => `<article class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(nice(status))}</h3><span class="coordina-summary-chip"><strong>${items.filter((item) => item.status === status).length}</strong></span></div>${items.filter((item) => item.status === status).length ? `<ul class="coordina-work-list">${items.filter((item) => item.status === status).map((item) => `<li>${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}<div class="coordina-work-meta"><span>${escapeHtml(item.assignee_label || __('Unassigned', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.due_date))}</span></div></li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('No tasks in this lane yet.', 'coordina'))}</p>`}</article>`).join('')}</section>`;
+}
+
+function workspaceWorkTab(taskSummary) {
+	const items = state.workspace && state.workspace.taskCollection ? state.workspace.taskCollection.items || [] : [];
+	const actions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
+	const groupLabel = nice((state.workspace && state.workspace.taskGroupLabel) || (state.shell && state.shell.taskGroupLabel) || 'stage');
+	const view = state.workspaceView === 'board' ? 'board' : 'list';
+	const addTaskButton = actions.canCreateTask ? `<button class="button button-primary" data-action="open-project-task-create">${escapeHtml(__('Add task', 'coordina'))}</button>` : '';
+	const addGroupButton = actions.canCreateTaskGroup ? `<button class="button" data-action="open-task-group-create">${escapeHtml(__('Add', 'coordina'))} ${escapeHtml(groupLabel)}</button>` : '';
+	const viewButtons = `<div class="coordina-action-bar__actions"><button class="button ${view === 'list' ? 'button-primary' : ''}" data-action="switch-work-view" data-view="list">${escapeHtml(__('List', 'coordina'))}</button><button class="button ${view === 'board' ? 'button-primary' : ''}" data-action="switch-work-view" data-view="board">${escapeHtml(__('Board', 'coordina'))}</button>${addGroupButton}${addTaskButton}</div>`;
+	const summary = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(taskSummary.total || 0)}</strong>${escapeHtml(__('Total', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(taskSummary.open || 0)}</strong>${escapeHtml(__('Open', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(taskSummary.blocked || 0)}</strong>${escapeHtml(__('Blocked', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(taskSummary.overdue || 0)}</strong>${escapeHtml(__('Overdue', 'coordina'))}</span></div>`;
+	const emptyAction = actions.canCreateTask ? `<button class="button button-primary" data-action="open-project-task-create">${escapeHtml(__('Add task', 'coordina'))}</button>` : '';
+	const list = items.length ? workspaceGroupedTaskList(items) : `<section class="coordina-empty-state"><h3>${escapeHtml(__('No project work yet', 'coordina'))}</h3><p>${escapeHtml(__('Linked tasks you can access will appear here.', 'coordina'))}</p>${emptyAction}</section>`;
+	const body = view === 'board' ? workspaceBoard() : list;
+
+	return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project work', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Tasks are grouped so you can see progress, blockers, and what needs attention next.', 'coordina'))}</p></div>${viewButtons}</div>${summary}${body}</section>`;
+}
+
+function workspaceGroupedTaskList(items) {
+	const groups = state.workspace && state.workspace.taskGroups ? state.workspace.taskGroups : [];
+	const groupBuckets = groups.map((group) => Object.assign({}, group, { items: [] }));
+	const ungrouped = { id: 0, title: __('Ungrouped', 'coordina'), items: [] };
+	items.forEach((item) => {
+		const group = groupBuckets.find((candidate) => Number(candidate.id) === Number(item.task_group_id || 0));
+		(group || ungrouped).items.push(item);
+	});
+	const buckets = groupBuckets.concat(ungrouped).filter((group) => group.items.length || Number(group.id) > 0);
+	return `<div class="coordina-task-groups"><div class="coordina-task-group-head"><span>${escapeHtml(__('Task', 'coordina'))}</span><span>${escapeHtml(__('State', 'coordina'))}</span><span>${escapeHtml(__('Owner', 'coordina'))}</span><span>${escapeHtml(__('Due', 'coordina'))}</span><span>${escapeHtml(__('Checklist', 'coordina'))}</span><span>${escapeHtml(__('Next step', 'coordina'))}</span></div>${buckets.map((group) => {
+		const total = group.items.length;
+		const doneCount = group.items.filter((item) => ['done', 'cancelled'].includes(String(item.status || ''))).length;
+		const completion = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+		return `<section class="coordina-task-group"><div class="coordina-section-header"><div><h4>${escapeHtml(group.title)}</h4></div>${progressBar(completion, __('Task group completion', 'coordina'))}</div>${group.items.length ? `<div class="coordina-task-group-rows">${group.items.map((item) => {
+		const summary = item.checklist_summary || {};
+		const total = Number(summary.total || 0);
+		const checklist = total > 0 ? `${Number(summary.done || 0)} / ${total}` : __('None', 'coordina');
+		const nextStep = item.blocked ? __('Unblock and confirm owner', 'coordina') : item.status === 'waiting' ? __('Follow up and move forward', 'coordina') : item.due_date && new Date(item.due_date) < new Date() ? __('Recover the due date', 'coordina') : __('Continue execution', 'coordina');
+		return `<div class="coordina-task-group-row"><div class="coordina-task-group-row__title">${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}${item.blocked ? `<span class="coordina-status-badge status-blocked">${escapeHtml(__('Blocked', 'coordina'))}</span>` : ''}</div><div><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span></div><div>${escapeHtml(item.assignee_label || __('Unassigned', 'coordina'))}</div><div>${escapeHtml(dateLabel(item.due_date))}</div><div>${escapeHtml(checklist)}</div><div class="coordina-task-group-row__action"><span>${escapeHtml(nextStep)}</span><div class="coordina-row-actions"><button class="button button-small" data-action="open-task-page" data-id="${item.id}" data-project-id="${item.project_id || ''}" data-project-tab="${item.project_id ? 'work' : ''}">${escapeHtml(__('Open', 'coordina'))}</button>${item.can_post_update ? `<button class="button button-small" data-action="open-discussion-create" data-object-type="task" data-object-id="${item.id}" data-object-label="${escapeHtml(item.title || __('Task', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Update', 'coordina'))}</button>` : ''}</div></div></div>`;
+	}).join('')}</div>` : `<p class="coordina-empty-inline">${escapeHtml(__('No tasks in this group yet.', 'coordina'))}</p>`}</section>`;
+	}).join('')}</div>`;
+}
+
+function ganttDateKey(value) {
+	return String(value || '').slice(0, 10);
+}
+
+function ganttDateValue(value) {
+	const key = ganttDateKey(value);
+	if (!key) {
+		return null;
+	}
+	const date = new Date(`${key}T12:00:00`);
+	return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function ganttDayDiff(startValue, endValue) {
+	const start = ganttDateValue(startValue);
+	const end = ganttDateValue(endValue);
+	if (!start || !end) {
+		return 0;
+	}
+	return Math.round((end.getTime() - start.getTime()) / 86400000);
+}
+
+function ganttPosition(range, startValue, endValue) {
+	const start = ganttDateValue(startValue);
+	const end = ganttDateValue(endValue || startValue);
+	if (!ganttDateValue(range && range.start) || !ganttDateValue(range && range.end) || !start || !end) {
+		return { left: 0, width: 0, marker: 0 };
+	}
+	const safeEnd = end.getTime() < start.getTime() ? start : end;
+	const totalDays = Math.max(1, ganttDayDiff(range.start, range.end) + 1);
+	const offsetDays = Math.max(0, ganttDayDiff(range.start, startValue));
+	const spanDays = Math.max(1, ganttDayDiff(startValue, endValue || startValue) + 1);
+	const left = Math.max(0, Math.min(100, (offsetDays / totalDays) * 100));
+	const width = Math.max(1.5, Math.min(100 - left, (spanDays / totalDays) * 100));
+	const marker = Math.max(0, Math.min(100, ((offsetDays + 0.5) / totalDays) * 100));
+	return { left, width, marker };
+}
+
+function workspaceGanttPrimaryAction(row) {
+	if (row.type === 'milestone') {
+		return openMilestoneButton(row.recordId, row.title, state.projectContext.id, 'milestones');
+	}
+	return openTaskButton(row.recordId, row.title, state.projectContext.id, 'work');
+}
+
+function workspaceGanttRowMeta(row) {
+	const meta = [
+		row.ownerLabel || (row.type === 'milestone' ? __('No owner assigned', 'coordina') : __('Unassigned', 'coordina')),
+		row.startDate && row.endDate && row.startDate !== row.endDate
+			? `${dateLabel(row.startDate)} - ${dateLabel(row.endDate)}`
+			: dateLabel(row.endDate || row.startDate || ''),
+	];
+	if (row.type === 'task' && Number(row.checklistTotal || 0) > 0) {
+		meta.push(`${Number(row.checklistDone || 0)} / ${Number(row.checklistTotal || 0)} ${__('checklist', 'coordina')}`);
+	}
+	return meta.filter(Boolean).map((item) => `<span class="coordina-gantt__meta-item">${escapeHtml(item)}</span>`).join('');
+}
+
+function workspaceGanttTrack(range, weeks, row) {
+	const position = ganttPosition(range, row.startDate, row.endDate);
+	const today = ganttPosition(range, range && range.today, range && range.today);
+	const showToday = !!(range && range.today && range.start && range.end && range.today >= range.start && range.today <= range.end);
+	const tone = row.isDone ? 'done' : row.blocked ? 'blocked' : row.isOverdue ? 'overdue' : row.type === 'milestone' ? 'milestone' : 'active';
+	const gridStyle = `style="grid-template-columns:repeat(${Math.max(weeks.length, 1)}, minmax(88px, 1fr))"`;
+	const weekCells = weeks.map((week, index) => `<span class="coordina-gantt__week-cell ${index === 0 || (weeks[index - 1] && weeks[index - 1].monthLabel !== week.monthLabel) ? 'is-month-start' : ''}"></span>`).join('');
+	if (row.type === 'milestone') {
+		return `<div class="coordina-gantt__track"><div class="coordina-gantt__track-grid" ${gridStyle}>${weekCells}</div>${showToday ? `<span class="coordina-gantt__today-line" style="left:${today.marker}%"></span>` : ''}<span class="coordina-gantt__marker tone-${escapeHtml(tone)}" style="left:${position.marker}%"></span></div>`;
+	}
+	const barLabel = position.width >= 18 ? escapeHtml(row.title || __('Task', 'coordina')) : '';
+	return `<div class="coordina-gantt__track"><div class="coordina-gantt__track-grid" ${gridStyle}>${weekCells}</div>${showToday ? `<span class="coordina-gantt__today-line" style="left:${today.marker}%"></span>` : ''}<span class="coordina-gantt__bar tone-${escapeHtml(tone)}" style="left:${position.left}%;width:${position.width}%">${barLabel}</span></div>`;
+}
+
+function workspaceGanttTab() {
+	const gantt = state.workspace && state.workspace.ganttData ? state.workspace.ganttData : { range: {}, weeks: [], groups: [], summary: {}, unscheduledTasks: [], projectFrame: {} };
+	const actions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
+	const summary = gantt.summary || {};
+	const weeks = gantt.weeks || [];
+	const groups = gantt.groups || [];
+	const unscheduled = gantt.unscheduledTasks || [];
+	const projectFrame = gantt.projectFrame || {};
+	const toolbar = `<div class="coordina-action-bar__actions">${actions.canCreateTask ? `<button class="button button-primary" data-action="open-project-task-create">${escapeHtml(__('Add task', 'coordina'))}</button>` : ''}${actions.canCreateMilestone ? `<button class="button" data-action="open-project-milestone-create">${escapeHtml(__('Add milestone', 'coordina'))}</button>` : ''}<button class="button" data-action="switch-project-tab" data-tab="work">${escapeHtml(__('Open work', 'coordina'))}</button><button class="button" data-action="switch-project-tab" data-tab="milestones">${escapeHtml(__('Open milestones', 'coordina'))}</button></div>`;
+	const summaryRow = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.scheduledTasks || 0)}</strong>${escapeHtml(__('Scheduled tasks', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.milestones || 0)}</strong>${escapeHtml(__('Milestones', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.unscheduledTasks || 0)}</strong>${escapeHtml(__('Unscheduled tasks', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.blockedTasks || 0)}</strong>${escapeHtml(__('Blocked', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.overdueItems || 0)}</strong>${escapeHtml(__('Overdue', 'coordina'))}</span></div>`;
+	const frame = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-status-badge">${escapeHtml(__('Project start', 'coordina'))}: ${escapeHtml(dateLabel(projectFrame.start || ''))}</span><span class="coordina-status-badge">${escapeHtml(__('Target end', 'coordina'))}: ${escapeHtml(dateLabel(projectFrame.target || ''))}</span><span class="coordina-status-badge">${escapeHtml(__('Actual end', 'coordina'))}: ${escapeHtml(dateLabel(projectFrame.end || ''))}</span></div>`;
+	if (!groups.length) {
+		const emptyAction = actions.canCreateTask ? `<button class="button button-primary" data-action="open-project-task-create">${escapeHtml(__('Add task', 'coordina'))}</button>` : '';
+		const unscheduledBody = unscheduled.length ? `<ul class="coordina-work-list coordina-work-list--compact">${unscheduled.map((item) => `<li>${workspaceGanttPrimaryAction(item)}<div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status || 'new')}">${escapeHtml(nice(item.status || 'new'))}</span><span>${escapeHtml(item.ownerLabel || __('Unassigned', 'coordina'))}</span></div></li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('Tasks without dates will appear here until they are scheduled.', 'coordina'))}</p>`;
+		return `<div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project timeline', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Use the Gantt view to scan sequencing, overlap, and slippage without leaving the project workspace.', 'coordina'))}</p></div>${toolbar}</div>${summaryRow}${frame}<section class="coordina-empty-state"><h3>${escapeHtml(__('No scheduled work to plot yet', 'coordina'))}</h3><p>${escapeHtml(__('Add start dates or due dates to project tasks, or add milestones, to make this timeline useful.', 'coordina'))}</p>${emptyAction}</section></section><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Needs scheduling', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('These tasks exist but are missing both a start date and a due date.', 'coordina'))}</p></div></div>${unscheduledBody}</section></div>`;
+	}
+
+	const timelineStyle = `style="grid-template-columns:repeat(${Math.max(weeks.length, 1)}, minmax(88px, 1fr))"`;
+	const headerWeeks = weeks.map((week) => `<div class="coordina-gantt__week-head"><strong>${escapeHtml(week.label || '')}</strong><span>${escapeHtml(week.monthLabel || '')}</span></div>`).join('');
+	const groupMarkup = groups.map((group) => `<section class="coordina-gantt__group"><div class="coordina-gantt__group-head"><strong>${escapeHtml(group.title || __('Workstream', 'coordina'))}</strong><span class="coordina-summary-chip"><strong>${Number((group.rows || []).length)}</strong>${escapeHtml(__('Items', 'coordina'))}</span></div>${(group.rows || []).map((row) => `<article class="coordina-gantt__row"><div class="coordina-gantt__label"><div class="coordina-gantt__label-line">${workspaceGanttPrimaryAction(row)}<div class="coordina-gantt__badges"><span class="coordina-status-badge status-${escapeHtml(row.status || 'planned')}">${escapeHtml(nice(row.status || 'planned'))}</span>${row.blocked ? `<span class="coordina-status-badge status-blocked">${escapeHtml(__('Blocked', 'coordina'))}</span>` : ''}${row.dependencyFlag ? `<span class="coordina-status-badge">${escapeHtml(__('Dependency', 'coordina'))}</span>` : ''}</div><div class="coordina-gantt__meta">${workspaceGanttRowMeta(row)}</div></div></div>${workspaceGanttTrack(gantt.range || {}, weeks, row)}</article>`).join('')}</section>`).join('');
+	const unscheduledCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Needs scheduling', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Keep this list short so the timeline stays useful and trustworthy.', 'coordina'))}</p></div></div>${unscheduled.length ? `<ul class="coordina-work-list coordina-work-list--compact">${unscheduled.map((item) => `<li>${workspaceGanttPrimaryAction(item)}<div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status || 'new')}">${escapeHtml(nice(item.status || 'new'))}</span><span>${escapeHtml(item.ownerLabel || __('Unassigned', 'coordina'))}</span></div></li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('Everything in this workspace has at least one planning date.', 'coordina'))}</p>`}</section>`;
+	return `<div class="coordina-gantt-layout"><section class="coordina-card coordina-card--wide coordina-gantt-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project timeline', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See task spans, milestone checkpoints, and today\'s position across the project in one direct view.', 'coordina'))}</p></div>${toolbar}</div>${summaryRow}${frame}<div class="coordina-gantt-shell"><div class="coordina-gantt__header"><div class="coordina-gantt__sidebar-head">${escapeHtml(__('Work item', 'coordina'))}</div><div class="coordina-gantt__timeline-head" ${timelineStyle}>${headerWeeks}</div></div><div class="coordina-gantt__body">${groupMarkup}</div></div></section><div class="coordina-gantt-layout__secondary">${unscheduledCard}<section class="coordina-card coordina-card--notice"><div class="coordina-section-header"><div><h3>${escapeHtml(__('How to use this', 'coordina'))}</h3></div></div><p class="coordina-empty-inline">${escapeHtml(__('Use Gantt to spot timing conflicts and slippage, then open Work or Milestones to make changes.', 'coordina'))}</p></section></div></div>`;
+}
+
+function plainText(value) {
+	return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function shortText(value, maxLength) {
+	const text = plainText(value);
+	if (text.length <= maxLength) {
+		return text;
+	}
+	return `${text.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
+}
+
+function progressBar(percent, label) {
+	const safePercent = Math.max(0, Math.min(100, Number(percent || 0)));
+	return `<div class="coordina-progress" aria-label="${escapeHtml(label || '')}"><span class="coordina-progress__track"><span class="coordina-progress__fill" style="width:${safePercent}%"></span></span><strong class="coordina-progress__value">${safePercent}%</strong></div>`;
+}
+
+function overviewSection(title, note, body, action) {
+	return `<section class="coordina-project-overview-section"><div class="coordina-section-header"><div><h4>${escapeHtml(title)}</h4><p class="coordina-section-note">${escapeHtml(note)}</p></div>${action || ''}</div>${body}</section>`;
+}
+
+function workspaceOverviewTaskGroups(items, groups) {
+	const groupBuckets = (groups || []).map((group) => Object.assign({}, group, { items: [] }));
+	const ungrouped = { id: 0, title: __('Ungrouped', 'coordina'), items: [] };
+	(items || []).forEach((item) => {
+		const group = groupBuckets.find((candidate) => Number(candidate.id) === Number(item.task_group_id || 0));
+		(group || ungrouped).items.push(item);
+	});
+	const buckets = groupBuckets.concat(ungrouped).filter((group) => group.items.length > 0);
+
+	if (!buckets.length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(__('No linked project tasks are available yet.', 'coordina'))}</p>`;
+	}
+
+	return `<div class="coordina-project-overview-groups">${buckets.map((group) => {
+		const total = group.items.length;
+		const done = group.items.filter((item) => String(item.status || '') === 'done').length;
+		const completion = total > 0 ? Math.round((done / total) * 100) : 0;
+
+		return `<article class="coordina-project-overview-group"><div class="coordina-section-header"><div><h5>${escapeHtml(group.title)}</h5></div>${progressBar(completion, __('Task group completion', 'coordina'))}</div><ul class="coordina-work-list coordina-work-list--compact coordina-project-overview-list">${group.items.map((item) => {
+			const summary = item.checklist_summary || {};
+			const totalChecklist = Number(summary.total || 0);
+			const checklist = totalChecklist > 0 ? `${Number(summary.done || 0)} / ${totalChecklist} ${__('checklist', 'coordina')}` : __('No checklist', 'coordina');
+			return `<li>${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}<div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status || 'new'))}</span>${item.blocked ? `<span class="coordina-status-badge status-blocked">${escapeHtml(__('Blocked', 'coordina'))}</span>` : ''}<span>${escapeHtml(item.assignee_label || __('Unassigned', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.due_date))}</span><span>${escapeHtml(checklist)}</span></div></li>`;
+		}).join('')}</ul></article>`;
+	}).join('')}</div>`;
+}
+
+function workspaceOverviewMilestones(items) {
+	if (!(items || []).length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(__('No milestones are attached to this project yet.', 'coordina'))}</p>`;
+	}
+
+	return `<ul class="coordina-work-list coordina-work-list--compact coordina-project-overview-list">${items.map((item) => `<li>${openMilestoneButton(item.id, item.title, item.project_id, item.project_id ? 'milestones' : '')}<p class="coordina-work-item-note">${escapeHtml(shortText(item.notes || '', 160) || __('No milestone notes yet.', 'coordina'))}</p><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status || 'planned'))}</span><span>${escapeHtml(item.owner_label || __('No owner assigned', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.due_date))}</span><span>${escapeHtml(`${Number(item.completion_percent || 0)}% ${__('complete', 'coordina')}`)}</span>${item.dependency_flag ? `<span class="coordina-status-badge">${escapeHtml(__('Dependency', 'coordina'))}</span>` : ''}</div></li>`).join('')}</ul>`;
+}
+
+function workspaceOverviewRisks(items) {
+	if (!(items || []).length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(__('No risks or issues are linked to this project right now.', 'coordina'))}</p>`;
+	}
+
+	return `<ul class="coordina-work-list coordina-work-list--compact coordina-project-overview-list">${items.map((item) => `<li><button class="coordina-link-button" data-action="open-record" data-module="risks-issues" data-id="${item.id}">${escapeHtml(item.title)}</button><p class="coordina-work-item-note">${escapeHtml(shortText(item.mitigation_plan || item.description || '', 140) || __('No mitigation plan has been added yet.', 'coordina'))}</p><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status || 'identified'))}</span><span class="coordina-status-badge">${escapeHtml(nice(item.object_type || 'risk'))}</span><span class="coordina-status-badge">${escapeHtml(nice(item.severity || 'medium'))}</span><span>${escapeHtml(item.owner_label || __('No owner assigned', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.target_resolution_date))}</span></div></li>`).join('')}</ul>`;
+}
+
+function workspaceOverviewApprovals(items) {
+	if (!(items || []).length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(__('No approvals are linked to this project right now.', 'coordina'))}</p>`;
+	}
+
+	return `<ul class="coordina-work-list coordina-work-list--compact coordina-project-overview-list">${items.map((item) => `<li><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.object_label || nice(item.object_type || 'approval'))}</button><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status || 'pending'))}</span><span>${escapeHtml(item.approver_label || __('No approver assigned', 'coordina'))}</span><span>${escapeHtml(item.submitted_by_label || __('Unknown submitter', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.submitted_at))}</span></div></li>`).join('')}</ul>`;
+}
+
+function workspaceOverviewFiles(items) {
+	if (!(items || []).length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(__('No files are attached to this project yet.', 'coordina'))}</p>`;
+	}
+
+	return `<ul class="coordina-work-list coordina-work-list--compact coordina-project-overview-list">${items.map((item) => `<li><button class="coordina-link-button" data-action="open-record" data-module="files" data-id="${item.id}">${escapeHtml(item.file_name || item.attachment_title || __('Attached file', 'coordina'))}</button><div class="coordina-work-meta"><span>${escapeHtml(nice(item.object_type || 'project'))}</span><span>${escapeHtml(item.object_label || __('Project', 'coordina'))}</span><span>${escapeHtml(item.created_by_label || __('Unknown uploader', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.created_at))}</span></div></li>`).join('')}</ul>`;
+}
+
+function workspaceOverviewUpdates(items) {
+	if (!(items || []).length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(__('No updates have been posted on this project yet.', 'coordina'))}</p>`;
+	}
+
+	return `<ul class="coordina-work-list coordina-work-list--compact coordina-project-overview-list">${items.map((item) => `<li><button class="coordina-link-button" data-action="open-record" data-module="discussions" data-id="${item.id}">${escapeHtml(item.object_label || __('Project update', 'coordina'))}</button><p class="coordina-work-item-note">${escapeHtml(shortText(item.excerpt || item.body || '', 160) || __('No update summary is available.', 'coordina'))}</p><div class="coordina-work-meta"><span>${escapeHtml(nice(item.object_type || 'project'))}</span><span>${escapeHtml(item.created_by_label || __('Unknown author', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.created_at))}</span></div></li>`).join('')}</ul>`;
+}
+
+function workspaceFullProjectOverview(project, overview, taskSummary) {
+	const projectOverview = state.workspace && state.workspace.projectOverview ? state.workspace.projectOverview : {};
+	const taskGroups = state.workspace && state.workspace.taskGroups ? state.workspace.taskGroups : [];
+	const milestoneSummary = state.workspace && state.workspace.milestoneSummary ? state.workspace.milestoneSummary : {};
+	const riskSummary = state.workspace && state.workspace.riskIssueSummary ? state.workspace.riskIssueSummary : {};
+	const approvalSummary = state.workspace && state.workspace.approvalSummary ? state.workspace.approvalSummary : {};
+	const fileSummary = state.workspace && state.workspace.fileSummary ? state.workspace.fileSummary : {};
+	const discussionSummary = state.workspace && state.workspace.discussionSummary ? state.workspace.discussionSummary : {};
+	const projectChecklist = state.workspace && state.workspace.projectChecklist ? state.workspace.projectChecklist : { items: [], summary: { total: 0, done: 0, open: 0 }, permissions: { canManage: false, canToggle: false }, object_type: 'project', object_id: project.id, object_label: project.title || __('Project', 'coordina') };
+	const metrics = overview && overview.metrics ? overview.metrics : {};
+	const taskItems = projectOverview.tasks || [];
+	const milestoneItems = projectOverview.milestones || [];
+	const riskItems = projectOverview.risksIssues || [];
+	const approvalItems = projectOverview.approvals || [];
+	const fileItems = projectOverview.files || [];
+	const updateItems = projectOverview.updates || [];
+	const description = shortText(project.description || '', 420);
+
+	return `<section class="coordina-card coordina-card--wide coordina-project-overview-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project overview', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('A complete high-level view of this project in one place, with grouped work, planning checkpoints, and supporting records.', 'coordina'))}</p></div><button class="button button-small" data-action="switch-project-tab" data-tab="work">${escapeHtml(__('Open work tab', 'coordina'))}</button></div><div class="coordina-project-overview-hero"><div class="coordina-project-overview-hero__main"><h4>${escapeHtml(project.title || __('Project workspace', 'coordina'))}</h4>${description ? `<p>${escapeHtml(description)}</p>` : ''}<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-status-badge status-${escapeHtml(project.status || 'draft')}">${escapeHtml(nice(project.status || 'draft'))}</span><span class="coordina-status-badge status-${escapeHtml(project.health || 'neutral')}">${escapeHtml(nice(project.health || 'neutral'))}</span><span class="coordina-status-badge">${escapeHtml(nice(project.priority || 'normal'))}</span><span class="coordina-status-badge">${escapeHtml(project.manager_label || __('No manager assigned', 'coordina'))}</span><span class="coordina-status-badge">${escapeHtml(dateLabel(overview.timeline && overview.timeline.target))}</span></div>${progressBar(taskSummary.completion || metrics.completionPercent || 0, __('Overall task completion', 'coordina'))}</div><div class="coordina-project-overview-hero__stats"><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(taskSummary.total || 0)}</strong>${escapeHtml(__('Tasks', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(milestoneSummary.total || 0)}</strong>${escapeHtml(__('Milestones', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(riskSummary.total || 0)}</strong>${escapeHtml(__('Risks & issues', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number((projectChecklist.summary && projectChecklist.summary.total) || 0)}</strong>${escapeHtml(__('Checklist', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(fileSummary.total || 0)}</strong>${escapeHtml(__('Files', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(discussionSummary.total || 0)}</strong>${escapeHtml(__('Updates', 'coordina'))}</span></div><dl class="coordina-key-value coordina-key-value--compact"><div><dt>${escapeHtml(__('Start', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(overview.timeline && overview.timeline.start))}</dd></div><div><dt>${escapeHtml(__('Target end', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(overview.timeline && overview.timeline.target))}</dd></div><div><dt>${escapeHtml(__('Actual end', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(overview.timeline && overview.timeline.end))}</dd></div><div><dt>${escapeHtml(__('Open work', 'coordina'))}</dt><dd>${Number(taskSummary.open || 0)}</dd></div><div><dt>${escapeHtml(__('Blocked', 'coordina'))}</dt><dd>${Number(taskSummary.blocked || 0)}</dd></div><div><dt>${escapeHtml(__('Overdue', 'coordina'))}</dt><dd>${Number(taskSummary.overdue || 0)}</dd></div></dl></div></div><div class="coordina-project-overview-layout"><div class="coordina-project-overview-main">${overviewSection(__('Task groups and work items', 'coordina'), __('Every project task is shown in its group so you can scan the full execution structure at once.', 'coordina'), workspaceOverviewTaskGroups(taskItems, taskGroups), `<button class="button button-small" data-action="switch-project-tab" data-tab="work">${escapeHtml(__('Open work', 'coordina'))}</button>`)}${overviewSection(__('Milestones', 'coordina'), __('Planning checkpoints and delivery targets across the full project.', 'coordina'), workspaceOverviewMilestones(milestoneItems), `<button class="button button-small" data-action="switch-project-tab" data-tab="milestones">${escapeHtml(__('Open milestones', 'coordina'))}</button>`)}</div><div class="coordina-project-overview-side">${checklistCard(projectChecklist, { title: __('Project checklists', 'coordina'), note: __('Use separate named checklists for handover, requirements, UAT, launch, and other project-level work.', 'coordina'), emptyChecklistMessage: __('No checklists are attached to this project yet.', 'coordina'), addChecklistLabel: __('Add checklist', 'coordina'), addLabel: __('Add item', 'coordina') })}${overviewSection(__('Risks and issues', 'coordina'), __('Open exposure, mitigations, and ownership across the project.', 'coordina'), workspaceOverviewRisks(riskItems), `<button class="button button-small" data-action="switch-project-tab" data-tab="risks-issues">${escapeHtml(__('Open risks', 'coordina'))}</button>`)}${overviewSection(__('Approvals', 'coordina'), __('Every pending or completed decision linked to the project.', 'coordina'), workspaceOverviewApprovals(approvalItems), `<button class="button button-small" data-action="switch-project-tab" data-tab="approvals">${escapeHtml(__('Open approvals', 'coordina'))}</button>`)}${overviewSection(__('Files', 'coordina'), __('Attached documents and assets across the project and related work.', 'coordina'), workspaceOverviewFiles(fileItems), `<button class="button button-small" data-action="switch-project-tab" data-tab="files">${escapeHtml(__('Open files', 'coordina'))}</button>`)}${overviewSection(__('Updates', 'coordina'), __('Project narrative and work-item updates in one continuous view.', 'coordina'), workspaceOverviewUpdates(updateItems), `<button class="button button-small" data-action="switch-project-tab" data-tab="discussion">${escapeHtml(__('Open updates', 'coordina'))}</button>`)}</div></div></section>`;
+}
+
+function workspaceOverviewTab(project, overview, taskSummary) {
+	const riskSummary = state.workspace && state.workspace.riskIssueSummary ? state.workspace.riskIssueSummary : {};
+	const approvalSummary = state.workspace && state.workspace.approvalSummary ? state.workspace.approvalSummary : {};
+	const milestoneSummary = state.workspace && state.workspace.milestoneSummary ? state.workspace.milestoneSummary : {};
+	const milestones = state.workspace && state.workspace.milestoneCollection ? state.workspace.milestoneCollection.items || [] : [];
+	const risks = state.workspace && state.workspace.riskIssueCollection ? state.workspace.riskIssueCollection.items || [] : [];
+	const approvals = state.workspace && state.workspace.approvalCollection ? state.workspace.approvalCollection.items || [] : [];
+	const nextMilestones = milestones.filter((item) => !['completed', 'skipped'].includes(String(item.status || ''))).slice(0, 3);
+	const riskWatch = risks.filter((item) => !['resolved', 'closed'].includes(String(item.status || ''))).slice(0, 3);
+	const decisionWatch = approvals.filter((item) => String(item.status || '') === 'pending').slice(0, 3);
+	return `<div class="coordina-project-overview-stack"><div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project pulse', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('A quick view of progress, upcoming checkpoints, and anything that needs attention.', 'coordina'))}</p></div></div><p>${escapeHtml(overview.healthSummary || __('This project workspace is ready for planning and execution.', 'coordina'))}</p><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(taskSummary.open || 0)}</strong>${escapeHtml(__('Open work items', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(milestoneSummary.nextDueDate ? 1 : 0)}</strong>${escapeHtml(__('Upcoming checkpoint', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(riskSummary.highSeverity || 0)}</strong>${escapeHtml(__('High severity risks/issues', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(approvalSummary.pending || 0)}</strong>${escapeHtml(__('Pending decisions', 'coordina'))}</span></div><div class="coordina-workspace-brief-grid"><article class="coordina-card coordina-card--notice"><div class="coordina-section-header"><h4>${escapeHtml(__('Next checkpoints', 'coordina'))}</h4><button class="button button-small" data-action="switch-project-tab" data-tab="milestones">${escapeHtml(__('Open milestones', 'coordina'))}</button></div>${nextMilestones.length ? `<ul class="coordina-work-list coordina-work-list--compact">${nextMilestones.map((item) => `<li>${openMilestoneButton(item.id, item.title, item.project_id, item.project_id ? 'milestones' : '')}<div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span>${escapeHtml(item.owner_label || __('No owner assigned', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.due_date))}</span></div></li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('No open milestones are scheduled yet.', 'coordina'))}</p>`}</article><article class="coordina-card coordina-card--notice"><div class="coordina-section-header"><h4>${escapeHtml(__('Risk watch', 'coordina'))}</h4><button class="button button-small" data-action="switch-project-tab" data-tab="risks-issues">${escapeHtml(__('Open risks', 'coordina'))}</button></div>${riskWatch.length ? `<ul class="coordina-work-list coordina-work-list--compact">${riskWatch.map((item) => `<li><button class="coordina-link-button" data-action="open-record" data-module="risks-issues" data-id="${item.id}">${escapeHtml(item.title)}</button><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span class="coordina-status-badge">${escapeHtml(nice(item.severity || 'medium'))}</span><span>${escapeHtml(item.owner_label || __('No owner assigned', 'coordina'))}</span></div></li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('No open risks or issues need attention right now.', 'coordina'))}</p>`}</article></div></section><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project frame', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Key dates, ownership, and pending decisions in one place.', 'coordina'))}</p></div></div><dl class="coordina-key-value"><div><dt>${escapeHtml(__('Start', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(overview.timeline && overview.timeline.start))}</dd></div><div><dt>${escapeHtml(__('Target end', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(overview.timeline && overview.timeline.target))}</dd></div><div><dt>${escapeHtml(__('Actual end', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(overview.timeline && overview.timeline.end))}</dd></div><div><dt>${escapeHtml(__('Priority', 'coordina'))}</dt><dd>${escapeHtml(nice(project.priority || 'normal'))}</dd></div><div><dt>${escapeHtml(__('Manager', 'coordina'))}</dt><dd>${escapeHtml(project.manager_label || __('No manager assigned', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Next due milestone', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(milestoneSummary.nextDueDate || ''))}</dd></div></dl><div class="coordina-drawer-section"><div class="coordina-section-header"><h4>${escapeHtml(__('Decision watch', 'coordina'))}</h4><button class="button button-small" data-action="switch-project-tab" data-tab="approvals">${escapeHtml(__('Open approvals', 'coordina'))}</button></div>${decisionWatch.length ? `<ul class="coordina-work-list coordina-work-list--compact">${decisionWatch.map((item) => `<li><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.object_label || nice(item.object_type))}</button><div class="coordina-work-meta"><span>${escapeHtml(nice(item.object_type || 'approval'))}</span><span>${escapeHtml(item.approver_label || __('No approver assigned', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.submitted_at))}</span></div></li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('No pending approvals are blocking this project right now.', 'coordina'))}</p>`}</div></section></section></div>${workspaceFullProjectOverview(project, overview, taskSummary)}</div>`;
+}
+
+function workspaceMilestonesTab() {
+	const items = state.workspace && state.workspace.milestoneCollection ? state.workspace.milestoneCollection.items || [] : [];
+	const summary = state.workspace && state.workspace.milestoneSummary ? state.workspace.milestoneSummary : {};
+	const actions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
+	const addButton = actions.canCreateMilestone ? `<button class="button button-primary" data-action="open-project-milestone-create">${escapeHtml(__('Add milestone', 'coordina'))}</button>` : '';
+	const summaryChips = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Total', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.open || 0)}</strong>${escapeHtml(__('Open', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.overdue || 0)}</strong>${escapeHtml(__('Overdue', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.dependencies || 0)}</strong>${escapeHtml(__('Dependencies', 'coordina'))}</span></div>`;
+	const empty = `<section class="coordina-empty-state"><h3>${escapeHtml(__('No milestones yet', 'coordina'))}</h3><p>${escapeHtml(__('Project planning checkpoints you can access will appear here.', 'coordina'))}</p></section>`;
+	const list = items.length ? `<ul class="coordina-work-list coordina-work-list--stacked">${items.map((item) => {
+		const nextStep = item.status === 'completed' ? __('Milestone is complete', 'coordina') : item.dependency_flag ? __('Clear dependency before moving forward', 'coordina') : item.due_date && new Date(item.due_date) < new Date() ? __('Recover schedule and reset expectations', 'coordina') : __('Advance the remaining work', 'coordina');
+		return `<li><div class="coordina-work-item-split"><div>${openMilestoneButton(item.id, item.title, item.project_id, item.project_id ? 'milestones' : '')}<p class="coordina-work-item-note">${escapeHtml(shortText(item.notes || '', 140) || __('No milestone notes yet.', 'coordina'))}</p><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span>${escapeHtml(item.owner_label || __('No owner assigned', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.due_date))}</span><span>${escapeHtml(`${Number(item.completion_percent || 0)}% ${__('complete', 'coordina')}`)}</span></div></div><div class="coordina-work-item-side"><span class="coordina-work-item-next">${escapeHtml(nextStep)}</span><button class="button button-small" data-action="open-milestone-page" data-id="${item.id}" data-project-id="${item.project_id || ''}" data-project-tab="${item.project_id ? 'milestones' : ''}">${escapeHtml(__('Open', 'coordina'))}</button></div></div></li>`;
+	}).join('')}</ul>` : empty;
+	return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project milestones', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Upcoming checkpoints, owners, and schedule risk at a glance.', 'coordina'))}</p></div>${addButton}</div>${summaryChips}${list}</section>`;
+}
+
+function activityObjectTypeLabel(item) {
+	return item.objectTypeLabel || nice(item.objectType || 'activity item');
+}
+
+function activityRouteControl(item, options) {
+	const route = item.route || {};
+	if (!options.showContextLink || !route.page) {
+		return '';
+	}
+	const label = options.linkLabelMode === 'title'
+		? (item.objectLabel || activityObjectTypeLabel(item))
+		: activityObjectTypeLabel(item);
+	return `<button class="coordina-link-button coordina-link-button--activity" data-action="open-route" data-page="${route.page || ''}" data-project-id="${route.project_id || ''}" data-project-tab="${route.project_tab || ''}" data-task-id="${route.task_id || ''}" data-milestone-id="${route.milestone_id || ''}" data-risk-issue-id="${route.risk_issue_id || ''}">${escapeHtml(label)}</button>`;
+}
+
+function activityTimeLabel(value) {
+	if (!value) {
+		return '';
+	}
+	try {
+		const raw = String(value).trim();
+		const parsed = new Date(raw.replace(' ', 'T'));
+		if (Number.isNaN(parsed.getTime())) {
+			return '';
+		}
+		return new Intl.DateTimeFormat(document.documentElement.lang || undefined, { hour: '2-digit', minute: '2-digit' }).format(parsed);
+	} catch (error) {
+		return '';
+	}
+}
+
+function activityTimestampLabel(value, mode) {
+	if (!value) {
+		return '';
+	}
+	if (mode === 'time') {
+		return activityTimeLabel(value);
+	}
+	return dateLabel(value);
+}
+
+function activityDateTile(key) {
+	if (key === '__unknown') {
+		return `<div class="coordina-activity-date-card"><strong>--</strong><span>${escapeHtml(__('Unknown', 'coordina'))}</span></div>`;
+	}
+	const parsed = new Date(`${key}T00:00:00`);
+	if (Number.isNaN(parsed.getTime())) {
+		return `<div class="coordina-activity-date-card"><strong>--</strong><span>${escapeHtml(__('Unknown', 'coordina'))}</span></div>`;
+	}
+	const day = `${parsed.getDate()}`.padStart(2, '0');
+	const month = new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'long' }).format(parsed);
+	return `<div class="coordina-activity-date-card"><strong>${escapeHtml(day)}</strong><span>${escapeHtml(month)}</span></div>`;
+}
+
+function activityList(items, emptyMessage, options = {}) {
+	const config = Object.assign({ showContextLink: true, showProjectLabel: false, linkLabelMode: 'type', timestampMode: 'full', listClass: '' }, options || {});
+	return items.length ? `<ul class="coordina-timeline coordina-timeline--activity ${escapeHtml(config.listClass || '')}">${items.map((item) => {
+		const timestampLabel = activityTimestampLabel(item.createdAt, config.timestampMode);
+		const meta = [
+			`<span class="coordina-status-badge">${escapeHtml(nice(item.eventType || 'activity'))}</span>`,
+			activityRouteControl(item, config),
+			config.showProjectLabel ? `<span>${escapeHtml(item.projectLabel || __('Standalone', 'coordina'))}</span>` : '',
+		].filter(Boolean).join('');
+		return `<li><div class="coordina-activity-entry"><div class="coordina-activity-entry__header"><strong>${escapeHtml(item.actorLabel || __('System', 'coordina'))}</strong>${timestampLabel ? `<span class="coordina-activity-entry__time">${escapeHtml(timestampLabel)}</span>` : ''}</div><p>${escapeHtml(item.message || __('Activity captured for this object.', 'coordina'))}</p>${meta ? `<div class="coordina-work-meta">${meta}</div>` : ''}</div></li>`;
+	}).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+}
+
+function activityDateKey(value) {
+	const text = String(value || '').trim();
+	if (!text) {
+		return '__unknown';
+	}
+	const datePart = text.split('T')[0];
+	if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+		return datePart;
+	}
+	const parsed = new Date(text);
+	if (!Number.isNaN(parsed.getTime())) {
+		return parsed.toISOString().slice(0, 10);
+	}
+	return '__unknown';
+}
+
+function activityDateLabel(key) {
+	if (key === '__unknown') {
+		return __('Unknown date', 'coordina');
+	}
+	return dateLabel(key);
+}
+
+function activityPager(collection, scope) {
+	const page = Number(collection && collection.page ? collection.page : 1);
+	const totalPages = Number(collection && collection.totalPages ? collection.totalPages : 1);
+	if (totalPages <= 1) {
+		return '';
+	}
+	return `<nav class="coordina-activity-pager" aria-label="${escapeHtml(__('Activity pages', 'coordina'))}"><button class="button button-small" type="button" data-action="change-activity-page" data-scope="${scope}" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''}>${escapeHtml(__('Previous', 'coordina'))}</button><span class="coordina-activity-pager__status">${escapeHtml(`${__('Page', 'coordina')} ${page} ${__('of', 'coordina')} ${totalPages}`)}</span><button class="button button-small" type="button" data-action="change-activity-page" data-scope="${scope}" data-page="${page + 1}" ${page >= totalPages ? 'disabled' : ''}>${escapeHtml(__('Next', 'coordina'))}</button></nav>`;
+}
+
+function activityColumnsChart(series) {
+	const max = Math.max(1, ...series.map((item) => Number(item.count || 0)));
+	return `<div class="coordina-activity-chart coordina-activity-chart--columns" style="grid-template-columns:repeat(${Math.max(1, series.length)}, minmax(0, 1fr))">${series.map((item) => `<div class="coordina-activity-chart__column"><span class="coordina-activity-chart__track"><span class="coordina-activity-chart__bar" style="transform:scaleY(${Math.max(0.08, Number(item.count || 0) / max)})"></span></span><strong>${Number(item.count || 0)}</strong><span>${escapeHtml(item.label || '')}</span></div>`).join('')}</div>`;
+}
+
+function activityRankingChart(series, emptyMessage) {
+	if (!series.length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+	}
+	const max = Math.max(1, ...series.map((item) => Number(item.count || 0)));
+	return `<div class="coordina-activity-chart coordina-activity-chart--ranking">${series.map((item) => `<div class="coordina-activity-chart__row"><div class="coordina-activity-chart__row-head"><span>${escapeHtml(item.label || '')}</span><strong>${Number(item.count || 0)}</strong></div><span class="coordina-activity-chart__row-bar"><span style="width:${Math.max(10, Math.round((Number(item.count || 0) / max) * 100))}%"></span></span></div>`).join('')}</div>`;
+}
+
+function workspaceActivityInsights(summary) {
+	const charts = summary && summary.charts ? summary.charts : {};
+	const rhythm = charts.rhythm || {};
+	const buckets = Array.isArray(rhythm.buckets) ? rhythm.buckets : [];
+	const actors = Array.isArray(charts.actors) ? charts.actors : [];
+	const categories = Array.isArray(charts.categories) ? charts.categories : [];
+	return `<div class="coordina-activity-insights"><section class="coordina-activity-insight"><div class="coordina-section-header"><div><h4>${escapeHtml(rhythm.title || __('Daily rhythm', 'coordina'))}</h4></div></div>${buckets.length ? activityColumnsChart(buckets) : `<p class="coordina-empty-inline">${escapeHtml(__('Not enough activity yet.', 'coordina'))}</p>`}</section><section class="coordina-activity-insight"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Most active people', 'coordina'))}</h4></div></div>${activityRankingChart(actors, __('No people activity yet.', 'coordina'))}</section><section class="coordina-activity-insight"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Item mix', 'coordina'))}</h4></div></div>${activityRankingChart(categories, __('No item activity yet.', 'coordina'))}</section></div>`;
+}
+
+function groupedActivityTimeline(collection, emptyMessage, options = {}) {
+	const items = collection && Array.isArray(collection.items) ? collection.items : [];
+	if (!items.length) {
+		return activityList([], emptyMessage, options);
+	}
+	const groups = items.reduce((carry, item) => {
+		const key = activityDateKey(item.createdAt);
+		if (!carry[key]) {
+			carry[key] = [];
+		}
+		carry[key].push(item);
+		return carry;
+	}, {});
+	const groupKeys = Object.keys(groups).sort((a, b) => {
+		if (a === '__unknown') {
+			return 1;
+		}
+		if (b === '__unknown') {
+			return -1;
+		}
+		return b.localeCompare(a);
+	});
+	return `<div class="coordina-activity-groups">${groupKeys.map((key) => `<section class="coordina-activity-group coordina-activity-group--dated">${activityDateTile(key)}<div class="coordina-activity-group__content"><div class="coordina-section-header coordina-section-header--activity-group"><div><h4>${escapeHtml(activityDateLabel(key))}</h4></div></div>${activityList(groups[key], __('No activity recorded for this date.', 'coordina'), Object.assign({ timestampMode: 'time', listClass: 'coordina-timeline--activity-group' }, options || {}))}</div></section>`).join('')}</div>`;
+}
+
+function workspaceActivityTab() {
+	const collection = state.workspace && state.workspace.activityCollection ? state.workspace.activityCollection : { items: [] };
+	const summary = state.workspace && state.workspace.activitySummary ? state.workspace.activitySummary : {};
+	const summaryChips = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Recent events', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${escapeHtml(dateLabel(summary.latestAt))}</strong>${escapeHtml(__('Latest', 'coordina'))}</span></div>`;
+	const insights = workspaceActivityInsights(summary);
+	const groupedTimeline = groupedActivityTimeline(collection, __('No project activity has been logged yet.', 'coordina'), { showContextLink: true, showProjectLabel: false, linkLabelMode: 'type' });
+	return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project activity', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recent movement across this project, with a compact view of pace, people, and item mix.', 'coordina'))}</p></div></div>${summaryChips}${insights}${groupedTimeline}${activityPager(collection, 'project')}</section>`;
+}
+
+function optionList(items, selected) {
+	return (items || []).map((item) => `<option value="${item}" ${String(selected || '') === String(item) ? 'selected' : ''}>${escapeHtml(nice(item))}</option>`).join('');
+}
+
+function workspaceSettingsTab() {
+	const shell = state.shell || {};
+	const actions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
+	const settings = state.workspace && state.workspace.projectSettings ? state.workspace.projectSettings : {};
+	const project = settings.project || (state.workspace && state.workspace.project ? state.workspace.project : {});
+	const members = settings.members || [];
+	const memberIds = members.map((member) => String(member.user_id || member.id || ''));
+	const statusOptions = optionList((shell.statuses && shell.statuses.projects) || [], project.status || 'draft');
+	const healthOptions = optionList(shell.health || [], project.health || 'neutral');
+	const priorityOptions = optionList(shell.priorities || [], project.priority || 'normal');
+	const visibilityOptions = optionList(shell.visibilityLevels || ['team', 'private', 'public'], project.visibility || 'team');
+	const notificationOptions = optionList(shell.projectNotificationPolicies || ['default', 'important-only', 'all-updates', 'muted'], project.notification_policy || 'default');
+	const taskGroupLabelOptions = `<option value="">${escapeHtml(__('Use global default', 'coordina'))}</option>${optionList(['stage', 'phase', 'bucket'], project.task_group_label || '')}`;
+	const managerOptions = (shell.users || []).map((user) => `<option value="${user.id}" ${String(project.manager_user_id || '') === String(user.id) ? 'selected' : ''}>${escapeHtml(user.label)}</option>`).join('');
+	const memberOptions = (shell.users || []).map((user) => `<option value="${user.id}" ${memberIds.includes(String(user.id)) ? 'selected' : ''}>${escapeHtml(user.label)}</option>`).join('');
+	if (!actions.canViewSettings) {
+		return `<section class="coordina-card coordina-card--notice"><h3>${escapeHtml(__('Project settings', 'coordina'))}</h3><p>${escapeHtml(__('Project settings are available to project managers and administrators only.', 'coordina'))}</p></section>`;
+	}
+	return `<section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Project settings', 'coordina'))}</h3></div><form class="coordina-form" data-action="project-settings-form" data-project-id="${project.id || state.projectContext.id}"><div class="coordina-card coordina-card--notice"><p>${escapeHtml(__('Changes here apply only to this project. Global defaults stay in Settings.', 'coordina'))}</p></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Status', 'coordina'))}</span><select name="status">${statusOptions}</select></label><label><span>${escapeHtml(__('Health', 'coordina'))}</span><select name="health">${healthOptions}</select></label><label><span>${escapeHtml(__('Priority', 'coordina'))}</span><select name="priority">${priorityOptions}</select></label><label><span>${escapeHtml(__('Manager', 'coordina'))}</span><select name="manager_user_id"><option value="">${escapeHtml(__('Unassigned', 'coordina'))}</option>${managerOptions}</select></label><label><span>${escapeHtml(__('Visibility', 'coordina'))}</span><select name="visibility">${visibilityOptions}</select></label><label><span>${escapeHtml(__('Project notifications', 'coordina'))}</span><select name="notification_policy">${notificationOptions}</select></label><label><span>${escapeHtml(__('Task group name', 'coordina'))}</span><select name="task_group_label">${taskGroupLabelOptions}</select></label><label class="coordina-form-grid__wide"><span>${escapeHtml(__('Team members', 'coordina'))}</span><select name="team_member_ids" multiple size="6">${memberOptions}</select></label><label><span>${escapeHtml(__('Actual end date', 'coordina'))}</span><input type="datetime-local" name="actual_end_date" value="${escapeHtml(app.dateTimeInputValue(project.actual_end_date || ''))}" /></label><label class="coordina-form-grid__wide"><span>${escapeHtml(__('Close-out notes', 'coordina'))}</span><textarea name="closeout_notes">${escapeHtml(project.closeout_notes || '')}</textarea></label></div><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save project settings', 'coordina'))}</button></div></form></section>`;
+}
+
+function settingsTextarea(label, path, values) {
+	const text = Array.isArray(values) ? values.join('\n') : '';
+	return `<label><span>${escapeHtml(label)}</span><textarea data-setting-path="${escapeHtml(path)}" rows="4">${escapeHtml(text)}</textarea></label>`;
+}
+
+function settingsCheckbox(label, path, checked) {
+	return `<label class="coordina-checkbox"><input type="checkbox" data-setting-path="${escapeHtml(path)}" value="1" ${app.isCheckedValue(checked) ? 'checked' : ''} /><span>${escapeHtml(label)}</span></label>`;
+}
+
+function settingsHint(text) {
+	return `<p class="coordina-section-note">${escapeHtml(text)}</p>`;
+}
+
+function settingsPageLegacy() {
+	const settings = state.settings || {};
+	const general = settings.general || {};
+	const dropdowns = settings.dropdowns || {};
+	const statuses = dropdowns.statuses || {};
+	const access = settings.access || {};
+	const workflows = settings.workflows || {};
+	const notifications = settings.notifications || {};
+	const portal = settings.portal || {};
+	const data = settings.data || {};
+	const automation = settings.automation || {};
+	const landingOptions = optionList(['coordina-my-work', 'coordina-dashboard', 'coordina-projects'], general.default_landing_page || 'coordina-my-work');
+	const dateOptions = optionList(['site', 'relative', 'absolute'], general.date_display || 'site');
+	const tabOptions = optionList(['overview', 'work', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity'], general.workspace_default_tab || 'overview');
+	const taskGroupLabelOptions = optionList(['stage', 'phase', 'bucket'], general.task_group_label || 'stage');
+	const activityPageSizeValue = Number(general.activity_page_size || 10);
+	const accessOptions = optionList(dropdowns.visibilityLevels || ['team', 'private', 'public'], access.project_access_default || 'team');
+	const portalAccessOptions = optionList(['disabled', 'requesters', 'logged-in-users'], access.portal_access_default || 'requesters');
+	const workspaceVisibilityOptions = optionList(['members-only', 'members-and-assignees', 'all-coordina-users'], access.project_workspace_visibility || 'members-and-assignees');
+	const projectListVisibilityOptions = optionList(['assigned-projects-only', 'all-accessible-projects', 'all-projects'], access.project_list_visibility || 'all-accessible-projects');
+	const navigationScopeOptions = optionList(['dashboard-my-work-only', 'dashboard-my-work-projects', 'dashboard-my-work-projects-tasks'], access.non_admin_navigation_scope || 'dashboard-my-work-projects');
+	const projectTaskVisibilityOptions = optionList(['assigned-tasks-only', 'all-tasks-in-accessible-projects'], access.project_task_visibility || 'all-tasks-in-accessible-projects');
+	const taskEditPolicyOptions = optionList(['assignee-only', 'assignee-or-reporter', 'all-project-members'], access.task_edit_policy || 'assignee-only');
+	const attachmentRules = access.file_attachment_rules || {};
+	const projectAttachmentOptions = optionList(['project-leads-only', 'project-members'], attachmentRules.project || 'project-leads-only');
+	const taskAttachmentOptions = optionList(['assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], attachmentRules.task || 'assignee-and-project-leads');
+	const milestoneAttachmentOptions = optionList(['owner-and-project-leads', 'project-members'], attachmentRules.milestone || 'owner-and-project-leads');
+	const riskAttachmentOptions = optionList(['owner-and-project-leads', 'project-members'], attachmentRules.risk_issue || 'owner-and-project-leads');
+	const requestAttachmentOptions = optionList(['request-participants', 'triage-only'], attachmentRules.request || 'request-participants');
+	const checklistManageRules = access.checklist_manage_rules || {};
+	const checklistToggleRules = access.checklist_toggle_rules || {};
+	const projectChecklistOptions = optionList(['project-leads-only', 'project-members'], checklistManageRules.project || 'project-leads-only');
+	const projectChecklistToggleOptions = optionList(['project-leads-only', 'project-members'], checklistToggleRules.project || 'project-leads-only');
+	const taskChecklistManageOptions = optionList(['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistManageRules.task || 'project-leads-only');
+	const taskChecklistToggleOptions = optionList(['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistToggleRules.task || 'assignee-and-project-leads');
+	const milestoneChecklistManageOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.milestone || 'project-leads-only');
+	const milestoneChecklistToggleOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.milestone || 'owner-and-project-leads');
+	const riskChecklistManageOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.risk_issue || 'project-leads-only');
+	const riskChecklistToggleOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.risk_issue || 'owner-and-project-leads');
+	const conversionOptions = optionList(['task', 'project'], workflows.request_conversion_default || 'task');
+	const requesterVisibilityOptions = optionList(['own-requests', 'project-requests', 'none'], portal.requester_visibility || 'own-requests');
+	const dropdownFields = [
+		settingsTextarea(__('Project statuses', 'coordina'), 'dropdowns.statuses.projects', statuses.projects || []),
+		settingsTextarea(__('Task statuses', 'coordina'), 'dropdowns.statuses.tasks', statuses.tasks || []),
+		settingsTextarea(__('Request statuses', 'coordina'), 'dropdowns.statuses.requests', statuses.requests || []),
+		settingsTextarea(__('Approval statuses', 'coordina'), 'dropdowns.statuses.approvals', statuses.approvals || []),
+		settingsTextarea(__('Risk/issue statuses', 'coordina'), 'dropdowns.statuses.risksIssues', statuses.risksIssues || []),
+		settingsTextarea(__('Milestone statuses', 'coordina'), 'dropdowns.statuses.milestones', statuses.milestones || []),
+		settingsTextarea(__('Priorities', 'coordina'), 'dropdowns.priorities', dropdowns.priorities || []),
+		settingsTextarea(__('Health values', 'coordina'), 'dropdowns.health', dropdowns.health || []),
+		settingsTextarea(__('Severity values', 'coordina'), 'dropdowns.severities', dropdowns.severities || []),
+		settingsTextarea(__('Impact values', 'coordina'), 'dropdowns.impacts', dropdowns.impacts || []),
+		settingsTextarea(__('Likelihood values', 'coordina'), 'dropdowns.likelihoods', dropdowns.likelihoods || []),
+		settingsTextarea(__('Visibility levels', 'coordina'), 'dropdowns.visibilityLevels', dropdowns.visibilityLevels || []),
+		settingsTextarea(__('Project notification policies', 'coordina'), 'dropdowns.projectNotificationPolicies', dropdowns.projectNotificationPolicies || []),
+		settingsTextarea(__('Request types', 'coordina'), 'dropdowns.requestTypes', dropdowns.requestTypes || []),
+		settingsTextarea(__('Project types', 'coordina'), 'dropdowns.projectTypes', dropdowns.projectTypes || []),
+		settingsTextarea(__('File categories', 'coordina'), 'dropdowns.fileCategories', dropdowns.fileCategories || []),
+		settingsTextarea(__('Update types', 'coordina'), 'dropdowns.updateTypes', dropdowns.updateTypes || []),
+	].join('');
+	return `<section class="coordina-page"><div class="coordina-action-bar"><div><h2>${escapeHtml(__('Settings', 'coordina'))}</h2><p>${escapeHtml(__('Global defaults for Coordina. Project-specific governance stays inside each project workspace.', 'coordina'))}</p></div><div class="coordina-action-bar__actions"><button class="button button-primary" data-action="submit-settings">${escapeHtml(__('Save settings', 'coordina'))}</button></div></div><form class="coordina-form" data-action="settings-form"><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('General', 'coordina'))}</h3></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Default landing page', 'coordina'))}</span><select data-setting-path="general.default_landing_page">${landingOptions}</select></label><label><span>${escapeHtml(__('Date display', 'coordina'))}</span><select data-setting-path="general.date_display">${dateOptions}</select></label><label><span>${escapeHtml(__('Project workspace default tab', 'coordina'))}</span><select data-setting-path="general.workspace_default_tab">${tabOptions}</select></label></div></section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Dropdown values', 'coordina'))}</h3></div><p class="coordina-empty-inline">${escapeHtml(__('Use one value per line. Values are stored as safe tokens and defaults are restored if a list is emptied.', 'coordina'))}</p><div class="coordina-form-grid">${dropdownFields}</div></section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Roles and permissions defaults', 'coordina'))}</h3></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Project access default', 'coordina'))}</span><select data-setting-path="access.project_access_default">${accessOptions}</select></label><label><span>${escapeHtml(__('Portal access default', 'coordina'))}</span><select data-setting-path="access.portal_access_default">${portalAccessOptions}</select></label><label><span>${escapeHtml(__('Project file attachments', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.project">${projectAttachmentOptions}</select></label><label><span>${escapeHtml(__('Task file attachments', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.task">${taskAttachmentOptions}</select></label><label><span>${escapeHtml(__('Milestone file attachments', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.milestone">${milestoneAttachmentOptions}</select></label><label><span>${escapeHtml(__('Risk and issue file attachments', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.risk_issue">${riskAttachmentOptions}</select></label><label><span>${escapeHtml(__('Request file attachments', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.request">${requestAttachmentOptions}</select></label></div></section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Workflow defaults', 'coordina'))}</h3></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Request conversion default', 'coordina'))}</span><select data-setting-path="workflows.request_conversion_default">${conversionOptions}</select></label>${settingsCheckbox(__('Allow direct close-out', 'coordina'), 'workflows.allow_direct_closeout', workflows.allow_direct_closeout)}${settingsCheckbox(__('Only archive completed work', 'coordina'), 'workflows.archive_completed_only', workflows.archive_completed_only)}${settingsCheckbox(__('Require approval by default', 'coordina'), 'workflows.approval_required_default', workflows.approval_required_default)}</div></section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Notifications', 'coordina'))}</h3></div><div class="coordina-form-grid">${settingsCheckbox(__('Assignment notices', 'coordina'), 'notifications.assignment', notifications.assignment)}${settingsCheckbox(__('Mention notices', 'coordina'), 'notifications.mention', notifications.mention)}${settingsCheckbox(__('Approval notices', 'coordina'), 'notifications.approval', notifications.approval)}${settingsCheckbox(__('Due date notices', 'coordina'), 'notifications.due_date', notifications.due_date)}${settingsCheckbox(__('Overdue notices', 'coordina'), 'notifications.overdue', notifications.overdue)}${settingsCheckbox(__('Project update notices', 'coordina'), 'notifications.project_update', notifications.project_update)}${settingsCheckbox(__('Milestone update notices', 'coordina'), 'notifications.milestone_update', notifications.milestone_update)}${settingsCheckbox(__('Digest by default', 'coordina'), 'notifications.digest', notifications.digest)}</div></section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Portal', 'coordina'))}</h3></div><div class="coordina-form-grid">${settingsTextarea(__('Allowed request types', 'coordina'), 'portal.allowed_request_types', portal.allowed_request_types || [])}<label><span>${escapeHtml(__('Requester visibility', 'coordina'))}</span><select data-setting-path="portal.requester_visibility">${requesterVisibilityOptions}</select></label>${settingsCheckbox(__('Allow portal uploads', 'coordina'), 'portal.uploads_enabled', portal.uploads_enabled)}</div></section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Data, privacy, and logs', 'coordina'))}</h3></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Activity retention days', 'coordina'))}</span><input type="number" min="30" max="3650" data-setting-path="data.activity_retention_days" value="${escapeHtml(data.activity_retention_days || 365)}" /></label><label><span>${escapeHtml(__('Notification retention days', 'coordina'))}</span><input type="number" min="30" max="3650" data-setting-path="data.notification_retention_days" value="${escapeHtml(data.notification_retention_days || 180)}" /></label>${settingsCheckbox(__('Enable exports', 'coordina'), 'data.export_enabled', data.export_enabled)}</div></section><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save settings', 'coordina'))}</button></div></form></section>`;
+}
+
+function settingsPanel(title, description, content) {
+	return `<section class="coordina-card coordina-settings-panel"><div class="coordina-section-header"><div><h3>${escapeHtml(title)}</h3><p class="coordina-settings-panel__intro">${escapeHtml(description)}</p></div></div>${content}</section>`;
+}
+
+function settingsPage() {
+	const settings = state.settings || {};
+	const general = settings.general || {};
+	const dropdowns = settings.dropdowns || {};
+	const statuses = dropdowns.statuses || {};
+	const access = settings.access || {};
+	const workflows = settings.workflows || {};
+	const notifications = settings.notifications || {};
+	const portal = settings.portal || {};
+	const data = settings.data || {};
+	const automation = settings.automation || {};
+	const landingOptions = optionList(['coordina-my-work', 'coordina-dashboard', 'coordina-projects'], general.default_landing_page || 'coordina-my-work');
+	const dateOptions = optionList(['site', 'relative', 'absolute'], general.date_display || 'site');
+	const tabOptions = optionList(['overview', 'work', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity'], general.workspace_default_tab || 'overview');
+	const taskGroupLabelOptions = optionList(['stage', 'phase', 'bucket'], general.task_group_label || 'stage');
+	const accessOptions = optionList(dropdowns.visibilityLevels || ['team', 'private', 'public'], access.project_access_default || 'team');
+	const portalAccessOptions = optionList(['disabled', 'requesters', 'logged-in-users'], access.portal_access_default || 'requesters');
+	const workspaceVisibilityOptions = optionList(['members-only', 'members-and-assignees', 'all-coordina-users'], access.project_workspace_visibility || 'members-and-assignees');
+	const projectListVisibilityOptions = optionList(['assigned-projects-only', 'all-accessible-projects', 'all-projects'], access.project_list_visibility || 'all-accessible-projects');
+	const navigationScopeOptions = optionList(['dashboard-my-work-only', 'dashboard-my-work-projects', 'dashboard-my-work-projects-tasks'], access.non_admin_navigation_scope || 'dashboard-my-work-projects');
+	const projectTaskVisibilityOptions = optionList(['assigned-tasks-only', 'all-tasks-in-accessible-projects'], access.project_task_visibility || 'all-tasks-in-accessible-projects');
+	const taskEditPolicyOptions = optionList(['assignee-only', 'assignee-or-reporter', 'all-project-members'], access.task_edit_policy || 'assignee-only');
+	const attachmentRules = access.file_attachment_rules || {};
+	const projectAttachmentOptions = optionList(['project-leads-only', 'project-members'], attachmentRules.project || 'project-leads-only');
+	const taskAttachmentOptions = optionList(['assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], attachmentRules.task || 'assignee-and-project-leads');
+	const milestoneAttachmentOptions = optionList(['owner-and-project-leads', 'project-members'], attachmentRules.milestone || 'owner-and-project-leads');
+	const riskAttachmentOptions = optionList(['owner-and-project-leads', 'project-members'], attachmentRules.risk_issue || 'owner-and-project-leads');
+	const requestAttachmentOptions = optionList(['request-participants', 'triage-only'], attachmentRules.request || 'request-participants');
+	const conversionOptions = optionList(['task', 'project'], workflows.request_conversion_default || 'task');
+	const requesterVisibilityOptions = optionList(['own-requests', 'project-requests', 'none'], portal.requester_visibility || 'own-requests');
+	const dropdownFields = [
+		settingsTextarea(__('Project statuses', 'coordina'), 'dropdowns.statuses.projects', statuses.projects || []),
+		settingsTextarea(__('Task statuses', 'coordina'), 'dropdowns.statuses.tasks', statuses.tasks || []),
+		settingsTextarea(__('Request statuses', 'coordina'), 'dropdowns.statuses.requests', statuses.requests || []),
+		settingsTextarea(__('Approval statuses', 'coordina'), 'dropdowns.statuses.approvals', statuses.approvals || []),
+		settingsTextarea(__('Risk/issue statuses', 'coordina'), 'dropdowns.statuses.risksIssues', statuses.risksIssues || []),
+		settingsTextarea(__('Milestone statuses', 'coordina'), 'dropdowns.statuses.milestones', statuses.milestones || []),
+		settingsTextarea(__('Priorities', 'coordina'), 'dropdowns.priorities', dropdowns.priorities || []),
+		settingsTextarea(__('Health values', 'coordina'), 'dropdowns.health', dropdowns.health || []),
+		settingsTextarea(__('Severity values', 'coordina'), 'dropdowns.severities', dropdowns.severities || []),
+		settingsTextarea(__('Impact values', 'coordina'), 'dropdowns.impacts', dropdowns.impacts || []),
+		settingsTextarea(__('Likelihood values', 'coordina'), 'dropdowns.likelihoods', dropdowns.likelihoods || []),
+		settingsTextarea(__('Visibility levels', 'coordina'), 'dropdowns.visibilityLevels', dropdowns.visibilityLevels || []),
+		settingsTextarea(__('Project notification policies', 'coordina'), 'dropdowns.projectNotificationPolicies', dropdowns.projectNotificationPolicies || []),
+		settingsTextarea(__('Request types', 'coordina'), 'dropdowns.requestTypes', dropdowns.requestTypes || []),
+		settingsTextarea(__('Project types', 'coordina'), 'dropdowns.projectTypes', dropdowns.projectTypes || []),
+		settingsTextarea(__('File categories', 'coordina'), 'dropdowns.fileCategories', dropdowns.fileCategories || []),
+		settingsTextarea(__('Update types', 'coordina'), 'dropdowns.updateTypes', dropdowns.updateTypes || []),
+	].join('');
+	const accessPolicyGuide = `<section class="coordina-card coordina-card--notice"><div class="coordina-section-header"><h3>${escapeHtml(__('Access policy guide', 'coordina'))}</h3></div><p>${escapeHtml(__('Keep the defaults conservative. Project lists control discovery, workspace visibility controls who can open a project, task visibility controls what visible work appears, edit rules control who can change it, and attachment rules control who can add supporting files. Form pickers only offer projects the current user can actually act on.', 'coordina'))}</p></section>`;
+	const sections = {
+		defaults: {
+			label: __('Defaults', 'coordina'),
+			title: __('Common defaults', 'coordina'),
+			description: __('Choose the basic behavior people notice first.', 'coordina'),
+			content: `<div class="coordina-form-grid coordina-form-grid--settings"><section class="coordina-settings-block is-notice"><div class="coordina-section-header"><h4>${escapeHtml(__('Workspace defaults', 'coordina'))}</h4></div><div class="coordina-form-grid"><div><label><span>${escapeHtml(__('Default landing page', 'coordina'))}</span><select data-setting-path="general.default_landing_page">${landingOptions}</select></label>${settingsHint(__('Choose the page people open first after entering Coordina.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Date display', 'coordina'))}</span><select data-setting-path="general.date_display">${dateOptions}</select></label>${settingsHint(__('Choose how dates are shown across the app.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Project workspace default tab', 'coordina'))}</span><select data-setting-path="general.workspace_default_tab">${tabOptions}</select></label>${settingsHint(__('Choose which tab opens first inside a project workspace.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Default task group name', 'coordina'))}</span><select data-setting-path="general.task_group_label">${taskGroupLabelOptions}</select></label>${settingsHint(__('Choose the label used for project task buckets.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Activity items per page', 'coordina'))}</span><input type="number" min="5" max="50" data-setting-path="general.activity_page_size" value="${escapeHtml(activityPageSizeValue)}" /></label>${settingsHint(__('Choose how many activity entries each feed page shows across dashboard, project, and record detail surfaces.', 'coordina'))}</div></div></section></div>`,
+		},
+		intake: {
+			label: __('Intake & access', 'coordina'),
+			title: __('Intake and access defaults', 'coordina'),
+			description: __('Choose who can see work and how the request portal behaves.', 'coordina'),
+			content: `${accessPolicyGuide}<div class="coordina-form-grid coordina-form-grid--settings"><section class="coordina-settings-block is-notice"><div class="coordina-section-header"><h4>${escapeHtml(__('Project access defaults', 'coordina'))}</h4></div><div class="coordina-form-grid"><div><label><span>${escapeHtml(__('Project access default', 'coordina'))}</span><select data-setting-path="access.project_access_default">${accessOptions}</select></label>${settingsHint(__('Set the default visibility for new projects.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Project workspace visibility', 'coordina'))}</span><select data-setting-path="access.project_workspace_visibility">${workspaceVisibilityOptions}</select></label>${settingsHint(__('Choose who can open a project workspace.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Project list visibility', 'coordina'))}</span><select data-setting-path="access.project_list_visibility">${projectListVisibilityOptions}</select></label>${settingsHint(__('Choose how widely projects appear in the main list.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Non-admin navigation', 'coordina'))}</span><select data-setting-path="access.non_admin_navigation_scope">${navigationScopeOptions}</select></label>${settingsHint(__('Choose which main pages non-admin users can see in the menu.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Portal access default', 'coordina'))}</span><select data-setting-path="access.portal_access_default">${portalAccessOptions}</select></label>${settingsHint(__('Choose who can open the request portal.', 'coordina'))}</div></div></section><section class="coordina-settings-block"><div class="coordina-section-header"><h4>${escapeHtml(__('Portal defaults', 'coordina'))}</h4></div><div class="coordina-form-grid">${settingsTextarea(__('Allowed request types', 'coordina'), 'portal.allowed_request_types', portal.allowed_request_types || [])}<div><label><span>${escapeHtml(__('Requester visibility', 'coordina'))}</span><select data-setting-path="portal.requester_visibility">${requesterVisibilityOptions}</select></label>${settingsHint(__('Choose what request history a requester can see.', 'coordina'))}</div><div>${settingsCheckbox(__('Allow portal uploads', 'coordina'), 'portal.uploads_enabled', portal.uploads_enabled)}${settingsHint(__('Allow requesters to add files in the portal.', 'coordina'))}</div></div></section></div>`,
+		},
+		governance: {
+			label: __('Governance', 'coordina'),
+			title: __('Workflow and task rules', 'coordina'),
+			description: __('Choose who can work on visible tasks, who can attach files, and how request conversion behaves.', 'coordina'),
+			content: `<div class="coordina-form-grid coordina-form-grid--settings"><section class="coordina-settings-block is-notice"><div class="coordina-section-header"><h4>${escapeHtml(__('Task visibility and edit rules', 'coordina'))}</h4></div><div class="coordina-form-grid"><div><label><span>${escapeHtml(__('Project task visibility', 'coordina'))}</span><select data-setting-path="access.project_task_visibility">${projectTaskVisibilityOptions}</select></label>${settingsHint(__('Choose whether users see all tasks in visible projects or only their own assigned tasks.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Task edit policy', 'coordina'))}</span><select data-setting-path="access.task_edit_policy">${taskEditPolicyOptions}</select></label>${settingsHint(__('Choose which visible task participants can update status, completion, and actual finish date when they are not project leads.', 'coordina'))}</div><div><p class="coordina-section-note">${escapeHtml(__('Project leads always keep full task editing, including title, description, ownership, planning, and blockers.', 'coordina'))}</p></div></div></section><section class="coordina-settings-block"><div class="coordina-section-header"><h4>${escapeHtml(__('Checklist rules', 'coordina'))}</h4></div><div class="coordina-form-grid"><div><label><span>${escapeHtml(__('Project checklist editing', 'coordina'))}</span><select data-setting-path="access.checklist_manage_rules.project">${projectChecklistOptions}</select></label>${settingsHint(__('Choose who can add, edit, delete, or reorder checklist items on a project.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Project checklist ticking', 'coordina'))}</span><select data-setting-path="access.checklist_toggle_rules.project">${projectChecklistToggleOptions}</select></label>${settingsHint(__('Choose who can tick and untick project checklist items.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Task checklist editing', 'coordina'))}</span><select data-setting-path="access.checklist_manage_rules.task">${taskChecklistManageOptions}</select></label>${settingsHint(__('Keep this on project leads only, or let assignees and task participants manage their own task checklist items.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Task checklist ticking', 'coordina'))}</span><select data-setting-path="access.checklist_toggle_rules.task">${taskChecklistToggleOptions}</select></label>${settingsHint(__('Default is safest: let the assignee tick task checklist items, with project leads kept as an override.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Milestone checklist editing', 'coordina'))}</span><select data-setting-path="access.checklist_manage_rules.milestone">${milestoneChecklistManageOptions}</select></label>${settingsHint(__('Choose whether only project leads or also the milestone owner can manage checklist items.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Milestone checklist ticking', 'coordina'))}</span><select data-setting-path="access.checklist_toggle_rules.milestone">${milestoneChecklistToggleOptions}</select></label>${settingsHint(__('Choose whether only project leads or also the milestone owner can tick checklist items.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Risk and issue checklist editing', 'coordina'))}</span><select data-setting-path="access.checklist_manage_rules.risk_issue">${riskChecklistManageOptions}</select></label>${settingsHint(__('Choose whether only project leads or also the record owner can manage checklist items.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Risk and issue checklist ticking', 'coordina'))}</span><select data-setting-path="access.checklist_toggle_rules.risk_issue">${riskChecklistToggleOptions}</select></label>${settingsHint(__('Choose whether only project leads or also the record owner can tick checklist items.', 'coordina'))}</div></div></section><section class="coordina-settings-block"><div class="coordina-section-header"><h4>${escapeHtml(__('File attachment rules', 'coordina'))}</h4></div><div class="coordina-form-grid"><div><label><span>${escapeHtml(__('Project files', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.project">${projectAttachmentOptions}</select></label>${settingsHint(__('Default is safest: only the project manager or creator can attach files to a project.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Task files', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.task">${taskAttachmentOptions}</select></label>${settingsHint(__('Default is safest: only the task assignee can attach files, with the project manager or creator kept as an override.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Milestone files', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.milestone">${milestoneAttachmentOptions}</select></label>${settingsHint(__('Default is safest: only the milestone owner can attach files, with the project manager or creator kept as an override.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Risk and issue files', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.risk_issue">${riskAttachmentOptions}</select></label>${settingsHint(__('Default is safest: only the owner can attach files, with the project manager or creator kept as an override.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Request files', 'coordina'))}</span><select data-setting-path="access.file_attachment_rules.request">${requestAttachmentOptions}</select></label>${settingsHint(__('Allow request attachments for the requester and triage owner, or tighten them to triage only.', 'coordina'))}</div></div></section><section class="coordina-settings-block"><div class="coordina-section-header"><h4>${escapeHtml(__('Workflow defaults', 'coordina'))}</h4></div><div class="coordina-form-grid"><div><label><span>${escapeHtml(__('Request conversion default', 'coordina'))}</span><select data-setting-path="workflows.request_conversion_default">${conversionOptions}</select></label>${settingsHint(__('Choose whether approved requests become tasks or projects by default.', 'coordina'))}</div><div>${settingsCheckbox(__('Allow direct close-out', 'coordina'), 'workflows.allow_direct_closeout', workflows.allow_direct_closeout)}${settingsHint(__('Allow records to be closed without a longer workflow.', 'coordina'))}</div><div>${settingsCheckbox(__('Only archive completed work', 'coordina'), 'workflows.archive_completed_only', workflows.archive_completed_only)}${settingsHint(__('Only allow archiving when work is already complete.', 'coordina'))}</div><div>${settingsCheckbox(__('Require approval by default', 'coordina'), 'workflows.approval_required_default', workflows.approval_required_default)}${settingsHint(__('Turn on approvals automatically for new work that supports them.', 'coordina'))}</div></div></section></div>`,
+		},
+		dropdowns: {
+			label: __('Dropdowns', 'coordina'),
+			title: __('Dropdown values', 'coordina'),
+			description: __('Manage the controlled values users see in forms. Use one value per line. If a list is emptied, safe defaults are restored.', 'coordina'),
+			content: `<div class="coordina-form-grid coordina-form-grid--settings">${dropdownFields}</div>`,
+		},
+		advanced: {
+			label: __('Advanced', 'coordina'),
+			title: __('Advanced controls', 'coordina'),
+			description: __('Keep only the maintenance options teams need occasionally.', 'coordina'),
+			content: `<div class="coordina-form-grid coordina-form-grid--settings"><section class="coordina-settings-block is-notice"><div class="coordina-section-header"><h4>${escapeHtml(__('Data, privacy, and logs', 'coordina'))}</h4></div><div class="coordina-form-grid"><div><label><span>${escapeHtml(__('Activity retention days', 'coordina'))}</span><input type="number" min="30" max="3650" data-setting-path="data.activity_retention_days" value="${escapeHtml(data.activity_retention_days || 365)}" /></label>${settingsHint(__('Choose how long activity history is kept.', 'coordina'))}</div><div><label><span>${escapeHtml(__('Notification retention days', 'coordina'))}</span><input type="number" min="30" max="3650" data-setting-path="data.notification_retention_days" value="${escapeHtml(data.notification_retention_days || 180)}" /></label>${settingsHint(__('Choose how long notifications are kept.', 'coordina'))}</div><div>${settingsCheckbox(__('Enable exports', 'coordina'), 'data.export_enabled', data.export_enabled)}${settingsHint(__('Allow export features where available.', 'coordina'))}</div></div></section></div>`,
+		},
+	};
+	const activeKey = sections[state.settingsTab] ? state.settingsTab : 'defaults';
+	const tabs = Object.keys(sections).map((key) => `<button type="button" class="coordina-tab ${key === activeKey ? 'is-active' : ''}" data-action="switch-settings-tab" data-tab="${key}" role="tab" aria-selected="${key === activeKey ? 'true' : 'false'}">${escapeHtml(sections[key].label)}</button>`).join('');
+	const active = sections[activeKey];
+	const helper = `<section class="coordina-card coordina-card--notice"><div class="coordina-section-header"><h3>${escapeHtml(__('How to work in Settings', 'coordina'))}</h3></div><p>${escapeHtml(__('Start with Defaults, Intake & access, and Governance. Project-specific rules still belong inside each project workspace.', 'coordina'))}</p></section>`;
+
+	return `<section class="coordina-page">${pageHeading('coordina-settings', `<button class="button" data-action="open-route" data-page="coordina-projects">${escapeHtml(__('Project workspaces', 'coordina'))}</button><button class="button button-primary" data-action="submit-settings">${escapeHtml(__('Save section', 'coordina'))}</button>`, { title: __('Settings', 'coordina'), description: __('Manage team defaults, intake rules, governance, and advanced plugin behavior without cluttering day-to-day work.', 'coordina') })}${helper}<form class="coordina-form coordina-settings-form" data-action="settings-form"><nav class="coordina-settings-tabs" role="tablist" aria-label="${escapeHtml(__('Settings sections', 'coordina'))}">${tabs}</nav>${settingsPanel(active.title, active.description, active.content)}<div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save this section', 'coordina'))}</button></div></form></section>`;
+}
+
+function workspaceTabBody(tab, project, overview, taskSummary) {
+	if (tab === 'overview') {
+		return workspaceOverviewTab(project, overview, taskSummary);
+	}
+	if (tab === 'work' || tab === 'tasks') {
+		return workspaceWorkTab(taskSummary);
+	}
+	if (tab === 'gantt') {
+		return workspaceGanttTab();
+	}
+	if (tab === 'milestones') {
+		return workspaceMilestonesTab();
+	}
+	if (tab === 'activity') {
+		return workspaceActivityTab();
+	}
+	if (tab === 'settings') {
+		return workspaceSettingsTab();
+	}
+	if (tab === 'files') {
+		const files = state.workspace && state.workspace.fileCollection ? state.workspace.fileCollection.items || [] : [];
+		const list = app.fileList ? app.fileList(files, __('No project files yet. Attach the first file to keep project context together.', 'coordina')) : `<p class="coordina-empty-inline">${escapeHtml(__('No project files yet. Attach the first file to keep project context together.', 'coordina'))}</p>`;
+		const actions = app.collaborationActionButtons ? app.collaborationActionButtons({ object_type: 'project', object_id: project.id || '', object_label: project.title || __('Project workspace', 'coordina') }) : '';
+		const summary = state.workspace && state.workspace.fileSummary ? state.workspace.fileSummary : {};
+		return `<div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project files', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Files attached to this project and its related work.', 'coordina'))}</p></div>${actions}</div>${list}</section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('File context', 'coordina'))}</h3></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Linked files', 'coordina'))}</span></div><p class="coordina-empty-inline">${escapeHtml(__('Keep decisions, handoffs, and supporting documents close to the work they belong to.', 'coordina'))}</p></section></div>`;
+	}
+	if (tab === 'discussion') {
+		const discussions = state.workspace && state.workspace.discussionCollection ? state.workspace.discussionCollection.items || [] : [];
+		const list = app.discussionTimeline ? app.discussionTimeline(discussions, __('No project updates yet. Add a quick update to keep the team aligned.', 'coordina')) : `<p class="coordina-empty-inline">${escapeHtml(__('No project updates yet. Add a quick update to keep the team aligned.', 'coordina'))}</p>`;
+		const actions = app.collaborationActionButtons ? app.collaborationActionButtons({ object_type: 'project', object_id: project.id || '', object_label: project.title || __('Project workspace', 'coordina') }) : '';
+		const summary = state.workspace && state.workspace.discussionSummary ? state.workspace.discussionSummary : {};
+		return `<div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project updates', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recent updates from this project and its related work.', 'coordina'))}</p></div>${actions}</div>${list}</section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Narrative context', 'coordina'))}</h3></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Updates logged', 'coordina'))}</span></div><p class="coordina-empty-inline">${escapeHtml(__('Short updates help the team stay aligned without extra status chasing.', 'coordina'))}</p></section></div>`;
+	}
+	if (tab === 'risks-issues') {
+		const items = state.workspace && state.workspace.riskIssueCollection ? state.workspace.riskIssueCollection.items || [] : [];
+		const actions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
+		const riskActions = actions.canCreateRiskIssue ? `<div class="coordina-action-bar__actions"><button class="button" data-action="open-project-risk-create" data-type="risk">${escapeHtml(__('Add risk', 'coordina'))}</button><button class="button button-primary" data-action="open-project-risk-create" data-type="issue">${escapeHtml(__('Add issue', 'coordina'))}</button></div>` : '';
+		const summary = state.workspace && state.workspace.riskIssueSummary ? state.workspace.riskIssueSummary : {};
+		const list = items.length ? `<ul class="coordina-work-list coordina-work-list--stacked">${items.map((item) => {
+			const nextStep = ['resolved', 'closed'].includes(String(item.status || '')) ? __('Confirm closure and lessons learned', 'coordina') : item.status === 'escalated' ? __('Escalation needs review now', 'coordina') : item.object_type === 'issue' ? __('Drive resolution and remove the blocker', 'coordina') : ['high', 'critical'].includes(String(item.severity || '')) ? __('Mitigate now and report exposure', 'coordina') : __('Track mitigation and owner follow-up', 'coordina');
+			return `<li><div class="coordina-work-item-split"><div>${openRiskIssueButton(item.id, item.title, item.project_id, item.project_id ? 'risks-issues' : '')}<p class="coordina-work-item-note">${escapeHtml(shortText(item.mitigation_plan || item.description || '', 150) || __('No mitigation plan has been added yet.', 'coordina'))}</p><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span class="coordina-status-badge">${escapeHtml(nice(item.object_type || 'risk'))}</span><span class="coordina-status-badge">${escapeHtml(nice(item.severity || 'medium'))}</span><span>${escapeHtml(item.owner_label || __('No owner assigned', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.target_resolution_date))}</span></div></div><div class="coordina-work-item-side"><span class="coordina-work-item-next">${escapeHtml(nextStep)}</span><button class="button button-small" data-action="open-risk-issue-page" data-id="${item.id}" data-project-id="${item.project_id || ''}" data-project-tab="${item.project_id ? 'risks-issues' : ''}">${escapeHtml(__('Open', 'coordina'))}</button></div></div></li>`;
+		}).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('Risks and issues you can access will appear here.', 'coordina'))}</p>`;
+		return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project risks and issues', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Open risks, issues, severity, and next steps in one list.', 'coordina'))}</p></div>${riskActions}</div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Open records', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.highSeverity || 0)}</strong>${escapeHtml(__('High severity', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.escalated || 0)}</strong>${escapeHtml(__('Escalated', 'coordina'))}</span></div>${list}</section>`;
+	}
+	if (tab === 'approvals') {
+		const items = state.workspace && state.workspace.approvalCollection ? state.workspace.approvalCollection.items || [] : [];
+		const summary = state.workspace && state.workspace.approvalSummary ? state.workspace.approvalSummary : {};
+		const list = items.length ? `<ul class="coordina-work-list coordina-work-list--stacked">${items.map((item) => {
+			const nextStep = item.status === 'pending' ? __('Decision needed before work can proceed', 'coordina') : item.status === 'rejected' ? __('Rework or follow-up is needed', 'coordina') : __('Decision captured and ready for reference', 'coordina');
+			return `<li><div class="coordina-work-item-split"><div><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.object_label || nice(item.object_type || 'approval'))}</button><p class="coordina-work-item-note">${escapeHtml(`${nice(item.object_type || 'approval')} ${__('in', 'coordina')} ${item.project_label || __('this project', 'coordina')}`)}</p><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span>${escapeHtml(item.approver_label || __('No approver assigned', 'coordina'))}</span><span>${escapeHtml(item.submitted_by_label || __('Unknown submitter', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.submitted_at))}</span></div></div><div class="coordina-work-item-side"><span class="coordina-work-item-next">${escapeHtml(nextStep)}</span><button class="button button-small" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(__('Open', 'coordina'))}</button></div></div></li>`;
+		}).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('No approvals are linked to this project yet.', 'coordina'))}</p>`;
+		return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project approvals', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Pending decisions and the items they affect.', 'coordina'))}</p></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.pending || 0)}</strong>${escapeHtml(__('Pending', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.approved || 0)}</strong>${escapeHtml(__('Approved', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.rejected || 0)}</strong>${escapeHtml(__('Rejected', 'coordina'))}</span></div></div>${list}</section>`;
+	}
+	if (tab === 'board') {
+		state.workspaceView = 'board';
+		return workspaceWorkTab(taskSummary);
+	}
+	return workspaceTabBody('overview', project, overview, taskSummary);
+}
+
+function workspacePage() {
+	const workspace = state.workspace || {};
+	const project = workspace.project || {};
+	const overview = workspace.overview || {};
+	const metrics = overview.metrics || {};
+	const taskSummary = workspace.taskSummary || {};
+	const riskSummary = workspace.riskIssueSummary || {};
+	const approvalSummary = workspace.approvalSummary || {};
+	const milestoneSummary = workspace.milestoneSummary || {};
+	const actions = workspace.actions || {};
+	const tabs = workspace.tabs || [];
+	const activeTab = workspace.activeTab || state.projectContext.tab || 'overview';
+	const headerActions = [
+		actions.canEditProject ? `<button class="button" data-action="edit-project" data-id="${project.id || ''}">${escapeHtml(__('Edit project', 'coordina'))}</button>` : '',
+		actions.canPostUpdate ? `<button class="button" data-action="open-discussion-create" data-object-type="project" data-object-id="${project.id || ''}" data-object-label="${escapeHtml(project.title || __('Project workspace', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Add update', 'coordina'))}</button>` : '',
+		actions.canAttachFile ? `<button class="button" data-action="open-file-create" data-object-type="project" data-object-id="${project.id || ''}" data-object-label="${escapeHtml(project.title || __('Project workspace', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Attach file', 'coordina'))}</button>` : '',
+		actions.canCreateRiskIssue ? `<button class="button" data-action="open-project-risk-create" data-type="risk">${escapeHtml(__('Add risk', 'coordina'))}</button>` : '',
+		actions.canCreateTask ? `<button class="button button-primary" data-action="open-project-task-create">${escapeHtml(__('Add task', 'coordina'))}</button>` : '',
+		project.can_delete ? `<button class="button button-link-delete" data-action="delete-record" data-module="projects" data-id="${project.id || ''}" data-label="${escapeHtml(project.title || __('Project', 'coordina'))}">${escapeHtml(__('Delete project', 'coordina'))}</button>` : '',
+	].filter(Boolean).join('');
+	const metricCards = [
+		{ label: __('Completion', 'coordina'), value: `${Number(metrics.completionPercent || 0)}%`, tone: 'accent' },
+		{ label: __('Open tasks', 'coordina'), value: Number(metrics.openTasks || 0), tone: 'neutral' },
+		{ label: __('Blocked', 'coordina'), value: Number(metrics.blockedTasks || 0), tone: Number(metrics.blockedTasks || 0) > 0 ? 'danger' : 'neutral' },
+		{ label: __('Overdue', 'coordina'), value: Number(metrics.overdueTasks || 0), tone: Number(metrics.overdueTasks || 0) > 0 ? 'warning' : 'neutral' },
+		{ label: __('Open milestones', 'coordina'), value: Number(milestoneSummary.open || 0), tone: Number(milestoneSummary.overdue || 0) > 0 ? 'warning' : 'neutral' },
+		{ label: __('Open risks/issues', 'coordina'), value: Number(riskSummary.total || 0), tone: Number(riskSummary.total || 0) > 0 ? 'warning' : 'neutral' },
+		{ label: __('Pending approvals', 'coordina'), value: Number(approvalSummary.pending || 0), tone: Number(approvalSummary.pending || 0) > 0 ? 'accent' : 'neutral' },
+	].map((item) => `<article class="coordina-card coordina-metric-card coordina-metric-card--${escapeHtml(item.tone || 'neutral')}"><span class="coordina-metric-card__label">${escapeHtml(item.label)}</span><strong class="coordina-metric-card__value">${escapeHtml(item.value)}</strong></article>`).join('');
+	const overviewMetrics = activeTab === 'overview' ? `<div class="coordina-summary-grid coordina-summary-grid--workspace">${metricCards}</div>` : '';
+	return `<section class="coordina-page coordina-project-workspace"><div class="coordina-workspace-crumbs"><button class="button button-link-delete" data-action="back-to-projects">${escapeHtml(__('Back to projects', 'coordina'))}</button><span>/</span><span>${escapeHtml(project.title || __('Project workspace', 'coordina'))}</span></div><div class="coordina-action-bar coordina-action-bar--workspace"><div><span class="coordina-page-kicker">${escapeHtml(__('Project workspace', 'coordina'))}</span><h2>${escapeHtml(project.title || __('Project workspace', 'coordina'))}</h2><p>${escapeHtml(project.description || __('Use Overview for the briefing, then move through work, milestones, risks, approvals, updates, and files as the project progresses.', 'coordina'))}</p><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-status-badge status-${escapeHtml(project.status || 'draft')}">${escapeHtml(nice(project.status || 'draft'))}</span><span class="coordina-status-badge status-${escapeHtml(project.health || 'neutral')}">${escapeHtml(nice(project.health || 'neutral'))}</span><span class="coordina-status-badge">${escapeHtml(project.manager_label || __('No manager assigned', 'coordina'))}</span><span class="coordina-status-badge">${escapeHtml(dateLabel(project.target_end_date || ''))}</span></div></div>${headerActions ? `<div class="coordina-action-bar__actions">${headerActions}</div>` : ''}</div>${overviewMetrics}<div class="coordina-workspace-tabs">${tabs.map((tab) => `<button class="coordina-tab ${activeTab === tab.key ? 'is-active' : ''}" data-action="switch-project-tab" data-tab="${tab.key}">${escapeHtml(tab.label)}${typeof tab.count !== 'undefined' ? ` <span class="coordina-tab-count">${Number(tab.count)}</span>` : ''}</button>`).join('')}</div>${workspaceTabBody(activeTab, project, overview, taskSummary)}</section>`;
+}
+
+function notificationList(items, compact) {
+	return `<ul class="coordina-notification-list ${compact ? 'is-compact' : ''}">${items.map((item) => `<li class="${item.is_read ? 'is-read' : 'is-unread'}"><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.body || __('No message body yet.', 'coordina'))}</p></div><button class="button button-small" data-action="toggle-notification" data-id="${item.id}" data-read="${item.is_read ? '0' : '1'}">${escapeHtml(item.is_read ? __('Mark unread', 'coordina') : __('Mark read', 'coordina'))}</button></li>`).join('')}</ul>`;
+}
+
+function myWorkTaskList(items, emptyMessage) {
+	if (!items.length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+	}
+	return `<ul class="coordina-work-list">${items.map((item) => `<li><div class="coordina-my-work-item"><div class="coordina-my-work-item__main">${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}<div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span>${Number(item.project_id || 0) > 0 ? openProjectButton(item.project_id, item.project_label, 'work') : `<span>${escapeHtml(__('Standalone', 'coordina'))}</span>`}<span>${escapeHtml(dateLabel(item.due_date))}</span></div></div><div class="coordina-inline-actions"><button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="done">${escapeHtml(__('Done', 'coordina'))}</button><button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="waiting">${escapeHtml(__('Waiting', 'coordina'))}</button>${item.can_post_update ? `<button class="button button-small" data-action="open-discussion-create" data-object-type="task" data-object-id="${item.id}" data-object-label="${escapeHtml(item.title || __('Task', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Add update', 'coordina'))}</button>` : ''}</div></div></li>`).join('')}</ul>`;
+}
+
+function myWorkPage() {
+	const data = state.myWork || { sections: {}, summary: {}, pendingApprovals: [] };
+	const sections = data.sections || {};
+	const summary = data.summary || {};
+	const actions = [
+		`<button class="button" data-action="open-notifications">${escapeHtml(__('Notifications', 'coordina'))}</button>`,
+		canAccessPage('coordina-files-discussion') ? `<button class="button" data-action="open-route" data-page="coordina-files-discussion">${escapeHtml(__('Files & discussions', 'coordina'))}</button>` : '',
+		`<button class="button button-primary" data-action="open-task-create">${escapeHtml(__('Quick task', 'coordina'))}</button>`,
+	].filter(Boolean).join('');
+	const spotlightCards = [
+		{ label: __('Overdue', 'coordina'), value: Number(summary.overdue || 0), tone: Number(summary.overdue || 0) > 0 ? 'danger' : 'neutral' },
+		{ label: __('Blocked', 'coordina'), value: Number(summary.blocked || 0), tone: Number(summary.blocked || 0) > 0 ? 'danger' : 'neutral' },
+		{ label: __('Due today', 'coordina'), value: Number(summary.dueToday || 0), tone: Number(summary.dueToday || 0) > 0 ? 'warning' : 'neutral' },
+		{ label: __('Waiting', 'coordina'), value: Number(summary.waiting || 0), tone: Number(summary.waiting || 0) > 0 ? 'warning' : 'neutral' },
+		{ label: __('Approvals', 'coordina'), value: Number(summary.pendingApprovals || 0), tone: Number(summary.pendingApprovals || 0) > 0 ? 'accent' : 'neutral' },
+	].map((item) => `<article class="coordina-card coordina-metric-card coordina-metric-card--${escapeHtml(item.tone)}"><span class="coordina-metric-card__label">${escapeHtml(item.label)}</span><strong class="coordina-metric-card__value">${escapeHtml(item.value)}</strong></article>`).join('');
+	const urgentFocus = `<section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Immediate attention', 'coordina'))}</h3><p>${escapeHtml(__('Start with overdue and blocked work before moving to today’s queue.', 'coordina'))}</p></div></div><div class="coordina-my-work-stack"><div class="coordina-card coordina-card--notice"><div class="coordina-section-header"><h4>${escapeHtml(__('Overdue', 'coordina'))}</h4></div>${myWorkTaskList(sections.overdue || [], __('Nothing overdue right now.', 'coordina'))}</div><div class="coordina-card coordina-card--notice"><div class="coordina-section-header"><h4>${escapeHtml(__('Blocked', 'coordina'))}</h4></div>${myWorkTaskList(sections.blocked || [], __('Nothing is blocked right now.', 'coordina'))}</div><div class="coordina-card"><div class="coordina-section-header"><h4>${escapeHtml(__('Due today', 'coordina'))}</h4></div>${myWorkTaskList(sections.dueToday || [], __('Nothing is due today.', 'coordina'))}</div></div></section>`;
+	const sideRail = `<section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Waiting on others', 'coordina'))}</h3></div>${myWorkTaskList(sections.waiting || [], __('Nothing is waiting right now.', 'coordina'))}</section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Next up', 'coordina'))}</h3></div>${myWorkTaskList(sections.nextUp || [], __('No upcoming tasks after today.', 'coordina'))}</section>`;
+	const approvals = data.pendingApprovals && data.pendingApprovals.length ? `<ul class="coordina-approval-list">${data.pendingApprovals.map((item) => `<li><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.object_label || nice(item.object_type))}</button><div class="coordina-work-meta"><span>${escapeHtml(item.project_label || __('Standalone', 'coordina'))}</span><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span>${escapeHtml(dateLabel(item.submitted_at))}</span></div></li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('Approvals assigned to you will appear here.', 'coordina'))}</p>`;
+	const notifications = state.notifications && state.notifications.items ? notificationList(state.notifications.items, true) : `<p class="coordina-empty-inline">${escapeHtml(__('No notifications yet.', 'coordina'))}</p>`;
+	return `<section class="coordina-page">${pageHeading('coordina-my-work', actions, { title: __('My Work', 'coordina'), description: __('Start with the items that need action now, then move into approvals, waiting work, and what is coming next.', 'coordina') })}<div class="coordina-summary-grid coordina-summary-grid--workspace">${spotlightCards}</div><div class="coordina-columns"><div class="coordina-my-work-main">${urgentFocus}<section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><h3>${escapeHtml(__('Assigned recently', 'coordina'))}</h3></div>${myWorkTaskList(sections.assignedRecently || [], __('Nothing new was assigned recently.', 'coordina'))}</section><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><h3>${escapeHtml(__('Pending approvals', 'coordina'))}</h3>${canAccessPage('coordina-approvals') ? `<button class="button button-small" data-action="open-route" data-page="coordina-approvals">${escapeHtml(__('Open queue', 'coordina'))}</button>` : ''}</div>${approvals}</section></div><div class="coordina-my-work-side">${sideRail}<section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Notification center', 'coordina'))}</h3><button class="button button-small" data-action="open-notifications">${escapeHtml(__('Manage', 'coordina'))}</button></div>${notifications}</section></div></div></section>`;
+}
+
+function normalizeChecklistCollection(collection, fallback) {
+	const base = collection || {};
+	const fallbackValue = fallback || {};
+	const checklists = Array.isArray(base.checklists) ? base.checklists : (Array.isArray(fallbackValue.checklists) ? fallbackValue.checklists : []);
+	const items = Array.isArray(base.items)
+		? base.items
+		: checklists.reduce((result, list) => result.concat(Array.isArray(list.items) ? list.items : []), []);
+	const summary = Object.assign({ total: items.length, done: items.filter((item) => !!item.is_done).length, open: Math.max(0, items.length - items.filter((item) => !!item.is_done).length) }, fallbackValue.summary || {}, base.summary || {});
+	const permissions = Object.assign({ canManage: false, canToggle: false }, fallbackValue.permissions || {}, base.permissions || {});
+	return {
+		checklists,
+		items,
+		summary,
+		permissions,
+		object_type: base.object_type || fallbackValue.object_type || '',
+		object_id: base.object_id || fallbackValue.object_id || '',
+		object_label: base.object_label || fallbackValue.object_label || '',
+	};
+}
+
+function checklistArrowButton(action, options) {
+	const icon = action === 'up' ? '&uarr;' : '&darr;';
+	const label = action === 'up' ? __('Move up', 'coordina') : __('Move down', 'coordina');
+	const disabled = options && options.disabled ? 'disabled' : '';
+	return `<button class="button button-small coordina-checklist-arrow" type="button" data-action="${escapeHtml(options.buttonAction || '')}" data-direction="${escapeHtml(action)}" data-id="${escapeHtml(options.id || '')}" data-object-type="${escapeHtml(options.objectType || '')}" ${disabled} aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${icon}</button>`;
+}
+
+function checklistItemsMarkup(list, collection, config) {
+	const data = normalizeChecklistCollection(collection, config && config.fallback ? config.fallback : {});
+	const options = config || {};
+	const checklist = list || {};
+	const items = Array.isArray(checklist.items) ? checklist.items : [];
+	const permissions = data.permissions || {};
+	const canManage = !!permissions.canManage;
+	const canToggle = !!permissions.canToggle;
+	const objectType = data.object_type || options.objectType || '';
+	const objectId = data.object_id || options.objectId || '';
+	const objectLabel = data.object_label || options.objectLabel || '';
+
+	if (!items.length) {
+		const action = canManage ? `<div class="coordina-form-actions"><button class="button button-small" data-action="open-checklist-item-create" data-checklist-id="${escapeHtml(checklist.id || '')}" data-checklist-title="${escapeHtml(checklist.title || __('Checklist', 'coordina'))}" data-object-type="${escapeHtml(objectType)}" data-object-id="${escapeHtml(objectId)}" data-object-label="${escapeHtml(objectLabel)}">${escapeHtml(options.addLabel || __('Add item', 'coordina'))}</button></div>` : '';
+		return `<p class="coordina-empty-inline">${escapeHtml(options.emptyMessage || __('No checklist items yet.', 'coordina'))}</p>${action}`;
+	}
+
+	return `<ul class="coordina-task-checklist">${items.map((item, index) => `<li class="${item.is_done ? 'is-done' : 'is-open'}"><div class="coordina-task-checklist-item"><label class="coordina-task-checklist-item__main"><input type="checkbox" data-checklist-toggle="1" data-id="${item.id}" data-object-type="${escapeHtml(objectType)}" ${item.is_done ? 'checked' : ''} ${canToggle ? '' : 'disabled'} /><span>${escapeHtml(item.item_text || __('Checklist item', 'coordina'))}</span></label>${canManage ? `<div class="coordina-task-checklist-item__actions">${checklistArrowButton('up', { buttonAction: 'move-checklist-item', id: item.id, objectType, disabled: index === 0 })}${checklistArrowButton('down', { buttonAction: 'move-checklist-item', id: item.id, objectType, disabled: index === items.length - 1 })}<button class="button button-small" type="button" data-action="open-checklist-item-edit" data-id="${item.id}" data-checklist-id="${escapeHtml(checklist.id || '')}" data-checklist-title="${escapeHtml(checklist.title || __('Checklist', 'coordina'))}" data-object-type="${escapeHtml(objectType)}" data-object-id="${escapeHtml(objectId)}" data-object-label="${escapeHtml(objectLabel)}" data-item-text="${escapeHtml(item.item_text || '')}" data-is-done="${item.is_done ? '1' : '0'}">${escapeHtml(__('Edit', 'coordina'))}</button><button class="button button-small button-link-delete" type="button" data-action="delete-checklist-item" data-id="${item.id}" data-object-type="${escapeHtml(objectType)}" data-label="${escapeHtml(item.item_text || __('Checklist item', 'coordina'))}">${escapeHtml(__('Delete', 'coordina'))}</button></div>` : ''}</div></li>`).join('')}</ul>`;
+}
+
+function checklistCard(collection, config) {
+	const data = normalizeChecklistCollection(collection, config && config.fallback ? config.fallback : {});
+	const summary = data.summary || { total: 0, done: 0 };
+	const completion = Number(summary.total || 0) ? Math.round((Number(summary.done || 0) / Number(summary.total || 1)) * 100) : 0;
+	const permissions = data.permissions || {};
+	const headerAction = permissions.canManage ? `<button class="button button-small" data-action="open-checklist-create" data-object-type="${escapeHtml(data.object_type || '')}" data-object-id="${escapeHtml(data.object_id || '')}" data-object-label="${escapeHtml(data.object_label || '')}">${escapeHtml((config && config.addChecklistLabel) || __('Add checklist', 'coordina'))}</button>` : '';
+	const checklists = Array.isArray(data.checklists) ? data.checklists : [];
+	const body = checklists.length
+		? `<div class="coordina-checklist-groups">${checklists.map((checklist, index) => {
+			const listSummary = checklist.summary || { total: 0, done: 0 };
+			const listCompletion = Number(listSummary.total || 0) ? Math.round((Number(listSummary.done || 0) / Number(listSummary.total || 1)) * 100) : 0;
+			const actions = permissions.canManage ? `<div class="coordina-task-checklist-item__actions">${checklistArrowButton('up', { buttonAction: 'move-checklist', id: checklist.id, objectType: data.object_type, disabled: index === 0 })}${checklistArrowButton('down', { buttonAction: 'move-checklist', id: checklist.id, objectType: data.object_type, disabled: index === checklists.length - 1 })}<button class="button button-small" type="button" data-action="open-checklist-edit" data-id="${checklist.id}" data-object-type="${escapeHtml(data.object_type || '')}" data-object-id="${escapeHtml(data.object_id || '')}" data-object-label="${escapeHtml(data.object_label || '')}" data-title="${escapeHtml(checklist.title || __('Checklist', 'coordina'))}">${escapeHtml(__('Edit', 'coordina'))}</button><button class="button button-small" type="button" data-action="open-checklist-item-create" data-checklist-id="${checklist.id}" data-checklist-title="${escapeHtml(checklist.title || __('Checklist', 'coordina'))}" data-object-type="${escapeHtml(data.object_type || '')}" data-object-id="${escapeHtml(data.object_id || '')}" data-object-label="${escapeHtml(data.object_label || '')}">${escapeHtml((config && config.addLabel) || __('Add item', 'coordina'))}</button><button class="button button-small button-link-delete" type="button" data-action="delete-checklist" data-id="${checklist.id}" data-object-type="${escapeHtml(data.object_type || '')}" data-label="${escapeHtml(checklist.title || __('Checklist', 'coordina'))}">${escapeHtml(__('Delete', 'coordina'))}</button></div>` : '';
+			return `<section class="coordina-card coordina-card--subtle coordina-checklist-group"><div class="coordina-section-header"><div><h4>${escapeHtml(checklist.title || __('Checklist', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(`${Number(listSummary.done || 0)} / ${Number(listSummary.total || 0)} ${__('items complete', 'coordina')}`)}</p></div>${actions}</div>${progressBar(listCompletion, __('Checklist completion', 'coordina'))}${checklistItemsMarkup(checklist, data, config)}</section>`;
+		}).join('')}</div>`
+		: `<p class="coordina-empty-inline">${escapeHtml((config && config.emptyChecklistMessage) || __('No checklists are attached to this record yet.', 'coordina'))}</p>${permissions.canManage ? `<div class="coordina-form-actions"><button class="button button-small" data-action="open-checklist-create" data-object-type="${escapeHtml(data.object_type || '')}" data-object-id="${escapeHtml(data.object_id || '')}" data-object-label="${escapeHtml(data.object_label || '')}">${escapeHtml((config && config.addChecklistLabel) || __('Add checklist', 'coordina'))}</button></div>` : ''}`;
+	return `<section class="coordina-card ${escapeHtml((config && config.className) || '')}"><div class="coordina-section-header"><div><h3>${escapeHtml((config && config.title) || __('Checklists', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml((config && config.note) || __('Named checklist groups linked directly to this record.', 'coordina'))}</p></div>${headerAction}</div>${progressBar(completion, __('Checklist completion', 'coordina'))}${body}</section>`;
+}
+
+function taskPage() {
+	const detail = state.taskDetail || { task: null, files: { items: [] }, discussions: { items: [] }, activity: { items: [] } };
+	const task = detail.task || {};
+	if (!task.id) {
+		return `<section class="coordina-page"><section class="coordina-card coordina-card--notice"><h3>${escapeHtml(__('Task not available', 'coordina'))}</h3><p>${escapeHtml(__('This task could not be loaded or you no longer have access to it.', 'coordina'))}</p></section></section>`;
+	}
+
+	const files = detail.files || { items: [] };
+	const discussions = detail.discussions || { items: [] };
+	const activity = detail.activity || { items: [] };
+	const checklist = detail.checklist || { items: task.checklist || [], summary: task.checklist_summary || {}, permissions: { canManage: !!task.can_manage_checklist, canToggle: !!task.can_toggle_checklist }, object_type: 'task', object_id: task.id, object_label: task.title || __('Task', 'coordina') };
+	const backButton = Number(task.project_id || 0) > 0
+		? `<button class="button" data-action="open-route" data-page="coordina-projects" data-project-id="${task.project_id}" data-project-tab="work">${escapeHtml(__('Back to project work', 'coordina'))}</button>`
+		: canAccessPage('coordina-tasks')
+			? `<button class="button" data-action="open-route" data-page="coordina-tasks">${escapeHtml(__('Back to task list', 'coordina'))}</button>`
+			: `<button class="button" data-action="open-route" data-page="coordina-my-work">${escapeHtml(__('Back to My Work', 'coordina'))}</button>`;
+	const headerActions = [
+		backButton,
+		task.can_post_update ? `<button class="button" data-action="open-discussion-create" data-object-type="task" data-object-id="${task.id}" data-object-label="${escapeHtml(task.title || __('Task', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Add update', 'coordina'))}</button>` : '',
+		task.can_attach_files ? `<button class="button" data-action="open-file-create" data-object-type="task" data-object-id="${task.id}" data-object-label="${escapeHtml(task.title || __('Task', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Attach file', 'coordina'))}</button>` : '',
+		task.can_edit ? `<button class="button button-primary" data-action="toggle-task-edit">${escapeHtml(state.taskDetailEditing ? __('Hide edit form', 'coordina') : __('Edit task', 'coordina'))}</button>` : '',
+		task.can_delete ? `<button class="button button-link-delete" data-action="delete-record" data-module="tasks" data-id="${task.id}" data-label="${escapeHtml(task.title || __('Task', 'coordina'))}" data-project-id="${task.project_id || ''}">${escapeHtml(__('Delete task', 'coordina'))}</button>` : '',
+	].filter(Boolean).join('');
+	const overviewText = plainText(task.description || '');
+	const editFormHtml = typeof app.formHtml === 'function' ? app.formHtml(modules['coordina-tasks'], task).replace(/data-action="close-modal"/g, 'data-action="cancel-task-edit"') : '';
+	const editSection = state.taskDetailEditing && editFormHtml
+		? `<section class="coordina-card coordina-task-page__edit"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Edit task', 'coordina'))}</h3></div><button class="button" data-action="cancel-task-edit">${escapeHtml(__('Cancel', 'coordina'))}</button></div>${editFormHtml}</section>`
+		: '';
+	const quickEditForm = task.can_update_progress && !task.can_edit
+		? `<form class="coordina-form coordina-task-page__quick-edit" data-action="save-form" data-module="tasks" data-id="${task.id}"><div class="coordina-form-grid"><label><span>${escapeHtml(__('Status', 'coordina'))}</span><select name="status">${(state.shell && state.shell.statuses && state.shell.statuses.tasks ? state.shell.statuses.tasks : []).map((item) => `<option value="${item}" ${task.status === item ? 'selected' : ''}>${escapeHtml(nice(item))}</option>`).join('')}</select></label><label><span>${escapeHtml(__('Completion', 'coordina'))}</span><input type="number" name="completion_percent" value="${escapeHtml(task.completion_percent || 0)}" min="0" max="100" /></label><label><span>${escapeHtml(__('Actual finish date', 'coordina'))}</span><input type="datetime-local" name="actual_finish_date" value="${escapeHtml(app.dateTimeInputValue(task.actual_finish_date || ''))}" /></label></div><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save progress', 'coordina'))}</button></div></form>`
+		: '';
+	const overviewMeta = `<dl class="coordina-key-value coordina-key-value--task-overview"><div><dt>${escapeHtml(__('Project', 'coordina'))}</dt><dd>${Number(task.project_id || 0) > 0 ? openProjectButton(task.project_id, task.project_label, 'work') : escapeHtml(__('Standalone task', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Group', 'coordina'))}</dt><dd>${escapeHtml(task.task_group_label || __('Ungrouped', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Assignee', 'coordina'))}</dt><dd>${escapeHtml(task.assignee_label || __('Unassigned', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Reporter', 'coordina'))}</dt><dd>${escapeHtml(task.reporter_label || __('Unknown', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Status', 'coordina'))}</dt><dd>${escapeHtml(nice(task.status || 'new'))}</dd></div><div><dt>${escapeHtml(__('Completion', 'coordina'))}</dt><dd>${escapeHtml(`${Number(task.completion_percent || 0)}%`)}</dd></div><div><dt>${escapeHtml(__('Priority', 'coordina'))}</dt><dd>${escapeHtml(nice(task.priority || 'normal'))}</dd></div><div><dt>${escapeHtml(__('Approval', 'coordina'))}</dt><dd>${escapeHtml(task.approval_required ? task.approval_label || __('Required', 'coordina') : __('Not required', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Start date', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(task.start_date))}</dd></div><div><dt>${escapeHtml(__('Due date', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(task.due_date))}</dd></div><div><dt>${escapeHtml(__('Actual finish date', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(task.actual_finish_date))}</dd></div><div><dt>${escapeHtml(__('Last updated', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(task.updated_at))}</dd></div></dl>`;
+	const descriptionCard = `<section class="coordina-card coordina-task-page__overview"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Overview', 'coordina'))}</h3></div></div><div class="coordina-task-page__overview-stack"><section class="coordina-task-page__overview-section"><h4>${escapeHtml(__('Title', 'coordina'))}</h4><p class="coordina-task-page__lead">${escapeHtml(task.title || __('Task', 'coordina'))}</p></section><section class="coordina-task-page__overview-section"><h4>${escapeHtml(__('Description', 'coordina'))}</h4>${overviewText ? `<p class="coordina-task-page__description">${escapeHtml(overviewText)}</p>` : `<p class="coordina-empty-inline">${escapeHtml(__('No task description has been added yet.', 'coordina'))}</p>`}</section><section class="coordina-task-page__overview-section"><h4>${escapeHtml(__('Core task details', 'coordina'))}</h4>${overviewMeta}</section>${task.blocked || task.blocked_reason ? `<section class="coordina-task-page__overview-section coordina-card coordina-card--notice"><h4>${escapeHtml(__('Blocker context', 'coordina'))}</h4><p>${escapeHtml(task.blocked_reason || __('This task is marked blocked, but no blocker details were recorded yet.', 'coordina'))}</p></section>` : ''}${quickEditForm ? `<section class="coordina-task-page__overview-section"><h4>${escapeHtml(__('Quick progress update', 'coordina'))}</h4>${quickEditForm}</section>` : ''}</div></section>`;
+	const activityCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Task activity', 'coordina'))}</h3></div></div>${groupedActivityTimeline(activity, __('No activity has been recorded for this task yet.', 'coordina'), { showContextLink: false, showProjectLabel: false })}${activityPager(activity, 'task')}</section>`;
+	const updatesCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Updates', 'coordina'))}</h3></div>${task.can_post_update ? `<button class="button button-small" data-action="open-discussion-create" data-object-type="task" data-object-id="${task.id}" data-object-label="${escapeHtml(task.title || __('Task', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Post update', 'coordina'))}</button>` : ''}</div>${app.discussionTimeline ? app.discussionTimeline(discussions.items || [], __('No updates have been posted for this task yet.', 'coordina')) : ''}</section>`;
+	const filesCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Files', 'coordina'))}</h3></div>${task.can_attach_files ? `<button class="button button-small" data-action="open-file-create" data-object-type="task" data-object-id="${task.id}" data-object-label="${escapeHtml(task.title || __('Task', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Attach file', 'coordina'))}</button>` : ''}</div>${app.fileList ? app.fileList(files.items || [], __('No files are attached to this task yet.', 'coordina')) : ''}</section>`;
+	const checklistPanel = checklistCard(checklist, { title: __('Checklists', 'coordina'), note: __('Use multiple named checklists to group execution steps under this task.', 'coordina'), emptyChecklistMessage: __('No checklists are attached to this task yet.', 'coordina'), addChecklistLabel: __('Add checklist', 'coordina'), addLabel: __('Add item', 'coordina') });
+	return `<section class="coordina-page coordina-task-page"><div class="coordina-action-bar coordina-action-bar--workspace coordina-task-page__hero"><div><span class="coordina-page-kicker">${escapeHtml(__('Task detail', 'coordina'))}</span><h2>${escapeHtml(task.title || __('Task', 'coordina'))}</h2><p>${escapeHtml(task.project_id ? __('Review the full task context, then update the work without losing your place in the project.', 'coordina') : __('Review the full task context, then update the work without losing the surrounding operational context.', 'coordina'))}</p><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-status-badge status-${escapeHtml(task.status || 'new')}">${escapeHtml(nice(task.status || 'new'))}</span><span class="coordina-status-badge">${escapeHtml(`${Number(task.completion_percent || 0)}% ${__('complete', 'coordina')}`)}</span><span class="coordina-status-badge">${escapeHtml(task.assignee_label || __('Unassigned', 'coordina'))}</span>${task.blocked ? `<span class="coordina-status-badge status-blocked">${escapeHtml(__('Blocked', 'coordina'))}</span>` : ''}<span class="coordina-status-badge">${escapeHtml(task.project_label || __('Standalone', 'coordina'))}</span></div></div>${headerActions ? `<div class="coordina-action-bar__actions">${headerActions}</div>` : ''}</div><div class="coordina-task-page__layout"><div class="coordina-task-page__main">${descriptionCard}${editSection}${updatesCard}${activityCard}</div><div class="coordina-task-page__side">${checklistPanel}${filesCard}</div></div></section>`;
+}
+
+function milestonePage() {
+	const detail = state.milestoneDetail || { milestone: null, files: { items: [] }, discussions: { items: [] }, activity: { items: [] }, checklist: { items: [] } };
+	const milestone = detail.milestone || {};
+	if (!milestone.id) {
+		return `<section class="coordina-page"><section class="coordina-card coordina-card--notice"><h3>${escapeHtml(__('Milestone not available', 'coordina'))}</h3><p>${escapeHtml(__('This milestone could not be loaded or you no longer have access to it.', 'coordina'))}</p></section></section>`;
+	}
+
+	const files = detail.files || { items: [] };
+	const discussions = detail.discussions || { items: [] };
+	const activity = detail.activity || { items: [] };
+	const checklist = detail.checklist || { items: [], summary: { total: 0, done: 0, open: 0 }, permissions: { canManage: false, canToggle: false }, object_type: 'milestone', object_id: milestone.id, object_label: milestone.title || __('Milestone', 'coordina') };
+	const notesText = plainText(milestone.notes || '');
+	const backButton = Number(milestone.project_id || 0) > 0
+		? `<button class="button" data-action="open-route" data-page="coordina-projects" data-project-id="${milestone.project_id}" data-project-tab="milestones">${escapeHtml(__('Back to project milestones', 'coordina'))}</button>`
+		: canAccessPage('coordina-milestones')
+			? `<button class="button" data-action="open-route" data-page="coordina-milestones">${escapeHtml(__('Back to milestone list', 'coordina'))}</button>`
+			: `<button class="button" data-action="open-route" data-page="coordina-my-work">${escapeHtml(__('Back to My Work', 'coordina'))}</button>`;
+	const headerActions = [
+		backButton,
+		milestone.can_post_update ? `<button class="button" data-action="open-discussion-create" data-object-type="milestone" data-object-id="${milestone.id}" data-object-label="${escapeHtml(milestone.title || __('Milestone', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Add update', 'coordina'))}</button>` : '',
+		milestone.can_attach_files ? `<button class="button" data-action="open-file-create" data-object-type="milestone" data-object-id="${milestone.id}" data-object-label="${escapeHtml(milestone.title || __('Milestone', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Attach file', 'coordina'))}</button>` : '',
+		milestone.can_edit ? `<button class="button button-primary" data-action="toggle-milestone-edit">${escapeHtml(state.milestoneDetailEditing ? __('Hide edit form', 'coordina') : __('Edit fields', 'coordina'))}</button>` : '',
+		milestone.can_delete ? `<button class="button button-link-delete" data-action="delete-record" data-module="milestones" data-id="${milestone.id}" data-label="${escapeHtml(milestone.title || __('Milestone', 'coordina'))}" data-project-id="${milestone.project_id || ''}">${escapeHtml(__('Delete milestone', 'coordina'))}</button>` : '',
+	].filter(Boolean).join('');
+	const summaryCards = [
+		{ label: __('Checklist items', 'coordina'), value: Number((checklist.summary && checklist.summary.total) || 0), tone: 'neutral' },
+		{ label: __('Checklist done', 'coordina'), value: Number((checklist.summary && checklist.summary.done) || 0), tone: Number((checklist.summary && checklist.summary.done) || 0) > 0 ? 'accent' : 'neutral' },
+		{ label: __('Completion', 'coordina'), value: `${Number(milestone.completion_percent || 0)}%`, tone: Number(milestone.completion_percent || 0) >= 100 ? 'accent' : 'neutral' },
+		{ label: __('Dependency', 'coordina'), value: milestone.dependency_flag ? __('Yes', 'coordina') : __('No', 'coordina'), tone: milestone.dependency_flag ? 'warning' : 'neutral' },
+		{ label: __('Activity', 'coordina'), value: Number(activity.total || ((activity.items && activity.items.length) || 0)), tone: 'neutral' },
+		{ label: __('Updates', 'coordina'), value: Number((discussions && discussions.total) || ((discussions && discussions.items && discussions.items.length) || 0)), tone: 'neutral' },
+		{ label: __('Files', 'coordina'), value: Number((files && files.total) || ((files && files.items && files.items.length) || 0)), tone: 'neutral' },
+		{ label: __('Due date', 'coordina'), value: dateLabel(milestone.due_date), tone: ['completed', 'skipped'].includes(String(milestone.status || '')) ? 'neutral' : (milestone.due_date && new Date(milestone.due_date) < new Date() ? 'warning' : 'accent') },
+	].map((item) => `<article class="coordina-card coordina-metric-card coordina-metric-card--${escapeHtml(item.tone)}"><span class="coordina-metric-card__label">${escapeHtml(item.label)}</span><strong class="coordina-metric-card__value">${escapeHtml(item.value)}</strong></article>`).join('');
+	const editFormHtml = typeof app.formHtml === 'function' ? app.formHtml(modules['coordina-milestones'], milestone).replace(/data-action="close-modal"/g, 'data-action="cancel-milestone-edit"') : '';
+	const editSection = state.milestoneDetailEditing && editFormHtml
+		? `<section class="coordina-card coordina-task-page__edit"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Edit milestone', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Update the fields without losing the milestone context, updates, or related files.', 'coordina'))}</p></div><button class="button" data-action="cancel-milestone-edit">${escapeHtml(__('Cancel', 'coordina'))}</button></div>${editFormHtml}</section>`
+		: '';
+	const overviewCard = `<section class="coordina-card coordina-task-page__overview"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Overview', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('What this checkpoint represents, why it matters, and the planning notes the team needs.', 'coordina'))}</p></div></div>${notesText ? `<p class="coordina-task-page__description">${escapeHtml(notesText)}</p>` : `<p class="coordina-empty-inline">${escapeHtml(__('No milestone notes have been added yet.', 'coordina'))}</p>`}</section>`;
+	const updatesCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Updates', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Latest progress notes and coordination updates attached to this milestone.', 'coordina'))}</p></div>${milestone.can_post_update ? `<button class="button button-small" data-action="open-discussion-create" data-object-type="milestone" data-object-id="${milestone.id}" data-object-label="${escapeHtml(milestone.title || __('Milestone', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Post update', 'coordina'))}</button>` : ''}</div>${app.discussionTimeline ? app.discussionTimeline(discussions.items || [], __('No updates have been posted for this milestone yet.', 'coordina')) : ''}</section>`;
+	const activityCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Milestone activity', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recent milestone edits, updates, and file actions recorded against this checkpoint.', 'coordina'))}</p></div></div>${groupedActivityTimeline(activity, __('No activity has been recorded for this milestone yet.', 'coordina'), { showContextLink: false, showProjectLabel: false })}${activityPager(activity, 'milestone')}</section>`;
+	const filesCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Files', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Attachments and supporting files linked directly to this milestone.', 'coordina'))}</p></div>${milestone.can_attach_files ? `<button class="button button-small" data-action="open-file-create" data-object-type="milestone" data-object-id="${milestone.id}" data-object-label="${escapeHtml(milestone.title || __('Milestone', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Attach file', 'coordina'))}</button>` : ''}</div>${app.fileList ? app.fileList(files.items || [], __('No files are attached to this milestone yet.', 'coordina')) : ''}</section>`;
+	const checklistPanel = checklistCard(checklist, { title: __('Checklists', 'coordina'), note: __('Group milestone work into named checklists when one list is not enough.', 'coordina'), emptyChecklistMessage: __('No checklists are attached to this milestone yet.', 'coordina'), addChecklistLabel: __('Add checklist', 'coordina'), addLabel: __('Add item', 'coordina') });
+	const frameCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Milestone frame', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Ownership, status, schedule, and project context in one practical summary.', 'coordina'))}</p></div></div><dl class="coordina-key-value"><div><dt>${escapeHtml(__('Project', 'coordina'))}</dt><dd>${Number(milestone.project_id || 0) > 0 ? openProjectButton(milestone.project_id, milestone.project_label, 'milestones') : escapeHtml(__('Project milestone', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Status', 'coordina'))}</dt><dd>${escapeHtml(nice(milestone.status || 'planned'))}</dd></div><div><dt>${escapeHtml(__('Owner', 'coordina'))}</dt><dd>${escapeHtml(milestone.owner_label || __('Unassigned', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Due date', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(milestone.due_date))}</dd></div><div><dt>${escapeHtml(__('Completion', 'coordina'))}</dt><dd>${escapeHtml(`${Number(milestone.completion_percent || 0)}%`)}</dd></div><div><dt>${escapeHtml(__('Dependency milestone', 'coordina'))}</dt><dd>${escapeHtml(milestone.dependency_flag ? __('Yes', 'coordina') : __('No', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Last updated', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(milestone.updated_at))}</dd></div></dl></section>`;
+	return `<section class="coordina-page coordina-task-page coordina-milestone-page"><div class="coordina-action-bar coordina-action-bar--workspace coordina-task-page__hero"><div><span class="coordina-page-kicker">${escapeHtml(__('Milestone detail', 'coordina'))}</span><h2>${escapeHtml(milestone.title || __('Milestone', 'coordina'))}</h2><p>${escapeHtml(__('Use this page to review the full milestone context, then edit, update, or attach files without losing your planning context.', 'coordina'))}</p><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-status-badge status-${escapeHtml(milestone.status || 'planned')}">${escapeHtml(nice(milestone.status || 'planned'))}</span><span class="coordina-status-badge">${escapeHtml(milestone.owner_label || __('Unassigned', 'coordina'))}</span><span class="coordina-status-badge">${escapeHtml(milestone.project_label || __('Project milestone', 'coordina'))}</span>${milestone.dependency_flag ? `<span class="coordina-status-badge status-waiting">${escapeHtml(__('Dependency', 'coordina'))}</span>` : ''}</div></div>${headerActions ? `<div class="coordina-action-bar__actions">${headerActions}</div>` : ''}</div><div class="coordina-summary-grid coordina-summary-grid--workspace">${summaryCards}</div><div class="coordina-task-page__layout"><div class="coordina-task-page__main">${overviewCard}${editSection}${updatesCard}${activityCard}</div><div class="coordina-task-page__side">${frameCard}${checklistPanel}${filesCard}</div></div></section>`;
+}
+
+function riskIssuePage() {
+	const detail = state.riskIssueDetail || { riskIssue: null, files: { items: [] }, discussions: { items: [] }, activity: { items: [] }, checklist: { items: [] } };
+	const riskIssue = detail.riskIssue || {};
+	if (!riskIssue.id) {
+		return `<section class="coordina-page"><section class="coordina-card coordina-card--notice"><h3>${escapeHtml(__('Risk or issue not available', 'coordina'))}</h3><p>${escapeHtml(__('This record could not be loaded or you no longer have access to it.', 'coordina'))}</p></section></section>`;
+	}
+
+	const files = detail.files || { items: [] };
+	const discussions = detail.discussions || { items: [] };
+	const activity = detail.activity || { items: [] };
+	const checklist = detail.checklist || { items: [], summary: { total: 0, done: 0, open: 0 }, permissions: { canManage: false, canToggle: false }, object_type: riskIssue.object_type || 'risk', object_id: riskIssue.id, object_label: riskIssue.title || __('Risk or issue', 'coordina') };
+	const backButton = Number(riskIssue.project_id || 0) > 0
+		? `<button class="button" data-action="open-route" data-page="coordina-projects" data-project-id="${riskIssue.project_id}" data-project-tab="risks-issues">${escapeHtml(__('Back to project risks', 'coordina'))}</button>`
+		: canAccessPage('coordina-risks-issues')
+			? `<button class="button" data-action="open-route" data-page="coordina-risks-issues">${escapeHtml(__('Back to risks & issues', 'coordina'))}</button>`
+			: `<button class="button" data-action="open-route" data-page="coordina-my-work">${escapeHtml(__('Back to My Work', 'coordina'))}</button>`;
+	const headerActions = [
+		backButton,
+		riskIssue.can_post_update ? `<button class="button" data-action="open-discussion-create" data-object-type="${escapeHtml(riskIssue.object_type || 'risk')}" data-object-id="${riskIssue.id}" data-object-label="${escapeHtml(riskIssue.title || __('Risk or issue', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Add update', 'coordina'))}</button>` : '',
+		riskIssue.can_attach_files ? `<button class="button" data-action="open-file-create" data-object-type="${escapeHtml(riskIssue.object_type || 'risk')}" data-object-id="${riskIssue.id}" data-object-label="${escapeHtml(riskIssue.title || __('Risk or issue', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Attach file', 'coordina'))}</button>` : '',
+		riskIssue.can_edit ? `<button class="button button-primary" data-action="toggle-risk-issue-edit">${escapeHtml(state.riskIssueDetailEditing ? __('Hide edit form', 'coordina') : __('Edit fields', 'coordina'))}</button>` : '',
+		riskIssue.can_delete ? `<button class="button button-link-delete" data-action="delete-record" data-module="risks-issues" data-id="${riskIssue.id}" data-label="${escapeHtml(riskIssue.title || __('Risk or issue', 'coordina'))}" data-project-id="${riskIssue.project_id || ''}">${escapeHtml(__('Delete record', 'coordina'))}</button>` : '',
+	].filter(Boolean).join('');
+	const overviewText = plainText(riskIssue.description || '');
+	const mitigationText = plainText(riskIssue.mitigation_plan || '');
+	const summaryCards = [
+		{ label: __('Checklist items', 'coordina'), value: Number((checklist.summary && checklist.summary.total) || 0), tone: 'neutral' },
+		{ label: __('Checklist done', 'coordina'), value: Number((checklist.summary && checklist.summary.done) || 0), tone: Number((checklist.summary && checklist.summary.done) || 0) > 0 ? 'accent' : 'neutral' },
+		{ label: __('Severity', 'coordina'), value: nice(riskIssue.severity || 'medium'), tone: ['high', 'critical'].includes(String(riskIssue.severity || '')) ? 'danger' : 'warning' },
+		{ label: __('Impact', 'coordina'), value: nice(riskIssue.impact || 'medium'), tone: 'neutral' },
+		{ label: __('Likelihood', 'coordina'), value: nice(riskIssue.likelihood || 'medium'), tone: 'neutral' },
+		{ label: __('Activity', 'coordina'), value: Number(activity.total || ((activity.items && activity.items.length) || 0)), tone: 'neutral' },
+		{ label: __('Updates', 'coordina'), value: Number((discussions && discussions.total) || ((discussions && discussions.items && discussions.items.length) || 0)), tone: 'neutral' },
+		{ label: __('Files', 'coordina'), value: Number((files && files.total) || ((files && files.items && files.items.length) || 0)), tone: 'neutral' },
+	].map((item) => `<article class="coordina-card coordina-metric-card coordina-metric-card--${escapeHtml(item.tone)}"><span class="coordina-metric-card__label">${escapeHtml(item.label)}</span><strong class="coordina-metric-card__value">${escapeHtml(item.value)}</strong></article>`).join('');
+	const editFormHtml = typeof app.formHtml === 'function' ? app.formHtml(modules['coordina-risks-issues'], riskIssue).replace(/data-action="close-modal"/g, 'data-action="cancel-risk-issue-edit"') : '';
+	const editSection = state.riskIssueDetailEditing && editFormHtml
+		? `<section class="coordina-card coordina-task-page__edit"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Edit risk or issue', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Update the fields without losing the full response context, updates, or related files.', 'coordina'))}</p></div><button class="button" data-action="cancel-risk-issue-edit">${escapeHtml(__('Cancel', 'coordina'))}</button></div>${editFormHtml}</section>`
+		: '';
+	const overviewCard = `<section class="coordina-card coordina-task-page__overview"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Overview', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('What this record is, why it matters, and the context the team needs before acting.', 'coordina'))}</p></div></div>${overviewText ? `<p class="coordina-task-page__description">${escapeHtml(overviewText)}</p>` : `<p class="coordina-empty-inline">${escapeHtml(__('No background description has been added yet.', 'coordina'))}</p>`}</section>`;
+	const responsePlanCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Response plan', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('The current mitigation, workaround, or resolution plan for this record.', 'coordina'))}</p></div></div>${mitigationText ? `<p class="coordina-task-page__description">${escapeHtml(mitigationText)}</p>` : `<p class="coordina-empty-inline">${escapeHtml(__('No mitigation plan has been added yet.', 'coordina'))}</p>`}</section>`;
+	const activityCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Risk or issue activity', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recent edits, updates, and file actions recorded against this record.', 'coordina'))}</p></div></div>${groupedActivityTimeline(activity, __('No activity has been recorded for this risk or issue yet.', 'coordina'), { showContextLink: false, showProjectLabel: false })}${activityPager(activity, 'risk-issue')}</section>`;
+	const updatesCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Updates', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Latest progress notes and status communication attached to this record.', 'coordina'))}</p></div>${riskIssue.can_post_update ? `<button class="button button-small" data-action="open-discussion-create" data-object-type="${escapeHtml(riskIssue.object_type || 'risk')}" data-object-id="${riskIssue.id}" data-object-label="${escapeHtml(riskIssue.title || __('Risk or issue', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Post update', 'coordina'))}</button>` : ''}</div>${app.discussionTimeline ? app.discussionTimeline(discussions.items || [], __('No updates have been posted for this risk or issue yet.', 'coordina')) : ''}</section>`;
+	const filesCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Files', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Attachments and supporting evidence linked directly to this record.', 'coordina'))}</p></div>${riskIssue.can_attach_files ? `<button class="button button-small" data-action="open-file-create" data-object-type="${escapeHtml(riskIssue.object_type || 'risk')}" data-object-id="${riskIssue.id}" data-object-label="${escapeHtml(riskIssue.title || __('Risk or issue', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Attach file', 'coordina'))}</button>` : ''}</div>${app.fileList ? app.fileList(files.items || [], __('No files are attached to this risk or issue yet.', 'coordina')) : ''}</section>`;
+	const checklistPanel = checklistCard(checklist, { title: __('Checklists', 'coordina'), note: __('Use named checklists to separate mitigation, response, handover, or follow-up work.', 'coordina'), emptyChecklistMessage: __('No checklists are attached to this record yet.', 'coordina'), addChecklistLabel: __('Add checklist', 'coordina'), addLabel: __('Add item', 'coordina') });
+	const frameCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Risk or issue frame', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Ownership, status, and project context in one practical summary.', 'coordina'))}</p></div></div><dl class="coordina-key-value"><div><dt>${escapeHtml(__('Project', 'coordina'))}</dt><dd>${Number(riskIssue.project_id || 0) > 0 ? openProjectButton(riskIssue.project_id, riskIssue.project_label, 'risks-issues') : escapeHtml(__('Standalone exception', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Type', 'coordina'))}</dt><dd>${escapeHtml(nice(riskIssue.object_type || 'risk'))}</dd></div><div><dt>${escapeHtml(__('Status', 'coordina'))}</dt><dd>${escapeHtml(nice(riskIssue.status || 'identified'))}</dd></div><div><dt>${escapeHtml(__('Owner', 'coordina'))}</dt><dd>${escapeHtml(riskIssue.owner_label || __('Unassigned', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Created by', 'coordina'))}</dt><dd>${escapeHtml(riskIssue.created_by_label || __('Unknown', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Target resolution', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(riskIssue.target_resolution_date))}</dd></div><div><dt>${escapeHtml(__('Last updated', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(riskIssue.updated_at))}</dd></div></dl></section>`;
+	return `<section class="coordina-page coordina-task-page coordina-risk-issue-page"><div class="coordina-action-bar coordina-action-bar--workspace coordina-task-page__hero"><div><span class="coordina-page-kicker">${escapeHtml(__('Risk or issue detail', 'coordina'))}</span><h2>${escapeHtml(riskIssue.title || __('Risk or issue', 'coordina'))}</h2><p>${escapeHtml(riskIssue.project_id ? __('Use this page to review the full exception context, then edit, update, or attach files without losing your place in the project.', 'coordina') : __('Use this page to review the full exception context, then edit, update, or attach files without losing the surrounding operational context.', 'coordina'))}</p><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-status-badge status-${escapeHtml(riskIssue.status || 'identified')}">${escapeHtml(nice(riskIssue.status || 'identified'))}</span><span class="coordina-status-badge">${escapeHtml(nice(riskIssue.object_type || 'risk'))}</span><span class="coordina-status-badge">${escapeHtml(nice(riskIssue.severity || 'medium'))}</span><span class="coordina-status-badge">${escapeHtml(riskIssue.owner_label || __('Unassigned', 'coordina'))}</span><span class="coordina-status-badge">${escapeHtml(riskIssue.project_label || __('Standalone exception', 'coordina'))}</span></div></div>${headerActions ? `<div class="coordina-action-bar__actions">${headerActions}</div>` : ''}</div><div class="coordina-summary-grid coordina-summary-grid--workspace">${summaryCards}</div><div class="coordina-task-page__layout"><div class="coordina-task-page__main">${overviewCard}${responsePlanCard}${editSection}${updatesCard}${activityCard}</div><div class="coordina-task-page__side">${frameCard}${checklistPanel}${filesCard}</div></div></section>`;
+}
+
+function routeButton(label, route) {
+	if (!route || !route.page) {
+		return '';
+	}
+	if (!canAccessPage(route.page) && !(route.page === 'coordina-projects' && Number(route.project_id || 0) > 0) && !(route.page === 'coordina-task' && Number(route.task_id || 0) > 0) && !(route.page === 'coordina-milestone' && Number(route.milestone_id || 0) > 0) && !(route.page === 'coordina-risk-issue' && Number(route.risk_issue_id || 0) > 0)) {
+		return '';
+	}
+	return `<button class="button button-small" data-action="open-route" data-page="${route.page || ''}" data-project-id="${route.project_id || ''}" data-project-tab="${route.project_tab || ''}" data-task-id="${route.task_id || ''}" data-milestone-id="${route.milestone_id || ''}" data-risk-issue-id="${route.risk_issue_id || ''}">${escapeHtml(label)}</button>`;
+}
+
+function dashboardList(items, emptyMessage, renderItem) {
+	return items.length ? `<ul class="coordina-work-list">${items.map(renderItem).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+}
+
+function dashboardPage() {
+	const data = state.dashboard || { kpis: {}, widgets: {}, roleMode: 'team', scope: 'personal' };
+	const kpis = data.kpis || {};
+	const widgets = data.widgets || {};
+	const roleLabel = data.roleMode === 'executive' ? __('Executive overview', 'coordina') : data.roleMode === 'manager' ? __('Manager overview', 'coordina') : data.roleMode === 'admin' ? __('Admin overview', 'coordina') : __('Personal overview', 'coordina');
+	const actions = [
+		canAccessPage('coordina-projects') ? `<button class="button" data-action="open-route" data-page="coordina-projects">${escapeHtml(__('View projects', 'coordina'))}</button>` : '',
+		`<button class="button button-primary" data-action="open-route" data-page="coordina-my-work">${escapeHtml(__('Go to My Work', 'coordina'))}</button>`,
+	].filter(Boolean).join('');
+	const alertCards = [{ label: __('At risk', 'coordina'), value: Number(kpis.atRiskProjects || 0), tone: Number(kpis.atRiskProjects || 0) > 0 ? 'danger' : 'neutral' }, { label: __('Overdue tasks', 'coordina'), value: Number(kpis.overdueTasks || 0), tone: Number(kpis.overdueTasks || 0) > 0 ? 'warning' : 'neutral' }, { label: __('Pending approvals', 'coordina'), value: Number(kpis.pendingApprovals || 0), tone: Number(kpis.pendingApprovals || 0) > 0 ? 'accent' : 'neutral' }].map((item) => `<article class="coordina-card coordina-metric-card coordina-metric-card--${escapeHtml(item.tone)}"><span class="coordina-metric-card__label">${escapeHtml(item.label)}</span><strong class="coordina-metric-card__value">${escapeHtml(item.value)}</strong></article>`).join('');
+	const atRisk = dashboardList(widgets.atRiskProjects || [], __('No at-risk or blocked projects right now.', 'coordina'), (item) => `<li><button class="coordina-link-button" data-action="open-route" data-page="coordina-projects" data-project-id="${item.id}" data-project-tab="overview">${escapeHtml(item.title)}</button><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span class="coordina-status-badge status-${escapeHtml(item.health)}">${escapeHtml(nice(item.health))}</span><span>${escapeHtml(dateLabel(item.targetEndDate))}</span></div></li>`);
+	const overdue = dashboardList(widgets.overdueTasks || [], __('No overdue tasks in this scope.', 'coordina'), (item) => `<li>${openTaskButton(item.id, item.title, item.projectId || item.project_id || 0, (item.projectId || item.project_id || 0) > 0 ? 'work' : '')}<div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span>${openProjectButton(item.projectId || item.project_id || 0, item.projectLabel, 'work')}<span>${escapeHtml(dateLabel(item.dueDate))}</span></div></li>`);
+	const approvals = dashboardList(widgets.pendingApprovals || [], __('No pending approvals in this scope.', 'coordina'), (item) => `<li><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.objectLabel || nice(item.objectType))}</button><div class="coordina-work-meta">${openProjectButton(item.projectId || item.project_id || 0, item.projectLabel, 'approvals')}<span>${escapeHtml(item.ownerLabel || __('Unknown owner', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.submittedAt))}</span></div></li>`);
+	const recentActivity = widgets.recentActivity || { items: [] };
+	const activity = `${activityList(recentActivity.items || recentActivity || [], __('No recent activity has been logged yet.', 'coordina'), { showContextLink: true, showProjectLabel: true, linkLabelMode: 'type' })}${activityPager(recentActivity, 'dashboard')}`;
+	const deadlines = dashboardList(widgets.upcomingDeadlines || [], __('No upcoming deadlines found.', 'coordina'), (item) => `<li><button class="coordina-link-button" data-action="open-route" data-page="${item.route && item.route.page ? item.route.page : 'coordina-task'}" data-project-id="${item.route && item.route.project_id ? item.route.project_id : ''}" data-project-tab="${item.route && item.route.project_tab ? item.route.project_tab : ''}" data-task-id="${item.route && item.route.task_id ? item.route.task_id : ''}" data-milestone-id="${item.route && item.route.milestone_id ? item.route.milestone_id : ''}" data-risk-issue-id="${item.route && item.route.risk_issue_id ? item.route.risk_issue_id : ''}">${escapeHtml(item.title)}</button><div class="coordina-work-meta"><span>${escapeHtml(item.label)}</span><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span>${escapeHtml(dateLabel(item.date))}</span></div></li>`);
+	return `<section class="coordina-page">${pageHeading('coordina-dashboard', actions, { title: __('Dashboard', 'coordina'), description: `${roleLabel}. ${__('Use this screen for exceptions, portfolio attention, and routing into the right work surface.', 'coordina')}` })}<div class="coordina-summary-grid coordina-summary-grid--workspace">${alertCards}</div><div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><h3>${escapeHtml(__('Projects needing attention now', 'coordina'))}</h3>${routeButton(__('Projects', 'coordina'), { page: 'coordina-projects' })}</div>${atRisk}</section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Upcoming deadlines', 'coordina'))}</h3></div>${deadlines}</section></div><div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><h3>${escapeHtml(__('Overdue tasks', 'coordina'))}</h3>${routeButton(__('My Work', 'coordina'), { page: 'coordina-my-work' })}</div>${overdue}</section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Pending approvals', 'coordina'))}</h3>${routeButton(__('Approvals', 'coordina'), { page: 'coordina-approvals' })}</div>${approvals}</section></div><div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><h3>${escapeHtml(__('Recent activity', 'coordina'))}</h3></div>${activity}</section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Scope', 'coordina'))}</h3></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${escapeHtml(data.scope || '')}</strong>${escapeHtml(__('Data scope', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${escapeHtml(data.roleMode || '')}</strong>${escapeHtml(__('Role mode', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(kpis.activeProjects || 0)}</strong>${escapeHtml(__('Active projects', 'coordina'))}</span></div><p class="coordina-empty-inline">${escapeHtml(__('Dashboard stays summary-first. Go to My Work when you need to execute.', 'coordina'))}</p></section></div></section>`;
+}
+function calendarItem(item) {
+	const route = item.route || { page: 'coordina-task' };
+	return `<button class="coordina-calendar__item type-${escapeHtml(item.type || 'task')}" data-action="open-route" data-page="${route.page || ''}" data-project-id="${route.project_id || ''}" data-project-tab="${route.project_tab || ''}" data-task-id="${route.task_id || ''}" data-milestone-id="${route.milestone_id || ''}" data-risk-issue-id="${route.risk_issue_id || ''}"><span class="coordina-calendar__item-label">${escapeHtml(item.label)}</span><strong>${escapeHtml(item.title)}</strong><span class="coordina-calendar__item-meta">${escapeHtml(item.projectLabel || __('Standalone', 'coordina'))}${item.personLabel ? ` - ${escapeHtml(item.personLabel)}` : ''}</span></button>`;
+}
+
+function calendarPage() {
+	const data = state.calendar || { summary: {}, days: [], range: {}, view: 'month', focusDate: todayKey() };
+	const filters = state.calendarFilters || defaultCalendarFilters();
+	const shell = state.shell || {};
+	const projectOptions = (shell.projects || []).map((project) => `<option value="${project.id}" ${String(filters.project_id) === String(project.id) ? 'selected' : ''}>${escapeHtml(project.label)}</option>`).join('');
+	const personOptions = (shell.users || []).map((user) => `<option value="${user.id}" ${String(filters.person_user_id) === String(user.id) ? 'selected' : ''}>${escapeHtml(user.label)}</option>`).join('');
+	const summary = data.summary || {};
+	const summaryRow = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Scheduled items', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.tasks || 0)}</strong>${escapeHtml(__('Task due dates', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.projects || 0)}</strong>${escapeHtml(__('Project target ends', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.overdue || 0)}</strong>${escapeHtml(__('Overdue tasks', 'coordina'))}</span></div>`;
+	const weekdayRow = (data.days || []).slice(0, 7).map((day) => `<div class="coordina-calendar__weekday">${escapeHtml(day.weekdayLabel)}</div>`).join('');
+	const dayCells = (data.days || []).map((day) => {
+		const items = (day.items || []).slice(0, 4).map(calendarItem).join('');
+		const overflow = (day.items || []).length > 4 ? `<div class="coordina-calendar__more">+${(day.items || []).length - 4} ${escapeHtml(__('more', 'coordina'))}</div>` : '';
+		return `<article class="coordina-calendar__day ${day.isToday ? 'is-today' : ''} ${day.isCurrentPeriod ? '' : 'is-outside'}"><header class="coordina-calendar__day-head"><span>${escapeHtml(day.weekdayLabel)}</span><strong>${escapeHtml(day.dayNumber)}</strong></header>${items || `<p class="coordina-empty-inline">${escapeHtml(__('No dated work', 'coordina'))}</p>`}${overflow}</article>`;
+	}).join('');
+	return `<section class="coordina-page">${pageHeading('coordina-calendar', `${canAccessPage('coordina-projects') ? `<button class="button" data-action="open-route" data-page="coordina-projects">${escapeHtml(__('Projects', 'coordina'))}</button>` : ''}${canAccessPage('coordina-tasks') ? `<button class="button button-primary" data-action="open-route" data-page="coordina-tasks">${escapeHtml(__('Open task list', 'coordina'))}</button>` : ''}`, { title: __('Calendar', 'coordina'), description: __('Use this when you need a dated view across work, then open the task or project to make changes.', 'coordina') })}<section class="coordina-card coordina-card--notice"><p>${escapeHtml(__('Calendar is for planning and scanning deadlines. Make changes from the task, request, or project workspace after you find the right item.', 'coordina'))}</p></section>${summaryRow}<div class="coordina-card coordina-period-bar"><div class="coordina-period-nav"><button class="button" data-action="calendar-shift" data-direction="-1">${escapeHtml(__('Previous', 'coordina'))}</button><button class="button" data-action="calendar-today">${escapeHtml(__('Today', 'coordina'))}</button><button class="button" data-action="calendar-shift" data-direction="1">${escapeHtml(__('Next', 'coordina'))}</button></div><div class="coordina-period-label"><strong>${escapeHtml((data.range && data.range.label) || '')}</strong></div><div class="coordina-period-actions"><input type="date" name="calendar-focus-date" value="${escapeHtml(filters.focus_date || todayKey())}" /><select name="calendar-view"><option value="month" ${filters.view === 'month' ? 'selected' : ''}>${escapeHtml(__('Month', 'coordina'))}</option><option value="week" ${filters.view === 'week' ? 'selected' : ''}>${escapeHtml(__('Week', 'coordina'))}</option></select></div></div><div class="coordina-filter-bar coordina-card coordina-filter-bar--calendar"><select name="calendar-object-type"><option value="all">${escapeHtml(__('All dated items', 'coordina'))}</option><option value="task" ${filters.object_type === 'task' ? 'selected' : ''}>${escapeHtml(__('Tasks', 'coordina'))}</option><option value="project" ${filters.object_type === 'project' ? 'selected' : ''}>${escapeHtml(__('Projects', 'coordina'))}</option></select><select name="calendar-person"><option value="">${escapeHtml(__('All people', 'coordina'))}</option>${personOptions}</select><select name="calendar-project"><option value="">${escapeHtml(__('All projects', 'coordina'))}</option><option value="0" ${String(filters.project_id) === '0' ? 'selected' : ''}>${escapeHtml(__('Standalone tasks', 'coordina'))}</option>${projectOptions}</select><button class="button" data-action="calendar-apply">${escapeHtml(__('Apply filters', 'coordina'))}</button></div><div class="coordina-card coordina-calendar-shell"><div class="coordina-calendar__weekdays">${weekdayRow}</div><div class="coordina-calendar__grid view-${escapeHtml(filters.view || 'month')}">${dayCells || `<p class="coordina-empty-inline">${escapeHtml(__('No dated work falls in this range yet.', 'coordina'))}</p>`}</div></div></section>`;
+}
+
+function workloadPressureBadge(value) {
+	const tone = value === 'high' ? 'status-blocked' : value === 'medium' ? 'status-waiting' : 'status-clear';
+	return `<span class="coordina-status-badge ${tone}">${escapeHtml(nice(value))}</span>`;
+}
+
+function workloadTaskList(tasks) {
+	if (!tasks.length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(__('No highlighted tasks in this window.', 'coordina'))}</p>`;
+	}
+	return `<ul class="coordina-work-list coordina-work-list--compact">${tasks.map((task) => `<li><button class="coordina-link-button" data-action="open-route" data-page="${task.route && task.route.page ? task.route.page : 'coordina-task'}" data-project-id="${task.route && task.route.project_id ? task.route.project_id : ''}" data-project-tab="${task.route && task.route.project_tab ? task.route.project_tab : ''}" data-task-id="${task.route && task.route.task_id ? task.route.task_id : ''}" data-milestone-id="${task.route && task.route.milestone_id ? task.route.milestone_id : ''}" data-risk-issue-id="${task.route && task.route.risk_issue_id ? task.route.risk_issue_id : ''}">${escapeHtml(task.title)}</button><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(task.status)}">${escapeHtml(nice(task.status))}</span><span>${escapeHtml(task.projectLabel || __('Standalone', 'coordina'))}</span><span>${escapeHtml(dateLabel(task.dueDate))}</span></div></li>`).join('')}</ul>`;
+}
+
+function workloadPage() {
+	const data = state.workload || { summary: {}, rows: [], week: {} };
+	const filters = state.workloadFilters || defaultWorkloadFilters();
+	const summary = data.summary || {};
+	const rows = data.rows || [];
+	const shell = state.shell || { statuses: {} };
+	const personOptions = (shell.users || []).map((user) => `<option value="${user.id}" ${String(filters.person_user_id) === String(user.id) ? 'selected' : ''}>${escapeHtml(user.label)}</option>`).join('');
+	const projectOptions = (shell.projects || []).map((project) => `<option value="${project.id}" ${String(filters.project_id) === String(project.id) ? 'selected' : ''}>${escapeHtml(project.label)}</option>`).join('');
+	const statusOptions = ((shell.statuses && shell.statuses.tasks) || []).filter((status) => !['done', 'cancelled'].includes(status)).map((status) => `<option value="${status}" ${String(filters.status) === String(status) ? 'selected' : ''}>${escapeHtml(nice(status))}</option>`).join('');
+	const priorityOptions = (shell.priorities || []).map((priority) => `<option value="${priority}" ${String(filters.priority) === String(priority) ? 'selected' : ''}>${escapeHtml(nice(priority))}</option>`).join('');
+	const summaryRow = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.people || 0)}</strong>${escapeHtml(__('People in view', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.overloaded || 0)}</strong>${escapeHtml(__('High pressure', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.watchList || 0)}</strong>${escapeHtml(__('Watch list', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.unassigned || 0)}</strong>${escapeHtml(__('Unassigned', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.overdueTasks || 0)}</strong>${escapeHtml(__('Overdue tasks', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.blockedTasks || 0)}</strong>${escapeHtml(__('Blocked tasks', 'coordina'))}</span></div>`;
+	const tableRows = rows.map((row) => `<tr><td><strong>${escapeHtml(row.personLabel)}</strong></td><td>${Number(row.openTasks || 0)}</td><td>${Number(row.overdue || 0)}</td><td>${Number(row.dueThisWeek || 0)}</td><td>${Number(row.blocked || 0)}</td><td>${Number(row.loadScore || 0)}</td><td>${workloadPressureBadge(row.pressure || 'low')}</td><td>${workloadTaskList(row.tasks || [])}</td></tr>`).join('');
+	return `<section class="coordina-page">${pageHeading('coordina-workload', `${canAccessPage('coordina-calendar') ? `<button class="button" data-action="open-route" data-page="coordina-calendar">${escapeHtml(__('Calendar', 'coordina'))}</button>` : ''}${canAccessPage('coordina-projects') ? `<button class="button button-primary" data-action="open-route" data-page="coordina-projects">${escapeHtml(__('Managed projects', 'coordina'))}</button>` : ''}`, { title: __('Workload', 'coordina'), description: __('Use this when you need to rebalance people and pressure across managed work.', 'coordina') })}<section class="coordina-card coordina-card--notice"><p>${escapeHtml(__('Workload is for balancing assignments and spotting pressure. Reassign and restructure the work from the project workspace or task detail after you find the issue.', 'coordina'))}</p></section>${summaryRow}<div class="coordina-card coordina-period-bar"><div class="coordina-period-nav"><button class="button" data-action="workload-shift" data-direction="-1">${escapeHtml(__('Previous week', 'coordina'))}</button><button class="button" data-action="workload-today">${escapeHtml(__('Current week', 'coordina'))}</button><button class="button" data-action="workload-shift" data-direction="1">${escapeHtml(__('Next week', 'coordina'))}</button></div><div class="coordina-period-label"><strong>${escapeHtml((data.week && data.week.label) || '')}</strong></div><div class="coordina-period-actions"><input type="date" name="workload-week-start" value="${escapeHtml(filters.week_start || app.weekStartKey())}" /></div></div><div class="coordina-filter-bar coordina-card coordina-filter-bar--workload"><select name="workload-status"><option value="">${escapeHtml(__('All open statuses', 'coordina'))}</option>${statusOptions}</select><select name="workload-priority"><option value="">${escapeHtml(__('All priorities', 'coordina'))}</option>${priorityOptions}</select><select name="workload-person"><option value="">${escapeHtml(__('All assignees', 'coordina'))}</option>${personOptions}</select><select name="workload-project"><option value="">${escapeHtml(__('All projects', 'coordina'))}</option><option value="0" ${String(filters.project_id) === '0' ? 'selected' : ''}>${escapeHtml(__('Standalone tasks', 'coordina'))}</option>${projectOptions}</select><button class="button" data-action="workload-apply">${escapeHtml(__('Apply filters', 'coordina'))}</button></div><div class="coordina-card coordina-table-wrap">${rows.length ? `<table class="coordina-table widefat striped"><thead><tr><th>${escapeHtml(__('Person', 'coordina'))}</th><th>${escapeHtml(__('Open', 'coordina'))}</th><th>${escapeHtml(__('Overdue', 'coordina'))}</th><th>${escapeHtml(__('Due this week', 'coordina'))}</th><th>${escapeHtml(__('Blocked', 'coordina'))}</th><th>${escapeHtml(__('Load score', 'coordina'))}</th><th>${escapeHtml(__('Pressure', 'coordina'))}</th><th>${escapeHtml(__('Focus tasks', 'coordina'))}</th></tr></thead><tbody>${tableRows}</tbody></table>` : `<section class="coordina-empty-state"><h3>${escapeHtml(__('No workload pressure found for this filter set', 'coordina'))}</h3><p>${escapeHtml(__('Try another week or widen the current filters to see assignment pressure across your managed work.', 'coordina'))}</p></section>`}</div></section>`;
+}
+
+
+Object.assign(app, {
+	pageHeading,
+	modulePage,
+	workspaceBoard,
+	workspaceWorkTab,
+	workspaceGanttTab,
+	activityList,
+	workspaceActivityTab,
+	workspaceSettingsTab,
+	workspaceTabBody,
+	workspacePage,
+	taskPage,
+	milestonePage,
+	riskIssuePage,
+	notificationList,
+	myWorkPage,
+	routeButton,
+	dashboardList,
+	dashboardPage,
+	calendarItem,
+	calendarPage,
+	workloadPressureBadge,
+	workloadTaskList,
+	workloadPage,
+	settingsPage,
+});
+
+window.CoordinaAdminApp = app;
+}());

@@ -1,0 +1,303 @@
+.coordina-admin {
+	/* Base Colors */
+	--coordina-surface: #ffffff;
+	--coordina-surface-muted: #f8fafb;
+	--coordina-surface-soft: #fafbfc;
+	--coordina-surface-elevated: #ffffff;
+	--coordina-border: #d4dce7;
+	--coordina-border-strong: #bcc5d4;
+	--coordina-border-subtle: #e8ecf3;
+	--coordina-text: #131a23;
+	--coordina-text-muted: #5f6b7a;
+	--coordina-text-light: #8b95a7;
+	
+	/* Semantic Colors */
+	--coordina-info: #1f5eff;
+	--coordina-info-soft: #edf3ff;
+	--coordina-info-lighter: #f5f9ff;
+	--coordina-success: #0d9455;
+	--coordina-success-soft: #eef9f5;
+	--coordina-success-lighter: #f5fdf8;
+	--coordina-warning: #b35900;
+	--coordina-warning-soft: #fff5ed;
+	--coordina-warning-lighter: #fffaf3;
+	--coordina-danger: #c71f16;
+	--coordina-danger-soft: #fff5f3;
+	--coordina-danger-lighter: #fffbfa;
+	
+	/* Shadows with more sophistication */
+	--coordina-shadow-xs: 0 1px 2px rgba(19, 26, 35, 0.03);
+	--coordina-shadow-sm: 0 4px 12px rgba(19, 26, 35, 0.06);
+	--coordina-shadow-md: 0 12px 28px rgba(19, 26, 35, 0.1);
+	--coordina-shadow-lg: 0 16px 48px rgba(19, 26, 35, 0.12);
+	--coordina-shadow-inner: inset 0 1px 2px rgba(19, 26, 35, 0.02);
+	
+	/* Gradients for personality and depth */
+	--coordina-gradient-soft: linear-gradient(135deg, var(--coordina-surface-muted) 0%, var(--coordina-surface-soft) 100%);
+	--coordina-gradient-info: linear-gradient(135deg, #1f5eff 0%, #1e50cc 100%);
+	--coordina-gradient-success: linear-gradient(135deg, #0d9455 0%, #096d3f 100%);
+	--coordina-gradient-warning: linear-gradient(135deg, #b35900 0%, #8a4100 100%);
+	--coordina-gradient-danger: linear-gradient(135deg, #c71f16 0%, #a01810 100%);
+	
+	/* WordPress Theme Color Integration - Respects theme's primary color */
+	/* Falls back to Coordina blue if theme doesn't define colors */
+	--coordina-wp-primary: var(--wp--preset--color--primary, #1f5eff);
+	--coordina-wp-accent: rgba(31, 94, 255, 0.08);
+	
+	max-width: 1320px;
+}
+
+.coordina-shell,
+.coordina-page,
+.coordina-admin-app-root {
+	display: grid;
+	gap: 18px;
+}
+
+.coordina-shell__header,
+.coordina-card,
+.coordina-filter-bar,
+.coordina-bulk-bar,
+.coordina-modal,
+.coordina-drawer {
+	background: var(--coordina-surface);
+	border: 1px solid var(--coordina-border);
+	border-radius: 12px;
+	box-sizing: border-box;
+	box-shadow: var(--coordina-shadow-xs);
+	transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.coordina-card {
+	background: var(--coordina-surface);
+	box-shadow: 0 1px 3px rgba(19, 26, 35, 0.04);
+}
+
+.coordina-card:hover {
+	box-shadow: var(--coordina-shadow-sm);
+}
+
+.coordina-filter-bar,
+.coordina-bulk-bar {
+	background: var(--coordina-gradient-soft);
+	box-shadow: var(--coordina-shadow-xs);
+	border-color: var(--coordina-border-subtle);
+}
+
+.coordina-shell__header,
+.coordina-action-bar {
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 251, 252, 0.9) 100%);
+	border: 1px solid var(--coordina-border-subtle);
+	border-radius: 12px;
+	box-shadow: 0 1px 2px rgba(19, 26, 35, 0.03);
+	transition: all 150ms ease;
+}
+
+.coordina-shell__header:hover,
+.coordina-action-bar:hover {
+	box-shadow: 0 2px 8px rgba(19, 26, 35, 0.06);
+}
+
+.coordina-shell__header,
+.coordina-action-bar,
+.coordina-modal__header,
+.coordina-drawer__header,
+.coordina-section-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 16px;
+}
+
+.coordina-shell__header,
+.coordina-action-bar,
+.coordina-card,
+.coordina-modal__header,
+.coordina-modal__body,
+.coordina-drawer__header,
+.coordina-drawer__body,
+.coordina-filter-bar,
+.coordina-bulk-bar {
+	padding: 20px;
+}
+
+.coordina-shell__eyebrow {
+	margin: 0 0 8px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-size: 12px;
+	color: var(--coordina-text-muted);
+}
+
+.coordina-page-kicker {
+	display: inline-block;
+	margin: 0 0 6px;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	color: var(--coordina-text-muted);
+}
+
+
+.coordina-admin h1,
+.coordina-admin h2,
+.coordina-admin h3,
+.coordina-admin h4 {
+	margin: 0;
+	color: var(--coordina-text);
+	letter-spacing: -0.02em;
+}
+
+.coordina-admin h2 { font-size: 26px; line-height: 1.1; }
+.coordina-admin h3 { font-size: 18px; line-height: 1.25; }
+.coordina-admin h4 { font-size: 15px; line-height: 1.3; }
+
+.coordina-admin p {
+	color: var(--coordina-text-muted);
+	margin: 0;
+	line-height: 1.5;
+}
+
+.coordina-shell__meta,
+.coordina-action-bar__actions,
+.coordina-form-actions,
+.coordina-inline-actions,
+.coordina-row-actions,
+.coordina-work-meta,
+.coordina-pagination,
+.coordina-bulk-bar {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+
+.coordina-admin .button,
+.coordina-admin .button-secondary,
+.coordina-admin .button-primary {
+	min-height: 38px;
+	padding: 0 16px;
+	border-radius: 8px;
+	border-color: var(--coordina-border-strong);
+	box-shadow: none;
+	background: #fff;
+	color: var(--coordina-text);
+	transition: all 120ms cubic-bezier(0.4, 0, 0.2, 1);
+	font-weight: 500;
+	position: relative;
+}
+
+.coordina-admin .button:hover,
+.coordina-admin .button-secondary:hover,
+.coordina-admin .button-primary:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--coordina-shadow-sm);
+	border-color: var(--coordina-border);
+}
+
+.coordina-admin .button-primary {
+	background: var(--coordina-gradient-info);
+	border-color: #1f5eff;
+	color: #fff;
+	box-shadow: 0 2px 8px rgba(31, 94, 255, 0.12), var(--coordina-shadow-inner);
+	position: relative;
+}
+
+.coordina-admin .button-primary:hover {
+	background: linear-gradient(135deg, #1548dd 0%, #1e50cc 100%);
+	border-color: #1548dd;
+	color: #fff;
+	box-shadow: 0 4px 16px rgba(31, 94, 255, 0.18);
+	transform: translateY(-2px);
+}
+
+.coordina-admin .button-primary:focus {
+	background: var(--coordina-gradient-info);
+	border-color: #1f5eff;
+	color: #fff;
+	box-shadow: 0 0 0 3px rgba(31, 94, 255, 0.12);
+}
+
+.coordina-admin .button:focus,
+.coordina-admin .button-secondary:focus,
+.coordina-admin .button-primary:focus,
+.coordina-link-button:focus,
+.coordina-sort-button:focus,
+.coordina-tab:focus,
+.coordina-form input:focus,
+.coordina-form select:focus,
+.coordina-form textarea:focus,
+.coordina-filter-bar input:focus,
+.coordina-filter-bar select:focus,
+.coordina-bulk-bar select:focus {
+	outline: 0;
+	border-color: var(--coordina-info);
+	box-shadow: 0 0 0 2px var(--coordina-surface), 0 0 0 4px rgba(31, 94, 255, 0.2);
+}
+
+.coordina-badge,
+.coordina-summary-chip,
+.coordina-status-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 5px 10px;
+	border-radius: 6px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	transition: all 120ms ease;
+}
+
+.coordina-summary-row--subtle .coordina-summary-chip {
+	background: #f4f7fc;
+	border-color: rgba(95, 107, 124, 0.08);
+	color: #516173;
+}
+
+.coordina-badge,
+.coordina-summary-chip {
+	background: var(--coordina-info-soft);
+	color: var(--coordina-info);
+	border: 1px solid rgba(31, 94, 255, 0.15);
+	box-shadow: 0 1px 2px rgba(31, 94, 255, 0.04);
+}
+
+.coordina-status-badge { 
+	background: var(--coordina-surface-muted);
+	color: var(--coordina-text);
+	border: 1px solid var(--coordina-border-subtle);
+	box-shadow: 0 1px 2px rgba(19, 26, 35, 0.02);
+}
+
+.coordina-status-badge.status-done,
+.coordina-status-badge.status-completed,
+.coordina-status-badge.status-approved,
+.coordina-status-badge.status-good,
+.coordina-status-badge.status-clear { 
+	background: var(--coordina-success-soft);
+	color: var(--coordina-success);
+	border-color: rgba(13, 148, 85, 0.15);
+	box-shadow: 0 1px 2px rgba(13, 148, 85, 0.05);
+}
+
+.coordina-status-badge.status-blocked,
+.coordina-status-badge.status-overdue,
+.coordina-status-badge.status-rejected,
+.coordina-status-badge.status-at-risk { 
+	background: var(--coordina-danger-soft);
+	color: var(--coordina-danger);
+	border-color: rgba(199, 31, 22, 0.15);
+	box-shadow: 0 1px 2px rgba(199, 31, 22, 0.05);
+}
+
+.coordina-status-badge.status-waiting,
+.coordina-status-badge.status-under-review,
+.coordina-status-badge.status-awaiting-info { 
+	background: var(--coordina-warning-soft);
+	color: var(--coordina-warning);
+	border-color: rgba(179, 89, 0, 0.15);
+	box-shadow: 0 1px 2px rgba(179, 89, 0, 0.05);
+}
+.coordina-notices { display: grid; gap: 10px; }
