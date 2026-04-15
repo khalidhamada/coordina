@@ -5,7 +5,11 @@ if (!app.root || !app.state) {
 	return;
 }
 
-const { state, modules, root, escapeHtml, __, nice, dateLabel, dateTimeInputValue, isDateKey, isCheckedValue, currentModule, hasProjectWorkspace, hasTaskPage, hasMilestonePage, hasRiskIssuePage, noticesHtml, api, modulePage, workspacePage, taskPage, milestonePage, riskIssuePage, myWorkPage, dashboardPage, calendarPage, workloadPage, settingsPage, notificationList, collaborationPage, fileList, discussionTimeline, collaborationActionButtons, canAccessPage, getPageMeta } = app;
+const { state, modules, root, escapeHtml, __, nice, dateLabel, dateTimeInputValue, isDateKey, isCheckedValue, currentModule, hasProjectWorkspace, hasTaskPage, hasMilestonePage, hasRiskIssuePage, noticesHtml, api, modulePage, workspacePage, taskPage, milestonePage, riskIssuePage, collaborationPage, fileList, discussionTimeline, collaborationActionButtons, canAccessPage, getPageMeta } = app;
+
+function renderAppView(name) {
+	return typeof app[name] === 'function' ? app[name]() : '';
+}
 
 function pageDescriptionsEnabled() {
 	return !state.shell || state.shell.pageDescriptionsEnabled !== false;
@@ -885,17 +889,17 @@ function render() {
 			: hasRiskIssuePage()
 				? riskIssuePage()
 			: state.page === 'coordina-dashboard'
-				? dashboardPage()
+				? renderAppView('dashboardPage')
 				: state.page === 'coordina-my-work'
-					? myWorkPage()
+					? renderAppView('myWorkPage')
 					: state.page === 'coordina-files-discussion'
 						? collaborationPage()
 						: state.page === 'coordina-calendar'
-							? calendarPage()
+							? renderAppView('calendarPage')
 							: state.page === 'coordina-workload'
-								? workloadPage()
+								? renderAppView('workloadPage')
 								: state.page === 'coordina-settings'
-									? settingsPage()
+									? renderAppView('settingsPage')
 									: currentModule()
 										? modulePage()
 										: `<section class="coordina-card coordina-card--notice"><h2>${escapeHtml(__('Module shell ready', 'coordina'))}</h2><p>${escapeHtml(__('This screen keeps the shared patterns while deeper implementation is phased in.', 'coordina'))}</p></section>`;
@@ -1129,7 +1133,10 @@ function inboxDrawerBody() {
 	const unreadItems = items.filter((item) => !item.is_read);
 	const visibleItems = state.notificationFilter === 'all' ? items : unreadItems;
 	const unreadCount = unreadItems.length;
-	return `<section class="coordina-inbox"><div class="coordina-drawer-summary coordina-inbox__summary"><div class="coordina-summary-row"><span class="coordina-status-badge ${unreadCount > 0 ? 'status-under-review' : ''}">${escapeHtml(unreadCount ? sprintfUnread(unreadCount) : __('All caught up', 'coordina'))}</span><span class="coordina-status-badge">${escapeHtml(`${items.length} ${__('recent', 'coordina')}`)}</span></div><p>${escapeHtml(__('Use the inbox for assignments and approvals that need action. Keep the Queue focused on execution.', 'coordina'))}</p><div class="coordina-inline-actions"><button class="coordina-tab ${state.notificationFilter === 'unread' ? 'is-active' : ''}" type="button" data-action="switch-notification-filter" data-filter="unread">${escapeHtml(__('Unread', 'coordina'))}</button><button class="coordina-tab ${state.notificationFilter === 'all' ? 'is-active' : ''}" type="button" data-action="switch-notification-filter" data-filter="all">${escapeHtml(__('All', 'coordina'))}</button>${unreadCount > 0 ? `<button class="button" type="button" data-action="mark-all-notifications-read">${escapeHtml(__('Mark all read', 'coordina'))}</button>` : ''}</div></div><div class="coordina-drawer-section">${notificationList(visibleItems, false, { showOpenAction: true })}</div><div class="coordina-drawer-section"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Notification preferences', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Keep the inbox high signal by limiting which updates create notices.', 'coordina'))}</p></div></div><form class="coordina-form" data-action="save-prefs"><label class="coordina-checkbox"><input type="checkbox" name="digest" value="1" ${prefs.digest ? 'checked' : ''} /><span>${escapeHtml(__('Digest emails scaffold', 'coordina'))}</span></label><label class="coordina-checkbox"><input type="checkbox" name="projectUpdates" value="1" ${prefs.project_updates ? 'checked' : ''} /><span>${escapeHtml(__('Project updates', 'coordina'))}</span></label><label class="coordina-checkbox"><input type="checkbox" name="approvalAlerts" value="1" ${prefs.approval_alerts ? 'checked' : ''} /><span>${escapeHtml(__('Approval alerts', 'coordina'))}</span></label><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save preferences', 'coordina'))}</button></div></form></div></section>`;
+	const notificationListMarkup = typeof app.notificationList === 'function'
+		? app.notificationList(visibleItems, false, { showOpenAction: true })
+		: `<p class="coordina-empty-inline">${escapeHtml(__('Notifications are not available right now.', 'coordina'))}</p>`;
+	return `<section class="coordina-inbox"><div class="coordina-drawer-summary coordina-inbox__summary"><div class="coordina-summary-row"><span class="coordina-status-badge ${unreadCount > 0 ? 'status-under-review' : ''}">${escapeHtml(unreadCount ? sprintfUnread(unreadCount) : __('All caught up', 'coordina'))}</span><span class="coordina-status-badge">${escapeHtml(`${items.length} ${__('recent', 'coordina')}`)}</span></div><p>${escapeHtml(__('Use the inbox for assignments and approvals that need action. Keep the Queue focused on execution.', 'coordina'))}</p><div class="coordina-inline-actions"><button class="coordina-tab ${state.notificationFilter === 'unread' ? 'is-active' : ''}" type="button" data-action="switch-notification-filter" data-filter="unread">${escapeHtml(__('Unread', 'coordina'))}</button><button class="coordina-tab ${state.notificationFilter === 'all' ? 'is-active' : ''}" type="button" data-action="switch-notification-filter" data-filter="all">${escapeHtml(__('All', 'coordina'))}</button>${unreadCount > 0 ? `<button class="button" type="button" data-action="mark-all-notifications-read">${escapeHtml(__('Mark all read', 'coordina'))}</button>` : ''}</div></div><div class="coordina-drawer-section">${notificationListMarkup}</div><div class="coordina-drawer-section"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Notification preferences', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Keep the inbox high signal by limiting which updates create notices.', 'coordina'))}</p></div></div><form class="coordina-form" data-action="save-prefs"><label class="coordina-checkbox"><input type="checkbox" name="digest" value="1" ${prefs.digest ? 'checked' : ''} /><span>${escapeHtml(__('Digest emails scaffold', 'coordina'))}</span></label><label class="coordina-checkbox"><input type="checkbox" name="projectUpdates" value="1" ${prefs.project_updates ? 'checked' : ''} /><span>${escapeHtml(__('Project updates', 'coordina'))}</span></label><label class="coordina-checkbox"><input type="checkbox" name="approvalAlerts" value="1" ${prefs.approval_alerts ? 'checked' : ''} /><span>${escapeHtml(__('Approval alerts', 'coordina'))}</span></label><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save preferences', 'coordina'))}</button></div></form></div></section>`;
 }
 
 function sprintfUnread(count) {

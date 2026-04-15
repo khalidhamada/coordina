@@ -173,17 +173,37 @@ final class AdminApp {
 				'path' => 'assets/admin/js/pages.js',
 				'deps' => array( 'coordina-admin-collection-ui', 'wp-i18n' ),
 			),
+			'coordina-admin-pages-settings' => array(
+				'path' => 'assets/admin/js/pages-settings.js',
+				'deps' => array( 'coordina-admin-pages', 'wp-i18n' ),
+			),
+			'coordina-admin-pages-surfaces' => array(
+				'path' => 'assets/admin/js/pages-surfaces.js',
+				'deps' => array( 'coordina-admin-pages-settings', 'wp-i18n' ),
+			),
 			'coordina-admin-collaboration' => array(
 				'path' => 'assets/admin/js/collaboration.js',
-				'deps' => array( 'coordina-admin-pages', 'wp-i18n' ),
+				'deps' => array( 'coordina-admin-pages-surfaces', 'wp-i18n' ),
 			),
 			'coordina-admin-ui' => array(
 				'path' => 'assets/admin/js/ui.js',
 				'deps' => array( 'coordina-admin-collaboration', 'wp-i18n' ),
 			),
+			'coordina-admin-events-shared' => array(
+				'path' => 'assets/admin/js/events-shared.js',
+				'deps' => array( 'coordina-admin-ui', 'wp-i18n' ),
+			),
+			'coordina-admin-events-click' => array(
+				'path' => 'assets/admin/js/events-click.js',
+				'deps' => array( 'coordina-admin-events-shared', 'wp-i18n' ),
+			),
+			'coordina-admin-events-form' => array(
+				'path' => 'assets/admin/js/events-form.js',
+				'deps' => array( 'coordina-admin-events-click', 'wp-i18n' ),
+			),
 			'coordina-admin-events' => array(
 				'path' => 'assets/admin/js/events.js',
-				'deps' => array( 'coordina-admin-ui', 'wp-i18n' ),
+				'deps' => array( 'coordina-admin-events-form', 'wp-i18n' ),
 			),
 		);
 
