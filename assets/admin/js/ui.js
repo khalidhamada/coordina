@@ -7,6 +7,250 @@ if (!app.root || !app.state) {
 
 const { state, modules, root, escapeHtml, __, nice, dateLabel, dateTimeInputValue, isDateKey, isCheckedValue, currentModule, hasProjectWorkspace, hasTaskPage, hasMilestonePage, hasRiskIssuePage, noticesHtml, api, modulePage, workspacePage, taskPage, milestonePage, riskIssuePage, myWorkPage, dashboardPage, calendarPage, workloadPage, settingsPage, notificationList, collaborationPage, fileList, discussionTimeline, collaborationActionButtons, canAccessPage, getPageMeta } = app;
 
+function pageDescriptionsEnabled() {
+	return !state.shell || state.shell.pageDescriptionsEnabled !== false;
+}
+
+function sectionDescriptionsEnabled() {
+	return !state.shell || state.shell.sectionDescriptionsEnabled !== false;
+}
+
+function buildRouteAttributes(route) {
+	if (!route || !route.page) {
+		return '';
+	}
+	const attrs = [
+		`data-action="open-route"`,
+		`data-page="${escapeHtml(route.page || '')}"`,
+		`data-project-id="${escapeHtml(route.project_id || '')}"`,
+		`data-project-tab="${escapeHtml(route.project_tab || '')}"`,
+		`data-task-id="${escapeHtml(route.task_id || '')}"`,
+		`data-milestone-id="${escapeHtml(route.milestone_id || '')}"`,
+		`data-risk-issue-id="${escapeHtml(route.risk_issue_id || '')}"`,
+	];
+	return attrs.join(' ');
+}
+
+function buildDataAttributes(data) {
+	if (!data || typeof data !== 'object') {
+		return '';
+	}
+	return Object.keys(data).map((key) => {
+		const attr = key.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`);
+		return `data-${attr}="${escapeHtml(data[key] == null ? '' : data[key])}"`;
+	}).join(' ');
+}
+
+function routeAction(label, route, tone) {
+	return { kind: 'route', label, route: route || {}, tone: tone || 'neutral' };
+}
+
+function buttonAction(label, data, tone) {
+	return { kind: 'button', label, data: data || {}, tone: tone || 'neutral' };
+}
+
+function statusBadge(label, className) {
+	return { label, className: className || '' };
+}
+
+function renderHeaderBadges(badges) {
+	if (!Array.isArray(badges) || !badges.length) {
+		return '';
+	}
+	return `<div class="coordina-shell__status-row">${badges.map((badge) => `<span class="coordina-status-badge ${escapeHtml(badge.className || '')}">${escapeHtml(badge.label || '')}</span>`).join('')}</div>`;
+}
+
+function renderHeaderAction(action) {
+	if (!action || !action.label) {
+		return '';
+	}
+	const toneClass = action.tone ? ` is-${escapeHtml(action.tone)}` : '';
+	if (action.kind === 'route') {
+		return `<button type="button" class="coordina-shell-menu__item${toneClass}" ${buildRouteAttributes(action.route)}>${escapeHtml(action.label)}</button>`;
+	}
+	return `<button type="button" class="coordina-shell-menu__item${toneClass}" ${buildDataAttributes(action.data)}>${escapeHtml(action.label)}</button>`;
+}
+
+function renderHeaderActions(actions) {
+	if (!Array.isArray(actions) || !actions.length) {
+		return '';
+	}
+	return `<details class="coordina-shell-menu"><summary class="coordina-shell-trigger coordina-shell-trigger--menu"><span class="coordina-shell-trigger__label">${escapeHtml(__('Actions', 'coordina'))}</span><span class="coordina-shell-trigger__badge">${escapeHtml(__('Open', 'coordina'))}</span></summary><div class="coordina-shell-menu__panel">${actions.map(renderHeaderAction).join('')}</div></details>`;
+}
+
+function breadcrumbHtml(items) {
+	if (!Array.isArray(items) || !items.length) {
+		return '';
+	}
+	return `<nav class="coordina-shell__breadcrumbs" aria-label="${escapeHtml(__('Breadcrumb', 'coordina'))}">${items.map((item, index) => {
+		const isLast = index === items.length - 1;
+		const label = escapeHtml(item.label || '');
+		const separator = isLast ? '' : `<span class="coordina-shell__breadcrumb-separator" aria-hidden="true">/</span>`;
+		if (!isLast && item.route && item.route.page) {
+			return `<span class="coordina-shell__breadcrumb">` +
+				`<button class="coordina-shell__breadcrumb-link" type="button" ${buildRouteAttributes(item.route)}>${label}</button>` +
+				`${separator}</span>`;
+		}
+		return `<span class="coordina-shell__breadcrumb is-current"><span class="coordina-shell__breadcrumb-current">${label}</span>${separator}</span>`;
+	}).join('')}</nav>`;
+}
+
+function topLevelHeaderKind(page) {
+	const kinds = {
+		'coordina-dashboard': __('Overview', 'coordina'),
+		'coordina-my-work': __('Execution hub', 'coordina'),
+		'coordina-projects': __('Portfolio', 'coordina'),
+		'coordina-requests': __('Intake queue', 'coordina'),
+		'coordina-approvals': __('Decision queue', 'coordina'),
+		'coordina-tasks': __('Task library', 'coordina'),
+		'coordina-calendar': __('Planning surface', 'coordina'),
+		'coordina-workload': __('Manager view', 'coordina'),
+		'coordina-risks-issues': __('Exception register', 'coordina'),
+		'coordina-files-discussion': __('Collaboration', 'coordina'),
+		'coordina-settings': __('Global settings', 'coordina'),
+	};
+	return kinds[String(page || '')] || __('Coordina', 'coordina');
+}
+
+function pageTitleFor(page) {
+	const pageMeta = getPageMeta(page) || {};
+	return pageMeta.title || nice(String(page || 'coordina').replace(/^coordina-/, ''));
+}
+
+function pageDescriptionFor(page) {
+	const pageMeta = getPageMeta(page) || {};
+	return pageMeta.description || '';
+}
+
+function workspaceTabLabel(tabKey, tabs) {
+	const found = Array.isArray(tabs) ? tabs.find((tab) => String(tab.key || '') === String(tabKey || '')) : null;
+	return found && found.label ? found.label : nice(tabKey || 'overview');
+}
+
+function moduleCanCreate(module) {
+	if (!module || module.createEnabled === false) {
+		return false;
+	}
+	const caps = state.shell && state.shell.capabilities ? state.shell.capabilities : {};
+	if (module.key === 'projects') {
+		return !!caps.canManageProjects;
+	}
+	if (module.key === 'tasks') {
+		return !!caps.canManageTasks;
+	}
+	if (module.key === 'requests') {
+		return !!caps.canManageRequests;
+	}
+	if (module.key === 'milestones' || module.key === 'risks-issues') {
+		return !!caps.canManageProjects;
+	}
+	return true;
+}
+
+function moduleHeaderActions(module) {
+	if (!module) {
+		return [];
+	}
+	const actions = [buttonAction(__('Save view', 'coordina'), { action: 'save-view' })];
+	if (moduleCanCreate(module)) {
+		actions.push(buttonAction(`${__('New', 'coordina')} ${module.singular || __('record', 'coordina')}`, { action: 'open-create' }, 'primary'));
+	}
+	return actions;
+}
+
+function workspaceHeaderActions(project, actions) {
+	const list = [routeAction(__('Back to projects', 'coordina'), { page: 'coordina-projects' })];
+	if (actions && actions.canEditProject) {
+		list.push(buttonAction(__('Edit project', 'coordina'), { action: 'edit-project', id: project.id || '' }));
+	}
+	if (actions && actions.canPostUpdate) {
+		list.push(buttonAction(__('Add update', 'coordina'), { action: 'open-discussion-create', objectType: 'project', objectId: project.id || '', objectLabel: project.title || __('Project workspace', 'coordina'), lockContext: '1' }));
+	}
+	if (actions && actions.canAttachFile) {
+		list.push(buttonAction(__('Attach file', 'coordina'), { action: 'open-file-create', objectType: 'project', objectId: project.id || '', objectLabel: project.title || __('Project workspace', 'coordina'), lockContext: '1' }));
+	}
+	if (actions && actions.canCreateRiskIssue) {
+		list.push(buttonAction(__('Add risk', 'coordina'), { action: 'open-project-risk-create', type: 'risk' }));
+	}
+	if (actions && actions.canCreateTask) {
+		list.push(buttonAction(__('Add task', 'coordina'), { action: 'open-project-task-create' }, 'primary'));
+	}
+	if (project && project.can_delete) {
+		list.push(buttonAction(__('Delete project', 'coordina'), { action: 'delete-record', module: 'projects', id: project.id || '', label: project.title || __('Project', 'coordina') }, 'danger'));
+	}
+	return list;
+}
+
+function taskHeaderActions(task) {
+	const actions = [];
+	if (Number(task.project_id || 0) > 0) {
+		actions.push(routeAction(__('Back to project work', 'coordina'), { page: 'coordina-projects', project_id: task.project_id, project_tab: 'work' }));
+	} else if (canAccessPage('coordina-tasks')) {
+		actions.push(routeAction(__('Back to task list', 'coordina'), { page: 'coordina-tasks' }));
+	} else {
+		actions.push(routeAction(__('Back to My Work', 'coordina'), { page: 'coordina-my-work' }));
+	}
+	if (task.can_post_update) {
+		actions.push(buttonAction(__('Add update', 'coordina'), { action: 'open-discussion-create', objectType: 'task', objectId: task.id || '', objectLabel: task.title || __('Task', 'coordina'), lockContext: '1' }));
+	}
+	if (task.can_attach_files) {
+		actions.push(buttonAction(__('Attach file', 'coordina'), { action: 'open-file-create', objectType: 'task', objectId: task.id || '', objectLabel: task.title || __('Task', 'coordina'), lockContext: '1' }));
+	}
+	if (task.can_edit) {
+		actions.push(buttonAction(state.taskDetailEditing ? __('Hide edit form', 'coordina') : __('Edit task', 'coordina'), { action: 'toggle-task-edit' }, 'primary'));
+	}
+	if (task.can_delete) {
+		actions.push(buttonAction(__('Delete task', 'coordina'), { action: 'delete-record', module: 'tasks', id: task.id || '', label: task.title || __('Task', 'coordina'), projectId: task.project_id || '' }, 'danger'));
+	}
+	return actions;
+}
+
+function milestoneHeaderActions(milestone) {
+	const actions = [];
+	if (Number(milestone.project_id || 0) > 0) {
+		actions.push(routeAction(__('Back to project milestones', 'coordina'), { page: 'coordina-projects', project_id: milestone.project_id, project_tab: 'milestones' }));
+	} else {
+		actions.push(routeAction(__('Back to My Work', 'coordina'), { page: 'coordina-my-work' }));
+	}
+	if (milestone.can_post_update) {
+		actions.push(buttonAction(__('Add update', 'coordina'), { action: 'open-discussion-create', objectType: 'milestone', objectId: milestone.id || '', objectLabel: milestone.title || __('Milestone', 'coordina'), lockContext: '1' }));
+	}
+	if (milestone.can_attach_files) {
+		actions.push(buttonAction(__('Attach file', 'coordina'), { action: 'open-file-create', objectType: 'milestone', objectId: milestone.id || '', objectLabel: milestone.title || __('Milestone', 'coordina'), lockContext: '1' }));
+	}
+	if (milestone.can_edit) {
+		actions.push(buttonAction(state.milestoneDetailEditing ? __('Hide edit form', 'coordina') : __('Edit fields', 'coordina'), { action: 'toggle-milestone-edit' }, 'primary'));
+	}
+	if (milestone.can_delete) {
+		actions.push(buttonAction(__('Delete milestone', 'coordina'), { action: 'delete-record', module: 'milestones', id: milestone.id || '', label: milestone.title || __('Milestone', 'coordina'), projectId: milestone.project_id || '' }, 'danger'));
+	}
+	return actions;
+}
+
+function riskIssueHeaderActions(riskIssue) {
+	const actions = [];
+	if (Number(riskIssue.project_id || 0) > 0) {
+		actions.push(routeAction(__('Back to project risks', 'coordina'), { page: 'coordina-projects', project_id: riskIssue.project_id, project_tab: 'risks-issues' }));
+	} else if (canAccessPage('coordina-risks-issues')) {
+		actions.push(routeAction(__('Back to risks & issues', 'coordina'), { page: 'coordina-risks-issues' }));
+	} else {
+		actions.push(routeAction(__('Back to My Work', 'coordina'), { page: 'coordina-my-work' }));
+	}
+	if (riskIssue.can_post_update) {
+		actions.push(buttonAction(__('Add update', 'coordina'), { action: 'open-discussion-create', objectType: riskIssue.object_type || 'risk', objectId: riskIssue.id || '', objectLabel: riskIssue.title || __('Risk or issue', 'coordina'), lockContext: '1' }));
+	}
+	if (riskIssue.can_attach_files) {
+		actions.push(buttonAction(__('Attach file', 'coordina'), { action: 'open-file-create', objectType: riskIssue.object_type || 'risk', objectId: riskIssue.id || '', objectLabel: riskIssue.title || __('Risk or issue', 'coordina'), lockContext: '1' }));
+	}
+	if (riskIssue.can_edit) {
+		actions.push(buttonAction(state.riskIssueDetailEditing ? __('Hide edit form', 'coordina') : __('Edit fields', 'coordina'), { action: 'toggle-risk-issue-edit' }, 'primary'));
+	}
+	if (riskIssue.can_delete) {
+		actions.push(buttonAction(__('Delete record', 'coordina'), { action: 'delete-record', module: 'risks-issues', id: riskIssue.id || '', label: riskIssue.title || __('Risk or issue', 'coordina'), projectId: riskIssue.project_id || '' }, 'danger'));
+	}
+	return actions;
+}
+
 function approvalSourceRoute(item) {
 	const objectType = String(item && item.object_type ? item.object_type : '');
 	const objectId = Number(item && item.object_id ? item.object_id : 0);
@@ -623,6 +867,13 @@ function drawerSummary(module, item, sourceButton) {
 
 function render() {
 	const shellHeader = shellHeaderHtml();
+	const shellClasses = ['coordina-shell'];
+	if (!pageDescriptionsEnabled()) {
+		shellClasses.push('coordina-shell--hide-page-descriptions');
+	}
+	if (!sectionDescriptionsEnabled()) {
+		shellClasses.push('coordina-shell--hide-section-descriptions');
+	}
 	const body = state.loading
 		? `<div class="coordina-loading">${escapeHtml(__('Loading Coordina shell...', 'coordina'))}</div>`
 		: hasProjectWorkspace()
@@ -648,64 +899,227 @@ function render() {
 									: currentModule()
 										? modulePage()
 										: `<section class="coordina-card coordina-card--notice"><h2>${escapeHtml(__('Module shell ready', 'coordina'))}</h2><p>${escapeHtml(__('This screen keeps the shared patterns while deeper implementation is phased in.', 'coordina'))}</p></section>`;
-	root.innerHTML = `<div class="coordina-shell">${noticesHtml()}${shellHeader}${body}</div>${drawerHtml()}${modalHtml()}`;
+	root.innerHTML = `<div class="${shellClasses.join(' ')}">${noticesHtml()}${shellHeader}${body}</div>${drawerHtml()}${modalHtml()}`;
 }
 
 function shellHeaderHtml() {
 	const meta = currentPageHeaderMeta();
 	const items = state.notifications && Array.isArray(state.notifications.items) ? state.notifications.items : [];
 	const unreadCount = items.filter((item) => !item.is_read).length;
-	const userLabel = state.shell && state.shell.user && state.shell.user.label ? state.shell.user.label : __('Team member', 'coordina');
-	return `<section class="coordina-shell__header coordina-shell__header--global"><div><p class="coordina-shell__eyebrow">${escapeHtml(meta.eyebrow)}</p><h2>${escapeHtml(meta.title)}</h2><p>${escapeHtml(meta.description)}</p></div><div class="coordina-shell__meta"><span class="coordina-status-badge">${escapeHtml(userLabel)}</span><button class="coordina-inbox-trigger ${unreadCount > 0 ? 'has-unread' : ''}" type="button" data-action="open-notifications" aria-label="${escapeHtml(__('Open inbox', 'coordina'))}"><span class="coordina-inbox-trigger__label">${escapeHtml(__('Inbox', 'coordina'))}</span><span class="coordina-inbox-trigger__count">${unreadCount}</span></button></div></section>`;
+	const userLabel = state.shell && state.shell.user && (state.shell.user.label || state.shell.user.display_name) ? (state.shell.user.label || state.shell.user.display_name) : __('Team member', 'coordina');
+	return `<section class="coordina-shell__header coordina-shell__header--global"><div class="coordina-shell__header-copy">${breadcrumbHtml(meta.breadcrumbs)}<p class="coordina-shell__eyebrow">${escapeHtml(meta.eyebrow)}</p><h2>${escapeHtml(meta.title)}</h2>${renderHeaderBadges(meta.badges)}${pageDescriptionsEnabled() && meta.description ? `<p class="coordina-shell__description">${escapeHtml(meta.description)}</p>` : ''}</div><div class="coordina-shell__meta"><span class="coordina-status-badge">${escapeHtml(userLabel)}</span>${renderHeaderActions(meta.actions)}<button class="coordina-shell-trigger coordina-inbox-trigger ${unreadCount > 0 ? 'has-unread' : ''}" type="button" data-action="open-notifications" aria-label="${escapeHtml(__('Open inbox', 'coordina'))}"><span class="coordina-shell-trigger__label">${escapeHtml(__('Inbox', 'coordina'))}</span><span class="coordina-shell-trigger__badge coordina-inbox-trigger__count">${unreadCount}</span></button></div></section>`;
 }
 
 function currentPageHeaderMeta() {
 	if (hasProjectWorkspace() && state.workspace && state.workspace.project) {
+		const activeTab = state.workspace.activeTab || state.projectContext.tab || 'overview';
+		const tabs = state.workspace.tabs || [];
+		const actions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
+		const project = state.workspace.project;
+		const breadcrumbs = [
+			{ label: __('Projects', 'coordina'), route: { page: 'coordina-projects' } },
+			{ label: project.title || __('Project workspace', 'coordina') },
+		];
+		if (activeTab && activeTab !== 'overview') {
+			breadcrumbs.push({ label: workspaceTabLabel(activeTab, tabs) });
+		}
 		return {
 			eyebrow: __('Project workspace', 'coordina'),
-			title: state.workspace.project.title || __('Project workspace', 'coordina'),
-			description: state.workspace.project.description || __('Track progress, decisions, and delivery details in one project workspace.', 'coordina'),
+			title: project.title || __('Project workspace', 'coordina'),
+			description: project.description || __('Track progress, decisions, and delivery details in one project workspace.', 'coordina'),
+			badges: [
+				statusBadge(nice(project.status || 'draft'), `status-${String(project.status || 'draft')}`),
+				statusBadge(nice(project.health || 'neutral'), `status-${String(project.health || 'neutral')}`),
+				statusBadge(project.manager_label || __('No manager assigned', 'coordina')),
+				statusBadge(dateLabel(project.target_end_date || '')),
+			],
+			actions: workspaceHeaderActions(project, actions),
+			breadcrumbs,
 		};
 	}
 
 	if (hasTaskPage() && state.taskDetail && state.taskDetail.task) {
+		const task = state.taskDetail.task;
+		const breadcrumbs = Number(task.project_id || 0) > 0
+			? [
+				{ label: __('Projects', 'coordina'), route: { page: 'coordina-projects' } },
+				{ label: task.project_label || __('Project workspace', 'coordina'), route: { page: 'coordina-projects', project_id: task.project_id, project_tab: 'work' } },
+				{ label: task.title || __('Task', 'coordina') },
+			]
+			: [
+				{ label: canAccessPage('coordina-tasks') ? __('Tasks', 'coordina') : __('My Work', 'coordina'), route: { page: canAccessPage('coordina-tasks') ? 'coordina-tasks' : 'coordina-my-work' } },
+				{ label: task.title || __('Task', 'coordina') },
+			];
 		return {
-			eyebrow: __('Task', 'coordina'),
-			title: state.taskDetail.task.title || __('Task', 'coordina'),
-			description: state.taskDetail.task.project_label || __('Review the task, context, and next step.', 'coordina'),
+			eyebrow: __('Task detail', 'coordina'),
+			title: task.title || __('Task', 'coordina'),
+			description: Number(task.project_id || 0) > 0
+				? __('Review progress, updates, and files without leaving the parent project.', 'coordina')
+				: __('Review progress, updates, and files for this standalone task.', 'coordina'),
+			badges: [
+				statusBadge(nice(task.status || 'new'), `status-${String(task.status || 'new')}`),
+				statusBadge(`${Number(task.completion_percent || 0)}% ${__('complete', 'coordina')}`),
+				statusBadge(task.assignee_label || __('Unassigned', 'coordina')),
+			].concat(task.blocked ? [statusBadge(__('Blocked', 'coordina'), 'status-blocked')] : []).concat([statusBadge(task.project_label || __('Standalone', 'coordina'))]),
+			actions: taskHeaderActions(task),
+			breadcrumbs,
 		};
 	}
 
 	if (hasMilestonePage() && state.milestoneDetail && state.milestoneDetail.milestone) {
+		const milestone = state.milestoneDetail.milestone;
+		const breadcrumbs = Number(milestone.project_id || 0) > 0
+			? [
+				{ label: __('Projects', 'coordina'), route: { page: 'coordina-projects' } },
+				{ label: milestone.project_label || __('Project workspace', 'coordina'), route: { page: 'coordina-projects', project_id: milestone.project_id, project_tab: 'milestones' } },
+				{ label: milestone.title || __('Milestone', 'coordina') },
+			]
+			: [
+				{ label: __('Milestones', 'coordina'), route: { page: 'coordina-projects' } },
+				{ label: milestone.title || __('Milestone', 'coordina') },
+			];
 		return {
-			eyebrow: __('Milestone', 'coordina'),
-			title: state.milestoneDetail.milestone.title || __('Milestone', 'coordina'),
-			description: state.milestoneDetail.milestone.project_label || __('Review the checkpoint, owner, and due signal.', 'coordina'),
+			eyebrow: __('Milestone detail', 'coordina'),
+			title: milestone.title || __('Milestone', 'coordina'),
+			description: __('Review the checkpoint, owner, due signal, and related updates in one place.', 'coordina'),
+			badges: [
+				statusBadge(nice(milestone.status || 'planned'), `status-${String(milestone.status || 'planned')}`),
+				statusBadge(milestone.owner_label || __('Unassigned', 'coordina')),
+				statusBadge(milestone.project_label || __('Project milestone', 'coordina')),
+			].concat(milestone.dependency_flag ? [statusBadge(__('Dependency', 'coordina'), 'status-waiting')] : []),
+			actions: milestoneHeaderActions(milestone),
+			breadcrumbs,
 		};
 	}
 
 	if (hasRiskIssuePage() && state.riskIssueDetail && state.riskIssueDetail.riskIssue) {
+		const riskIssue = state.riskIssueDetail.riskIssue;
+		const breadcrumbs = Number(riskIssue.project_id || 0) > 0
+			? [
+				{ label: __('Projects', 'coordina'), route: { page: 'coordina-projects' } },
+				{ label: riskIssue.project_label || __('Project workspace', 'coordina'), route: { page: 'coordina-projects', project_id: riskIssue.project_id, project_tab: 'risks-issues' } },
+				{ label: riskIssue.title || __('Risk or issue', 'coordina') },
+			]
+			: [
+				{ label: canAccessPage('coordina-risks-issues') ? __('Risks & Issues', 'coordina') : __('My Work', 'coordina'), route: { page: canAccessPage('coordina-risks-issues') ? 'coordina-risks-issues' : 'coordina-my-work' } },
+				{ label: riskIssue.title || __('Risk or issue', 'coordina') },
+			];
 		return {
-			eyebrow: __('Risk or issue', 'coordina'),
-			title: state.riskIssueDetail.riskIssue.title || __('Risk or issue', 'coordina'),
-			description: state.riskIssueDetail.riskIssue.project_label || __('Review the exposure, owner, and mitigation path.', 'coordina'),
+			eyebrow: __('Risk or issue detail', 'coordina'),
+			title: riskIssue.title || __('Risk or issue', 'coordina'),
+			description: __('Review the exposure, owner, response plan, and supporting context here.', 'coordina'),
+			badges: [
+				statusBadge(nice(riskIssue.status || 'identified'), `status-${String(riskIssue.status || 'identified')}`),
+				statusBadge(nice(riskIssue.object_type || 'risk')),
+				statusBadge(nice(riskIssue.severity || 'medium')),
+				statusBadge(riskIssue.owner_label || __('Unassigned', 'coordina')),
+				statusBadge(riskIssue.project_label || __('Standalone exception', 'coordina')),
+			],
+			actions: riskIssueHeaderActions(riskIssue),
+			breadcrumbs,
 		};
 	}
 
 	const module = currentModule();
 	if (module) {
+		const actions = moduleHeaderActions(module);
 		return {
-			eyebrow: __('Coordina', 'coordina'),
+			eyebrow: topLevelHeaderKind(state.page),
 			title: module.title,
-			description: __('Manage the current work surface and keep the shared inbox visible.', 'coordina'),
+			description: pageDescriptionFor(state.page),
+			badges: [],
+			actions,
+			breadcrumbs: [
+				{ label: __('Coordina', 'coordina'), route: { page: canAccessPage('coordina-dashboard') ? 'coordina-dashboard' : 'coordina-my-work' } },
+				{ label: module.title },
+			],
 		};
 	}
 
 	const pageMeta = getPageMeta(state.page) || {};
+	const title = pageTitleFor(state.page);
+	let actions = [];
+	let badges = [];
+	if (state.page === 'coordina-my-work') {
+		actions = [
+			canAccessPage('coordina-calendar') ? routeAction(__('Calendar', 'coordina'), { page: 'coordina-calendar' }) : null,
+			canAccessPage('coordina-files-discussion') ? routeAction(__('Files & discussions', 'coordina'), { page: 'coordina-files-discussion' }) : null,
+			buttonAction(__('Quick task', 'coordina'), { action: 'open-task-create' }, 'primary'),
+		].filter(Boolean);
+		const summary = state.myWork && state.myWork.summary ? state.myWork.summary : {};
+		const items = state.notifications && Array.isArray(state.notifications.items) ? state.notifications.items : [];
+		const unreadCount = items.filter((item) => !item.is_read).length;
+		badges = [
+			statusBadge(`${Number(summary.attention || 0)} ${__('needs attention', 'coordina')}`),
+			statusBadge(`${Number(summary.pendingApprovals || 0)} ${__('approvals', 'coordina')}`),
+			statusBadge(`${unreadCount} ${__('unread', 'coordina')}`),
+		].filter((badge) => badge.label && badge.label !== `0 ${__('needs attention', 'coordina')}` ? true : true);
+	}
+	if (state.page === 'coordina-dashboard') {
+		actions = [
+			canAccessPage('coordina-projects') ? routeAction(__('View projects', 'coordina'), { page: 'coordina-projects' }) : null,
+			routeAction(__('Go to My Work', 'coordina'), { page: 'coordina-my-work' }, 'primary'),
+		].filter(Boolean);
+		const dashboard = state.dashboard || {};
+		const kpis = dashboard.kpis || {};
+		badges = [
+			statusBadge(`${Number(kpis.atRiskProjects || 0)} ${__('at risk', 'coordina')}`),
+			statusBadge(`${Number(kpis.pendingApprovals || 0)} ${__('pending approvals', 'coordina')}`),
+			statusBadge(`${Number(kpis.overdueTasks || 0)} ${__('overdue tasks', 'coordina')}`),
+		];
+	}
+	if (state.page === 'coordina-calendar') {
+		actions = [
+			canAccessPage('coordina-projects') ? routeAction(__('Projects', 'coordina'), { page: 'coordina-projects' }) : null,
+			canAccessPage('coordina-tasks') ? routeAction(__('Open task list', 'coordina'), { page: 'coordina-tasks' }, 'primary') : null,
+		].filter(Boolean);
+		const summary = state.calendar && state.calendar.summary ? state.calendar.summary : {};
+		badges = [
+			statusBadge(`${Number(summary.total || 0)} ${__('scheduled items', 'coordina')}`),
+			statusBadge(`${Number(summary.overdue || 0)} ${__('overdue tasks', 'coordina')}`),
+		];
+	}
+	if (state.page === 'coordina-workload') {
+		actions = [
+			canAccessPage('coordina-calendar') ? routeAction(__('Calendar', 'coordina'), { page: 'coordina-calendar' }) : null,
+			canAccessPage('coordina-projects') ? routeAction(__('Managed projects', 'coordina'), { page: 'coordina-projects' }, 'primary') : null,
+		].filter(Boolean);
+		const summary = state.workload && state.workload.summary ? state.workload.summary : {};
+		badges = [
+			statusBadge(`${Number(summary.people || 0)} ${__('people in view', 'coordina')}`),
+			statusBadge(`${Number(summary.overloaded || 0)} ${__('high pressure', 'coordina')}`),
+		];
+	}
+	if (state.page === 'coordina-files-discussion') {
+		actions = [
+			routeAction(__('Go to My Work', 'coordina'), { page: 'coordina-my-work' }),
+			routeAction(__('Open projects', 'coordina'), { page: 'coordina-projects' }, 'primary'),
+		];
+		const collaboration = state.collaboration || {};
+		const files = collaboration.files || {};
+		const discussions = collaboration.discussions || {};
+		badges = [
+			statusBadge(`${Number(files.total || 0)} ${__('files in view', 'coordina')}`),
+			statusBadge(`${Number(discussions.total || 0)} ${__('updates in view', 'coordina')}`),
+		];
+	}
+	if (state.page === 'coordina-settings') {
+		actions = [
+			routeAction(__('Project workspaces', 'coordina'), { page: 'coordina-projects' }),
+			buttonAction(__('Save section', 'coordina'), { action: 'submit-settings' }, 'primary'),
+		];
+		badges = [statusBadge((state.settingsTab || 'defaults') ? nice(state.settingsTab || 'defaults') : __('Defaults', 'coordina'))];
+	}
 	return {
-		eyebrow: __('Coordina', 'coordina'),
-		title: pageMeta.label || nice(String(state.page || 'coordina').replace(/^coordina-/, '')),
+			eyebrow: topLevelHeaderKind(state.page),
+			title: title,
 		description: pageMeta.description || __('Stay on top of work, approvals, and updates from one shell.', 'coordina'),
+			badges,
+			actions,
+			breadcrumbs: [
+				{ label: __('Coordina', 'coordina'), route: { page: canAccessPage('coordina-dashboard') ? 'coordina-dashboard' : 'coordina-my-work' } },
+				{ label: title },
+			],
 	};
 }
 

@@ -71,6 +71,8 @@ final class SettingsRepository {
 				'workspace_default_tab' => 'overview',
 				'task_group_label'      => 'stage',
 				'activity_page_size'    => 10,
+				'page_descriptions_enabled'    => true,
+				'section_descriptions_enabled' => true,
 				'my_work_card_guidance_enabled' => true,
 				'my_work_card_actions_enabled'  => true,
 			),
@@ -213,6 +215,8 @@ final class SettingsRepository {
 		$settings['general']['workspace_default_tab'] = $this->choice( $settings['general']['workspace_default_tab'] ?? '', array( 'overview', 'work', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity' ), $defaults['general']['workspace_default_tab'] );
 		$settings['general']['task_group_label'] = $this->choice( $settings['general']['task_group_label'] ?? '', array( 'stage', 'phase', 'bucket' ), $defaults['general']['task_group_label'] );
 		$settings['general']['activity_page_size'] = max( 5, min( 50, (int) ( $settings['general']['activity_page_size'] ?? $defaults['general']['activity_page_size'] ) ) );
+		$settings['general']['page_descriptions_enabled'] = (bool) ( $settings['general']['page_descriptions_enabled'] ?? $defaults['general']['page_descriptions_enabled'] );
+		$settings['general']['section_descriptions_enabled'] = (bool) ( $settings['general']['section_descriptions_enabled'] ?? $defaults['general']['section_descriptions_enabled'] );
 		$settings['general']['my_work_card_guidance_enabled'] = (bool) ( $settings['general']['my_work_card_guidance_enabled'] ?? $defaults['general']['my_work_card_guidance_enabled'] );
 		$settings['general']['my_work_card_actions_enabled'] = (bool) ( $settings['general']['my_work_card_actions_enabled'] ?? $defaults['general']['my_work_card_actions_enabled'] );
 

@@ -719,6 +719,7 @@ final class RestRegistrar {
 			array(
 				'user'         => array(
 					'id'           => $current_user->ID,
+					'label'        => $current_user->display_name,
 					'display_name' => $current_user->display_name,
 				),
 				'capabilities' => array(
@@ -738,6 +739,8 @@ final class RestRegistrar {
 				'updateTypes' => $dropdowns['updateTypes'],
 				'taskGroupLabel' => $settings['general']['task_group_label'] ?? 'stage',
 				'activityPageSize' => (int) ( $settings['general']['activity_page_size'] ?? 10 ),
+				'pageDescriptionsEnabled' => ! empty( $settings['general']['page_descriptions_enabled'] ),
+				'sectionDescriptionsEnabled' => ! empty( $settings['general']['section_descriptions_enabled'] ),
 				'myWorkCardGuidanceEnabled' => ! empty( $settings['general']['my_work_card_guidance_enabled'] ),
 				'myWorkCardActionsEnabled' => ! empty( $settings['general']['my_work_card_actions_enabled'] ),
 				'objectTypes'  => array( 'risk', 'issue' ),
