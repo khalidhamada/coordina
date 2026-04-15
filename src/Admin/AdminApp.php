@@ -221,22 +221,22 @@ final class AdminApp {
 
 		if ( 'coordina-projects' === $page_slug && $this->get_current_project_id() > 0 ) {
 			$page_data['title']       = __( 'Project Workspace', 'coordina' );
-			$page_data['description'] = __( 'Dedicated project dashboard with execution tabs, project context, and linked task management.', 'coordina' );
+			$page_data['description'] = __( 'See project work, planning, updates, and supporting details in one workspace.', 'coordina' );
 		}
 
 		if ( 'coordina-task' === $page_slug && $this->get_current_task_id() > 0 ) {
 			$page_data['title']       = __( 'Task Detail', 'coordina' );
-			$page_data['description'] = __( 'Full task context with details, updates, files, and edit actions.', 'coordina' );
+			$page_data['description'] = __( 'See task details, updates, files, and edits in one place.', 'coordina' );
 		}
 
 		if ( 'coordina-milestone' === $page_slug && $this->get_current_milestone_id() > 0 ) {
 			$page_data['title']       = __( 'Milestone Detail', 'coordina' );
-			$page_data['description'] = __( 'Full milestone context with details, updates, files, and edit actions.', 'coordina' );
+			$page_data['description'] = __( 'See milestone details, updates, files, and edits in one place.', 'coordina' );
 		}
 
 		if ( 'coordina-risk-issue' === $page_slug && $this->get_current_risk_issue_id() > 0 ) {
 			$page_data['title']       = __( 'Risk & Issue Detail', 'coordina' );
-			$page_data['description'] = __( 'Full risk or issue context with details, updates, files, and edit actions.', 'coordina' );
+			$page_data['description'] = __( 'See risk or issue details, updates, files, and edits in one place.', 'coordina' );
 		}
 
 		if ( ! file_exists( $template ) ) {
@@ -367,6 +367,7 @@ final class AdminApp {
 		}
 
 		$allowed_non_admin[] = 'coordina-requests';
+		$allowed_non_admin[] = 'coordina-calendar';
 
 		if ( 'dashboard-my-work-projects-tasks' === $scope ) {
 			$allowed_non_admin[] = 'coordina-tasks';
@@ -484,7 +485,7 @@ final class AdminApp {
 				'title'       => __( 'Dashboard', 'coordina' ),
 				'menu_title'  => __( 'Dashboard', 'coordina' ),
 				'capability'  => 'coordina_view_dashboard',
-				'description' => __( 'See exceptions first, then route into projects, approvals, and execution work.', 'coordina' ),
+				'description' => __( 'See key issues, deadlines, and decisions across your work.', 'coordina' ),
 				'priority'    => 'primary',
 				'purpose'     => 'oversight',
 			),
@@ -492,7 +493,7 @@ final class AdminApp {
 				'title'       => __( 'My Work', 'coordina' ),
 				'menu_title'  => __( 'My Work', 'coordina' ),
 				'capability'  => 'coordina_access',
-				'description' => __( 'Work your day from one place: due, overdue, waiting, and approvals.', 'coordina' ),
+				'description' => __( 'See what needs your attention today, what is waiting, and what needs a decision.', 'coordina' ),
 				'priority'    => 'primary',
 				'purpose'     => 'execution',
 			),
@@ -500,7 +501,7 @@ final class AdminApp {
 				'title'       => __( 'Projects', 'coordina' ),
 				'menu_title'  => __( 'Projects', 'coordina' ),
 				'capability'  => 'coordina_access',
-				'description' => __( 'Browse the portfolio, then open each project workspace for planning and execution.', 'coordina' ),
+				'description' => __( 'Browse projects and open a workspace to plan or review the details.', 'coordina' ),
 				'priority'    => 'primary',
 				'purpose'     => 'portfolio',
 			),
@@ -508,7 +509,7 @@ final class AdminApp {
 				'title'       => __( 'Requests', 'coordina' ),
 				'menu_title'  => __( 'Requests', 'coordina' ),
 				'capability'  => 'coordina_access',
-				'description' => __( 'Triage incoming work, decide ownership, and convert requests into action.', 'coordina' ),
+				'description' => __( 'Review incoming requests, assign ownership, and decide what happens next.', 'coordina' ),
 				'priority'    => 'primary',
 				'purpose'     => 'execution',
 			),
@@ -516,7 +517,7 @@ final class AdminApp {
 				'title'       => __( 'Approvals', 'coordina' ),
 				'menu_title'  => __( 'Approvals', 'coordina' ),
 				'capability'  => 'coordina_access',
-				'description' => __( 'Review approval queues without losing the parent work context.', 'coordina' ),
+				'description' => __( 'Review pending approvals and record each decision.', 'coordina' ),
 				'priority'    => 'primary',
 				'purpose'     => 'execution',
 			),
@@ -524,7 +525,7 @@ final class AdminApp {
 				'title'       => __( 'Tasks', 'coordina' ),
 				'menu_title'  => __( 'Tasks', 'coordina' ),
 				'capability'  => 'coordina_manage_tasks',
-				'description' => __( 'Scan work across projects and standalone operations when you need a cross-project task view.', 'coordina' ),
+				'description' => __( 'Browse tasks across projects and standalone work.', 'coordina' ),
 				'priority'    => 'secondary',
 				'purpose'     => 'support',
 			),
@@ -532,7 +533,7 @@ final class AdminApp {
 				'title'       => __( 'Task Detail', 'coordina' ),
 				'menu_title'  => __( 'Task Detail', 'coordina' ),
 				'capability'  => 'coordina_access',
-				'description' => __( 'Review the full task context, updates, files, and edit options on one page.', 'coordina' ),
+				'description' => __( 'See task details, updates, files, and edits in one place.', 'coordina' ),
 				'priority'    => 'secondary',
 				'purpose'     => 'execution',
 				'hidden'      => true,
@@ -541,7 +542,7 @@ final class AdminApp {
 				'title'       => __( 'Milestone Detail', 'coordina' ),
 				'menu_title'  => __( 'Milestone Detail', 'coordina' ),
 				'capability'  => 'coordina_access',
-				'description' => __( 'Review the full milestone context, updates, files, and edit options on one page.', 'coordina' ),
+				'description' => __( 'See milestone details, updates, files, and edits in one place.', 'coordina' ),
 				'priority'    => 'secondary',
 				'purpose'     => 'execution',
 				'hidden'      => true,
@@ -550,7 +551,7 @@ final class AdminApp {
 				'title'       => __( 'Risk & Issue Detail', 'coordina' ),
 				'menu_title'  => __( 'Risk & Issue Detail', 'coordina' ),
 				'capability'  => 'coordina_access',
-				'description' => __( 'Review the full risk or issue context, updates, files, and edit options on one page.', 'coordina' ),
+				'description' => __( 'See risk or issue details, updates, files, and edits in one place.', 'coordina' ),
 				'priority'    => 'secondary',
 				'purpose'     => 'execution',
 				'hidden'      => true,
@@ -559,7 +560,7 @@ final class AdminApp {
 				'title'       => __( 'Calendar', 'coordina' ),
 				'menu_title'  => __( 'Calendar', 'coordina' ),
 				'capability'  => 'coordina_access',
-				'description' => __( 'Use this when you need a dated view across work, then jump back into the task or project to act.', 'coordina' ),
+				'description' => __( 'See work by date and open the related item when you need details.', 'coordina' ),
 				'priority'    => 'secondary',
 				'purpose'     => 'support',
 			),
@@ -567,7 +568,7 @@ final class AdminApp {
 				'title'       => __( 'Workload', 'coordina' ),
 				'menu_title'  => __( 'Workload', 'coordina' ),
 				'capability'  => 'coordina_manage_projects',
-				'description' => __( 'Use this when you need to rebalance people and pressure across managed work.', 'coordina' ),
+				'description' => __( 'See who is busy and where work may need to be rebalanced.', 'coordina' ),
 				'priority'    => 'secondary',
 				'purpose'     => 'support',
 			),
@@ -575,7 +576,7 @@ final class AdminApp {
 				'title'       => __( 'Risks & Issues', 'coordina' ),
 				'menu_title'  => __( 'Risks & Issues', 'coordina' ),
 				'capability'  => 'coordina_manage_projects',
-				'description' => __( 'Monitor exceptions across projects when you need a cross-project risk view.', 'coordina' ),
+				'description' => __( 'Review risks and issues across projects.', 'coordina' ),
 				'priority'    => 'secondary',
 				'purpose'     => 'support',
 			),
@@ -583,7 +584,7 @@ final class AdminApp {
 				'title'       => __( 'Files & Discussions', 'coordina' ),
 				'menu_title'  => __( 'Files & Discussions', 'coordina' ),
 				'capability'  => 'coordina_access',
-				'description' => __( 'Use this to find recent files and updates, then return to the parent work item to act.', 'coordina' ),
+				'description' => __( 'Browse recent files and updates, then open the related work item when needed.', 'coordina' ),
 				'priority'    => 'secondary',
 				'purpose'     => 'support',
 			),
@@ -591,7 +592,7 @@ final class AdminApp {
 				'title'       => __( 'Settings', 'coordina' ),
 				'menu_title'  => __( 'Settings', 'coordina' ),
 				'capability'  => 'coordina_manage_settings',
-				'description' => __( 'Manage team defaults, intake rules, governance, and advanced plugin behavior.', 'coordina' ),
+				'description' => __( 'Manage defaults, access, dropdowns, and other plugin settings.', 'coordina' ),
 				'priority'    => 'secondary',
 				'purpose'     => 'admin',
 			),

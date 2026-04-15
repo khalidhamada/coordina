@@ -3,7 +3,7 @@
  * Plugin Name: Coordina
  * Plugin URI: https://example.com/coordina
  * Description: WordPress-native work management foundations for operational teams.
- * Version: 1.1.1
+ * Version: 1.2.0
  * Requires at least: 6.6
  * Requires PHP: 7.4
  * Author: Khalid Hamada
@@ -38,7 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'COORDINA_VERSION', '1.0.0' );
+define( 'COORDINA_VERSION', '1.2.0' );
 define( 'COORDINA_FILE', __FILE__ );
 define( 'COORDINA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'COORDINA_URL', plugin_dir_url( __FILE__ ) );

@@ -375,6 +375,8 @@ final class ApprovalRepository extends AbstractRepository {
 			return;
 		}
 
+		$should_notify = (int) ( $current['approver_user_id'] ?? 0 ) !== $approver_user_id || 'pending' !== (string) ( $current['status'] ?? '' );
+
 		$this->wpdb->update(
 			$this->table( 'approvals' ),
 			array(
@@ -386,6 +388,10 @@ final class ApprovalRepository extends AbstractRepository {
 			),
 			array( 'id' => (int) $current['id'] )
 		);
+
+		if ( $should_notify ) {
+			$this->notify_pending_approval( $object_type, $object_id, $approver_user_id, $submitted_by_user_id );
+		}
 	}
 
 	/**
@@ -414,7 +420,13 @@ final class ApprovalRepository extends AbstractRepository {
 			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Approval could not be created.', 'coordina' ) );
 		}
 
-		return $this->find( (int) $this->wpdb->insert_id );
+		$approval = $this->find( (int) $this->wpdb->insert_id );
+
+		if ( 'pending' === $status ) {
+			$this->notify_pending_approval( $clean['object_type'], (int) $clean['object_id'], (int) $clean['approver_user_id'], (int) $clean['submitted_by_user_id'] );
+		}
+
+		return $approval;
 	}
 
 	/**
@@ -561,6 +573,86 @@ final class ApprovalRepository extends AbstractRepository {
 		$table = $this->table( $table_map[ $object_type ] );
 		$title = $this->wpdb->get_var( $this->wpdb->prepare( "SELECT title FROM {$table} WHERE id = %d", $object_id ) );
 		return $title ? (string) $title : '';
+	}
+
+	/**
+	 * Notify an approver about pending approval work.
+	 *
+	 * @param string $object_type Object type.
+	 * @param int    $object_id Object id.
+	 * @param int    $approver_user_id Approver user id.
+	 * @param int    $submitted_by_user_id Submitter user id.
+	 * @return void
+	 */
+	private function notify_pending_approval( string $object_type, int $object_id, int $approver_user_id, int $submitted_by_user_id ): void {
+		if ( $approver_user_id <= 0 || $approver_user_id === $submitted_by_user_id ) {
+			return;
+		}
+
+		$object_label     = $this->resolve_object_label( $object_type, $object_id );
+		$object_type_label = $this->approval_object_type_label( $object_type );
+		$submitter_label  = $submitted_by_user_id > 0 ? ( get_userdata( $submitted_by_user_id )->display_name ?? '' ) : '';
+		$title            = __( 'Approval requested', 'coordina' );
+		$body             = $submitter_label
+			? sprintf( __( '%1$s submitted %2$s for your approval.', 'coordina' ), $submitter_label, $object_label ?: $object_type_label )
+			: sprintf( __( '%1$s is waiting for your approval.', 'coordina' ), $object_label ?: $object_type_label );
+		$url              = $this->approval_admin_url( $object_type, $object_id );
+
+		( new NotificationRepository() )->create( $approver_user_id, 'approval-requested', $title, $body, $url );
+	}
+
+	/**
+	 * Build an admin URL for a pending approval target.
+	 *
+	 * @param string $object_type Object type.
+	 * @param int    $object_id Object id.
+	 * @return string
+	 */
+	private function approval_admin_url( string $object_type, int $object_id ): string {
+		if ( 'task' === $object_type ) {
+			$project_id = $this->resolve_project_id( $object_type, $object_id );
+			$args       = array(
+				'page'    => 'coordina-task',
+				'task_id' => $object_id,
+			);
+
+			if ( $project_id > 0 ) {
+				$args['project_id']  = $project_id;
+				$args['project_tab'] = 'work';
+			}
+
+			return add_query_arg( $args, admin_url( 'admin.php' ) );
+		}
+
+		if ( 'request' === $object_type ) {
+			return add_query_arg(
+				array(
+					'page'       => 'coordina-requests',
+					'request_id' => $object_id,
+				),
+				admin_url( 'admin.php' )
+			);
+		}
+
+		return add_query_arg( array( 'page' => 'coordina-approvals' ), admin_url( 'admin.php' ) );
+	}
+
+	/**
+	 * Human label for approval object types.
+	 *
+	 * @param string $object_type Object type.
+	 * @return string
+	 */
+	private function approval_object_type_label( string $object_type ): string {
+		$labels = array(
+			'project' => __( 'project', 'coordina' ),
+			'task'    => __( 'task', 'coordina' ),
+			'request' => __( 'request', 'coordina' ),
+			'risk'    => __( 'risk', 'coordina' ),
+			'issue'   => __( 'issue', 'coordina' ),
+		);
+
+		return $labels[ $object_type ] ?? __( 'item', 'coordina' );
 	}
 
 	/**

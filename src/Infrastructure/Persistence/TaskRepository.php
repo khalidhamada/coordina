@@ -25,6 +25,7 @@ final class TaskRepository extends AbstractRepository {
 		$search       = isset( $args['search'] ) ? sanitize_text_field( (string) $args['search'] ) : '';
 		$status       = isset( $args['status'] ) ? sanitize_text_field( (string) $args['status'] ) : '';
 		$project_id   = isset( $args['project_id'] ) ? max( 0, (int) $args['project_id'] ) : 0;
+		$assignee_user_id = isset( $args['assignee_user_id'] ) ? max( 0, (int) $args['assignee_user_id'] ) : 0;
 		$task_group_id = isset( $args['task_group_id'] ) ? max( 0, (int) $args['task_group_id'] ) : 0;
 		$project_mode = isset( $args['project_mode'] ) ? sanitize_key( (string) $args['project_mode'] ) : 'all';
 		$order_by     = $this->sanitize_order_by( (string) ( $args['orderby'] ?? 'updated_at' ) );
@@ -55,6 +56,11 @@ final class TaskRepository extends AbstractRepository {
 		if ( $task_group_id > 0 ) {
 			$where[]  = 'task_group_id = %d';
 			$params[] = $task_group_id;
+		}
+
+		if ( $assignee_user_id > 0 ) {
+			$where[]  = 'assignee_user_id = %d';
+			$params[] = $assignee_user_id;
 		}
 
 		list( $access_sql, $access_params ) = $this->access->task_access_where( 'id' );
@@ -213,6 +219,12 @@ final class TaskRepository extends AbstractRepository {
 		$items    = array_map( array( $this, 'map_item' ), $rows ?: array() );
 		$today    = current_datetime()->format( 'Y-m-d' );
 		$week_ago = gmdate( 'Y-m-d H:i:s', strtotime( '-7 days', current_time( 'timestamp', true ) ) );
+		$focus_queue = $this->build_my_work_focus_queue( $items, $today, $week_ago );
+		$focus_summary = array(
+			'attention' => count( $focus_queue['attention'] ),
+			'today'     => count( $focus_queue['today'] ),
+			'upNext'    => count( $focus_queue['upNext'] ),
+		);
 
 		$sections = array(
 			'blocked'          => array(),
@@ -223,7 +235,14 @@ final class TaskRepository extends AbstractRepository {
 			'assignedRecently' => array(),
 		);
 
-		foreach ( $items as $item ) {
+		foreach ( $items as $index => $item ) {
+			$reason = $this->describe_my_work_item( $item, $today, $week_ago );
+			$item['my_work_reason_key']   = $reason['reasonKey'];
+			$item['my_work_reason_label'] = $reason['reasonLabel'];
+			$item['my_work_reason_tone']  = $reason['reasonTone'];
+			$item['my_work_guidance']     = $reason['guidance'];
+			$items[ $index ]              = $item;
+
 			$due_date = ! empty( $item['due_date'] ) ? substr( (string) $item['due_date'], 0, 10 ) : '';
 			$is_blocked = ! empty( $item['blocked'] ) || 'blocked' === ( $item['status'] ?? '' );
 			$is_waiting = 'waiting' === ( $item['status'] ?? '' );
@@ -259,10 +278,17 @@ final class TaskRepository extends AbstractRepository {
 			$sections[ $key ] = array_slice( $section_items, 0, 6 );
 		}
 
+		foreach ( $focus_queue as $key => $focus_items ) {
+			$focus_queue[ $key ] = array_slice( $focus_items, 0, 6 );
+		}
+
 		return array(
+			'items'      => $items,
+			'focusQueue' => $focus_queue,
 			'sections' => $sections,
 			'summary'  => array(
 				'open'             => count( $items ),
+				'attention'        => $focus_summary['attention'],
 				'blocked'          => count( $sections['blocked'] ),
 				'overdue'          => count( $sections['overdue'] ),
 				'dueToday'         => count( $sections['dueToday'] ),
@@ -271,6 +297,211 @@ final class TaskRepository extends AbstractRepository {
 				'assignedRecently' => count( $sections['assignedRecently'] ),
 			),
 		);
+	}
+
+	/**
+	 * Build a prioritized My Work focus queue.
+	 *
+	 * @param array<int, array<string, mixed>> $items Task items.
+	 * @param string                           $today Current local date.
+	 * @param string                           $week_ago Recent assignment threshold.
+	 * @return array<string, array<int, array<string, mixed>>>
+	 */
+	private function build_my_work_focus_queue( array $items, string $today, string $week_ago ): array {
+		$groups = array(
+			'attention' => array(),
+			'today'     => array(),
+			'upNext'    => array(),
+		);
+
+		foreach ( $items as $item ) {
+			$focus = $this->classify_my_work_focus_item( $item, $today, $week_ago );
+
+			if ( empty( $focus['bucket'] ) ) {
+				continue;
+			}
+
+			$item['my_work_reason_key']   = $focus['reasonKey'];
+			$item['my_work_reason_label'] = $focus['reasonLabel'];
+			$item['my_work_reason_tone']  = $focus['reasonTone'];
+			$item['my_work_guidance']     = $focus['guidance'];
+			$item['_my_work_sort_order']  = $focus['sortOrder'];
+
+			$groups[ $focus['bucket'] ][] = $item;
+		}
+
+		foreach ( $groups as $key => $bucket_items ) {
+			usort( $bucket_items, array( $this, 'compare_my_work_focus_items' ) );
+
+			foreach ( $bucket_items as &$bucket_item ) {
+				unset( $bucket_item['_my_work_sort_order'] );
+			}
+
+			unset( $bucket_item );
+			$groups[ $key ] = $bucket_items;
+		}
+
+		return $groups;
+	}
+
+	/**
+	 * Describe a My Work item with a consistent reason label and guidance.
+	 *
+	 * @param array<string, mixed> $item Task item.
+	 * @param string               $today Current local date.
+	 * @param string               $week_ago Recent assignment threshold.
+	 * @return array<string, mixed>
+	 */
+	private function describe_my_work_item( array $item, string $today, string $week_ago ): array {
+		$due_date     = ! empty( $item['due_date'] ) ? substr( (string) $item['due_date'], 0, 10 ) : '';
+		$is_blocked   = ! empty( $item['blocked'] ) || 'blocked' === ( $item['status'] ?? '' );
+		$is_waiting   = 'waiting' === ( $item['status'] ?? '' );
+		$is_overdue   = '' !== $due_date && $due_date < $today;
+		$is_due_today = $due_date === $today;
+		$is_recent    = ! empty( $item['created_at'] ) && (string) $item['created_at'] >= $week_ago;
+
+		if ( $is_overdue && $is_blocked ) {
+			return array(
+				'reasonKey'   => 'overdue-blocked',
+				'reasonLabel' => __( 'Overdue and blocked', 'coordina' ),
+				'reasonTone'  => 'danger',
+				'guidance'    => __( 'Clear the blocker and reset the due plan before it slips further.', 'coordina' ),
+				'sortOrder'   => 0,
+				'bucket'      => 'attention',
+			);
+		}
+
+		if ( $is_overdue ) {
+			return array(
+				'reasonKey'   => 'overdue',
+				'reasonLabel' => __( 'Overdue', 'coordina' ),
+				'reasonTone'  => 'danger',
+				'guidance'    => __( 'Recover the due date or finish the work now.', 'coordina' ),
+				'sortOrder'   => 1,
+				'bucket'      => 'attention',
+			);
+		}
+
+		if ( $is_blocked ) {
+			return array(
+				'reasonKey'   => 'blocked',
+				'reasonLabel' => __( 'Blocked', 'coordina' ),
+				'reasonTone'  => 'warning',
+				'guidance'    => __( 'Resolve the blocker before moving to the rest of the queue.', 'coordina' ),
+				'sortOrder'   => 2,
+				'bucket'      => 'attention',
+			);
+		}
+
+		if ( $is_waiting ) {
+			return array(
+				'reasonKey'   => 'waiting',
+				'reasonLabel' => __( 'Waiting', 'coordina' ),
+				'reasonTone'  => 'neutral',
+				'guidance'    => __( 'Follow up with the blocker owner and move it back into active execution when ready.', 'coordina' ),
+				'sortOrder'   => 6,
+				'bucket'      => '',
+			);
+		}
+
+		if ( $is_due_today ) {
+			return array(
+				'reasonKey'   => 'due-today',
+				'reasonLabel' => __( 'Due today', 'coordina' ),
+				'reasonTone'  => 'warning',
+				'guidance'    => __( 'Finish this today or reset expectations clearly.', 'coordina' ),
+				'sortOrder'   => 3,
+				'bucket'      => 'today',
+			);
+		}
+
+		if ( $is_recent ) {
+			return array(
+				'reasonKey'   => 'assigned-recently',
+				'reasonLabel' => __( 'Assigned recently', 'coordina' ),
+				'reasonTone'  => 'accent',
+				'guidance'    => __( 'Review the scope and decide the next concrete step.', 'coordina' ),
+				'sortOrder'   => 4,
+				'bucket'      => 'upNext',
+			);
+		}
+
+		return array(
+			'reasonKey'   => 'up-next',
+			'reasonLabel' => __( 'Coming next', 'coordina' ),
+			'reasonTone'  => 'neutral',
+			'guidance'    => __( 'Keep this ready after today\'s priority items are handled.', 'coordina' ),
+			'sortOrder'   => 5,
+			'bucket'      => 'upNext',
+		);
+	}
+
+	/**
+	 * Classify a task into the My Work focus queue.
+	 *
+	 * @param array<string, mixed> $item Task item.
+	 * @param string               $today Current local date.
+	 * @param string               $week_ago Recent assignment threshold.
+	 * @return array<string, mixed>
+	 */
+	private function classify_my_work_focus_item( array $item, string $today, string $week_ago ): array {
+		return $this->describe_my_work_item( $item, $today, $week_ago );
+	}
+
+	/**
+	 * Sort My Work focus items by urgency, due date, priority, then recency.
+	 *
+	 * @param array<string, mixed> $left Left item.
+	 * @param array<string, mixed> $right Right item.
+	 * @return int
+	 */
+	private function compare_my_work_focus_items( array $left, array $right ): int {
+		$sort_compare = (int) ( $left['_my_work_sort_order'] ?? 99 ) <=> (int) ( $right['_my_work_sort_order'] ?? 99 );
+
+		if ( 0 !== $sort_compare ) {
+			return $sort_compare;
+		}
+
+		$left_due  = ! empty( $left['due_date'] ) ? substr( (string) $left['due_date'], 0, 10 ) : '';
+		$right_due = ! empty( $right['due_date'] ) ? substr( (string) $right['due_date'], 0, 10 ) : '';
+
+		if ( $left_due && $right_due && $left_due !== $right_due ) {
+			return $left_due <=> $right_due;
+		}
+
+		if ( $left_due !== $right_due ) {
+			return $left_due ? -1 : 1;
+		}
+
+		$priority_compare = $this->my_work_priority_weight( (string) ( $right['priority'] ?? '' ) ) <=> $this->my_work_priority_weight( (string) ( $left['priority'] ?? '' ) );
+
+		if ( 0 !== $priority_compare ) {
+			return $priority_compare;
+		}
+
+		return strcmp( (string) ( $right['updated_at'] ?? '' ), (string) ( $left['updated_at'] ?? '' ) );
+	}
+
+	/**
+	 * Convert workflow priority to a sortable weight.
+	 *
+	 * @param string $priority Priority key.
+	 * @return int
+	 */
+	private function my_work_priority_weight( string $priority ): int {
+		switch ( sanitize_key( $priority ) ) {
+			case 'urgent':
+				return 4;
+			case 'high':
+				return 3;
+			case 'medium':
+			case 'normal':
+				return 2;
+			case 'low':
+				return 1;
+			default:
+				return 0;
+		}
 	}
 
 	/**
@@ -342,6 +573,7 @@ final class TaskRepository extends AbstractRepository {
 		$task = $this->find( $task_id );
 		( new ApprovalRepository() )->sync_for_task( $task );
 		$task = $this->find( $task_id );
+		$this->notify_task_assignment( array(), $task );
 		$this->log_activity( 'task', $task_id, 'task_created', sprintf( __( 'Created task "%s".', 'coordina' ), $clean['title'] ) );
 
 		return $task;
@@ -413,6 +645,7 @@ final class TaskRepository extends AbstractRepository {
 		}
 		( new ApprovalRepository() )->sync_for_task( $task );
 		$task = $this->find( $id );
+		$this->notify_task_assignment( $current, $task );
 		$this->log_update_activity( $id, $current, $task );
 
 		return $task;
@@ -739,6 +972,51 @@ final class TaskRepository extends AbstractRepository {
 		if ( (string) ( $current['checklist_text'] ?? '' ) !== (string) ( $updated['checklist_text'] ?? '' ) ) {
 			$this->log_activity( 'task', $id, 'task_checklist_changed', __( 'Updated the checklist.', 'coordina' ) );
 		}
+	}
+
+	/**
+	 * Create a notification when a task is assigned or reassigned.
+	 *
+	 * @param array<string, mixed> $current Previous task state.
+	 * @param array<string, mixed> $task Updated task state.
+	 * @return void
+	 */
+	private function notify_task_assignment( array $current, array $task ): void {
+		$previous_assignee = (int) ( $current['assignee_user_id'] ?? 0 );
+		$assignee_id       = (int) ( $task['assignee_user_id'] ?? 0 );
+		$reporter_id       = (int) ( $task['reporter_user_id'] ?? 0 );
+
+		if ( $assignee_id <= 0 || $assignee_id === $previous_assignee || $assignee_id === $reporter_id ) {
+			return;
+		}
+
+		$project_label = ! empty( $task['project_label'] ) ? (string) $task['project_label'] : __( 'Standalone', 'coordina' );
+		$due_label     = ! empty( $task['due_date'] ) ? substr( (string) $task['due_date'], 0, 10 ) : '';
+		$title         = 0 === $previous_assignee ? __( 'You were assigned a task', 'coordina' ) : __( 'A task was reassigned to you', 'coordina' );
+		$body          = sprintf( __( '%1$s in %2$s%3$s', 'coordina' ), (string) ( $task['title'] ?? __( 'Task', 'coordina' ) ), $project_label, $due_label ? sprintf( __( ' · Due %s', 'coordina' ), $due_label ) : '' );
+		$url           = $this->task_admin_url( $task );
+
+		( new NotificationRepository() )->create( $assignee_id, 'task-assigned', $title, $body, $url );
+	}
+
+	/**
+	 * Build an admin URL for a task.
+	 *
+	 * @param array<string, mixed> $task Task data.
+	 * @return string
+	 */
+	private function task_admin_url( array $task ): string {
+		$args = array(
+			'page'    => 'coordina-task',
+			'task_id' => (int) ( $task['id'] ?? 0 ),
+		);
+
+		if ( (int) ( $task['project_id'] ?? 0 ) > 0 ) {
+			$args['project_id']  = (int) $task['project_id'];
+			$args['project_tab'] = 'work';
+		}
+
+		return add_query_arg( $args, admin_url( 'admin.php' ) );
 	}
 
 	/**

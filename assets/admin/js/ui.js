@@ -5,7 +5,7 @@ if (!app.root || !app.state) {
 	return;
 }
 
-const { state, modules, root, escapeHtml, __, nice, dateLabel, dateTimeInputValue, isDateKey, isCheckedValue, currentModule, hasProjectWorkspace, hasTaskPage, hasMilestonePage, hasRiskIssuePage, noticesHtml, api, modulePage, workspacePage, taskPage, milestonePage, riskIssuePage, myWorkPage, dashboardPage, calendarPage, workloadPage, settingsPage, notificationList, collaborationPage, fileList, discussionTimeline, collaborationActionButtons, canAccessPage } = app;
+const { state, modules, root, escapeHtml, __, nice, dateLabel, dateTimeInputValue, isDateKey, isCheckedValue, currentModule, hasProjectWorkspace, hasTaskPage, hasMilestonePage, hasRiskIssuePage, noticesHtml, api, modulePage, workspacePage, taskPage, milestonePage, riskIssuePage, myWorkPage, dashboardPage, calendarPage, workloadPage, settingsPage, notificationList, collaborationPage, fileList, discussionTimeline, collaborationActionButtons, canAccessPage, getPageMeta } = app;
 
 function approvalSourceRoute(item) {
 	const objectType = String(item && item.object_type ? item.object_type : '');
@@ -622,6 +622,7 @@ function drawerSummary(module, item, sourceButton) {
 }
 
 function render() {
+	const shellHeader = shellHeaderHtml();
 	const body = state.loading
 		? `<div class="coordina-loading">${escapeHtml(__('Loading Coordina shell...', 'coordina'))}</div>`
 		: hasProjectWorkspace()
@@ -647,7 +648,78 @@ function render() {
 									: currentModule()
 										? modulePage()
 										: `<section class="coordina-card coordina-card--notice"><h2>${escapeHtml(__('Module shell ready', 'coordina'))}</h2><p>${escapeHtml(__('This screen keeps the shared patterns while deeper implementation is phased in.', 'coordina'))}</p></section>`;
-	root.innerHTML = `${noticesHtml()}${body}${drawerHtml()}${modalHtml()}`;
+	root.innerHTML = `<div class="coordina-shell">${noticesHtml()}${shellHeader}${body}</div>${drawerHtml()}${modalHtml()}`;
+}
+
+function shellHeaderHtml() {
+	const meta = currentPageHeaderMeta();
+	const items = state.notifications && Array.isArray(state.notifications.items) ? state.notifications.items : [];
+	const unreadCount = items.filter((item) => !item.is_read).length;
+	const userLabel = state.shell && state.shell.user && state.shell.user.label ? state.shell.user.label : __('Team member', 'coordina');
+	return `<section class="coordina-shell__header coordina-shell__header--global"><div><p class="coordina-shell__eyebrow">${escapeHtml(meta.eyebrow)}</p><h2>${escapeHtml(meta.title)}</h2><p>${escapeHtml(meta.description)}</p></div><div class="coordina-shell__meta"><span class="coordina-status-badge">${escapeHtml(userLabel)}</span><button class="coordina-inbox-trigger ${unreadCount > 0 ? 'has-unread' : ''}" type="button" data-action="open-notifications" aria-label="${escapeHtml(__('Open inbox', 'coordina'))}"><span class="coordina-inbox-trigger__label">${escapeHtml(__('Inbox', 'coordina'))}</span><span class="coordina-inbox-trigger__count">${unreadCount}</span></button></div></section>`;
+}
+
+function currentPageHeaderMeta() {
+	if (hasProjectWorkspace() && state.workspace && state.workspace.project) {
+		return {
+			eyebrow: __('Project workspace', 'coordina'),
+			title: state.workspace.project.title || __('Project workspace', 'coordina'),
+			description: state.workspace.project.description || __('Track progress, decisions, and delivery details in one project workspace.', 'coordina'),
+		};
+	}
+
+	if (hasTaskPage() && state.taskDetail && state.taskDetail.task) {
+		return {
+			eyebrow: __('Task', 'coordina'),
+			title: state.taskDetail.task.title || __('Task', 'coordina'),
+			description: state.taskDetail.task.project_label || __('Review the task, context, and next step.', 'coordina'),
+		};
+	}
+
+	if (hasMilestonePage() && state.milestoneDetail && state.milestoneDetail.milestone) {
+		return {
+			eyebrow: __('Milestone', 'coordina'),
+			title: state.milestoneDetail.milestone.title || __('Milestone', 'coordina'),
+			description: state.milestoneDetail.milestone.project_label || __('Review the checkpoint, owner, and due signal.', 'coordina'),
+		};
+	}
+
+	if (hasRiskIssuePage() && state.riskIssueDetail && state.riskIssueDetail.riskIssue) {
+		return {
+			eyebrow: __('Risk or issue', 'coordina'),
+			title: state.riskIssueDetail.riskIssue.title || __('Risk or issue', 'coordina'),
+			description: state.riskIssueDetail.riskIssue.project_label || __('Review the exposure, owner, and mitigation path.', 'coordina'),
+		};
+	}
+
+	const module = currentModule();
+	if (module) {
+		return {
+			eyebrow: __('Coordina', 'coordina'),
+			title: module.title,
+			description: __('Manage the current work surface and keep the shared inbox visible.', 'coordina'),
+		};
+	}
+
+	const pageMeta = getPageMeta(state.page) || {};
+	return {
+		eyebrow: __('Coordina', 'coordina'),
+		title: pageMeta.label || nice(String(state.page || 'coordina').replace(/^coordina-/, '')),
+		description: pageMeta.description || __('Stay on top of work, approvals, and updates from one shell.', 'coordina'),
+	};
+}
+
+function inboxDrawerBody() {
+	const prefs = state.notifications && state.notifications.preferences ? state.notifications.preferences : { digest: false, project_updates: true, approval_alerts: true };
+	const items = state.notifications && Array.isArray(state.notifications.items) ? state.notifications.items : [];
+	const unreadItems = items.filter((item) => !item.is_read);
+	const visibleItems = state.notificationFilter === 'all' ? items : unreadItems;
+	const unreadCount = unreadItems.length;
+	return `<section class="coordina-inbox"><div class="coordina-drawer-summary coordina-inbox__summary"><div class="coordina-summary-row"><span class="coordina-status-badge ${unreadCount > 0 ? 'status-under-review' : ''}">${escapeHtml(unreadCount ? sprintfUnread(unreadCount) : __('All caught up', 'coordina'))}</span><span class="coordina-status-badge">${escapeHtml(`${items.length} ${__('recent', 'coordina')}`)}</span></div><p>${escapeHtml(__('Use the inbox for assignments and approvals that need action. Keep the Queue focused on execution.', 'coordina'))}</p><div class="coordina-inline-actions"><button class="coordina-tab ${state.notificationFilter === 'unread' ? 'is-active' : ''}" type="button" data-action="switch-notification-filter" data-filter="unread">${escapeHtml(__('Unread', 'coordina'))}</button><button class="coordina-tab ${state.notificationFilter === 'all' ? 'is-active' : ''}" type="button" data-action="switch-notification-filter" data-filter="all">${escapeHtml(__('All', 'coordina'))}</button>${unreadCount > 0 ? `<button class="button" type="button" data-action="mark-all-notifications-read">${escapeHtml(__('Mark all read', 'coordina'))}</button>` : ''}</div></div><div class="coordina-drawer-section">${notificationList(visibleItems, false, { showOpenAction: true })}</div><div class="coordina-drawer-section"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Notification preferences', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Keep the inbox high signal by limiting which updates create notices.', 'coordina'))}</p></div></div><form class="coordina-form" data-action="save-prefs"><label class="coordina-checkbox"><input type="checkbox" name="digest" value="1" ${prefs.digest ? 'checked' : ''} /><span>${escapeHtml(__('Digest emails scaffold', 'coordina'))}</span></label><label class="coordina-checkbox"><input type="checkbox" name="projectUpdates" value="1" ${prefs.project_updates ? 'checked' : ''} /><span>${escapeHtml(__('Project updates', 'coordina'))}</span></label><label class="coordina-checkbox"><input type="checkbox" name="approvalAlerts" value="1" ${prefs.approval_alerts ? 'checked' : ''} /><span>${escapeHtml(__('Approval alerts', 'coordina'))}</span></label><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save preferences', 'coordina'))}</button></div></form></div></section>`;
+}
+
+function sprintfUnread(count) {
+	return count === 1 ? __('1 unread item', 'coordina') : `${count} ${__('unread items', 'coordina')}`;
 }
 
 function backToProjects() {
@@ -775,8 +847,8 @@ async function editProject(id) {
 }
 
 function openNotifications() {
-	const prefs = state.notifications && state.notifications.preferences ? state.notifications.preferences : { digest: false, project_updates: true, approval_alerts: true };
-	state.modal = { title: __('Notifications', 'coordina'), body: `${notificationList(state.notifications && state.notifications.items ? state.notifications.items : [], false)}<form class="coordina-form" data-action="save-prefs"><label class="coordina-checkbox"><input type="checkbox" name="digest" value="1" ${prefs.digest ? 'checked' : ''} /><span>${escapeHtml(__('Digest emails scaffold', 'coordina'))}</span></label><label class="coordina-checkbox"><input type="checkbox" name="projectUpdates" value="1" ${prefs.project_updates ? 'checked' : ''} /><span>${escapeHtml(__('Project updates', 'coordina'))}</span></label><label class="coordina-checkbox"><input type="checkbox" name="approvalAlerts" value="1" ${prefs.approval_alerts ? 'checked' : ''} /><span>${escapeHtml(__('Approval alerts', 'coordina'))}</span></label><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save preferences', 'coordina'))}</button></div></form>` };
+	state.drawer = { title: __('Inbox', 'coordina'), subtitle: __('Assignments, approvals, and other notices that need attention.', 'coordina'), body: inboxDrawerBody() };
+	state.modal = null;
 	render();
 }
 

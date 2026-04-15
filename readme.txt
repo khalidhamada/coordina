@@ -4,7 +4,7 @@ Tags: project management, task management, workflow, operations, approvals, requ
 Requires at least: 6.6
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: coordina
@@ -54,6 +54,14 @@ Yes. Visibility and edit rights are evaluated through separate settings-backed p
 
 == Changelog ==
 
+= 1.2.0 =
+
+* My Work expanded into Queue, Board, and Tasks views for daily execution
+* Global inbox added to the shared shell with unread count and drawer-based notification handling
+* Task assignment and approval-request notifications now create actionable inbox items
+* My Work task-card controls added to Settings for guidance text and quick actions
+* Queue mini calendar improved and Calendar exposed more broadly to Coordina users
+
 = 1.1.1 =
 
 * Access control tightening with separate view/edit/delete authorization
@@ -97,6 +105,10 @@ Yes. Visibility and edit rights are evaluated through separate settings-backed p
 * Task groups and task checklists
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+
+My Work is now a fuller daily workspace with Queue, Board, Tasks, and a global inbox. Direct upgrade available with no database changes.
 
 = 1.1.1 =
 

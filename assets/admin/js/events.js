@@ -7,7 +7,7 @@ if (!app.root || !app.state || app.eventsBound) {
 
 app.eventsBound = true;
 
-const { root, state, modules, currentModule, openCreate, openRecord, openProjectWorkspace, openTaskPage, openMilestonePage, openRiskIssuePage, openRoute, editProject, backToProjects, render, saveStoredFilters, todayKey, loadCalendar, loadWorkload, weekStartKey, loadCollection, saveFilters, api, notify, loadNotifications, openNotifications, loadMyWork, hasProjectWorkspace, hasTaskPage, hasMilestonePage, hasRiskIssuePage, loadWorkspace, loadTaskDetail, loadMilestoneDetail, loadRiskIssueDetail, loadViews, loadCollaboration, loadSettings, boot, shiftDate, __, escapeHtml, nice, canAccessPage, checklistForm, checklistItemForm } = app;
+const { root, state, modules, currentModule, openCreate, openRecord, openProjectWorkspace, openTaskPage, openMilestonePage, openRiskIssuePage, openRoute, editProject, backToProjects, render, saveStoredFilters, todayKey, loadCalendar, loadWorkload, weekStartKey, loadCollection, saveFilters, api, notify, loadNotifications, openNotifications, loadMyWork, loadMyWorkTasks, defaultMyWorkTaskFilters, hasProjectWorkspace, hasTaskPage, hasMilestonePage, hasRiskIssuePage, loadWorkspace, loadTaskDetail, loadMilestoneDetail, loadRiskIssueDetail, loadViews, loadCollaboration, loadSettings, boot, shiftDate, __, escapeHtml, nice, canAccessPage, checklistForm, checklistItemForm } = app;
 
 function assignPath(target, path, value) {
 	const parts = String(path || '').split('.').filter(Boolean);
@@ -275,6 +275,36 @@ root.addEventListener('click', async (event) => {
 		}
 		if (button.dataset.action === 'switch-project-tab') { openProjectWorkspace(state.projectContext.id, button.dataset.tab); }
 		if (button.dataset.action === 'switch-work-view') { state.workspaceView = button.dataset.view || 'list'; render(); }
+		if (button.dataset.action === 'switch-my-work-view') {
+			state.myWorkView = ['board', 'tasks'].includes(button.dataset.view) ? button.dataset.view : 'queue';
+			saveStoredFilters('my-work-ui', { view: state.myWorkView });
+			if (state.myWorkView === 'tasks' && !state.myWorkTasksCollection) {
+				state.myWorkTasksFilters = state.myWorkTasksFilters || defaultMyWorkTaskFilters();
+				await loadMyWorkTasks().catch(() => null);
+			}
+			render();
+		}
+		if (button.dataset.action === 'apply-my-work-task-filters') {
+			state.myWorkTasksFilters = {
+				search: root.querySelector('[name="my-work-task-search"]') ? root.querySelector('[name="my-work-task-search"]').value : '',
+				status: root.querySelector('[name="my-work-task-status"]') ? root.querySelector('[name="my-work-task-status"]').value : '',
+				project_mode: root.querySelector('[name="my-work-task-project-mode"]') ? root.querySelector('[name="my-work-task-project-mode"]').value : 'all',
+				project_id: root.querySelector('[name="my-work-task-project"]') ? root.querySelector('[name="my-work-task-project"]').value : '',
+				orderby: root.querySelector('[name="my-work-task-orderby"]') ? root.querySelector('[name="my-work-task-orderby"]').value : 'updated_at',
+				order: root.querySelector('[name="my-work-task-order"]') ? root.querySelector('[name="my-work-task-order"]').value : 'desc',
+				per_page: state.myWorkTasksFilters && state.myWorkTasksFilters.per_page ? state.myWorkTasksFilters.per_page : 12,
+				page: 1,
+			};
+			saveStoredFilters('my-work-tasks', state.myWorkTasksFilters);
+			await loadMyWorkTasks();
+			render();
+		}
+		if (button.dataset.action === 'page-my-work-tasks') {
+			state.myWorkTasksFilters = Object.assign({}, defaultMyWorkTaskFilters(), state.myWorkTasksFilters || {}, { page: Math.max(1, Number(button.dataset.page || 1)) });
+			saveStoredFilters('my-work-tasks', state.myWorkTasksFilters);
+			await loadMyWorkTasks();
+			render();
+		}
 		if (button.dataset.action === 'close-modal') { state.modal = null; render(); }
 		if (button.dataset.action === 'close-drawer') { state.drawer = null; render(); }
 		if (button.dataset.action === 'toggle-all') { state.selection = button.checked ? ((state.collection && state.collection.items ? state.collection.items : []).map((item) => item.id)) : []; render(); }
@@ -341,6 +371,11 @@ root.addEventListener('click', async (event) => {
 		if (button.dataset.action === 'save-view' && currentModule()) { state.modal = { title: __('Save current view', 'coordina'), body: `<form class="coordina-form" data-action="save-view-form"><label><span>${escapeHtml(__('View name', 'coordina'))}</span><input type="text" name="view_name" required /></label><label class="coordina-checkbox"><input type="checkbox" name="is_default" value="1" /><span>${escapeHtml(__('Make default', 'coordina'))}</span></label><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save view', 'coordina'))}</button></div></form>` }; render(); }
 		if (button.dataset.action === 'open-convert') { state.modal = { title: __('Convert request', 'coordina'), body: `<form class="coordina-form" data-action="convert-form" data-id="${button.dataset.id}"><label><span>${escapeHtml(__('Convert to', 'coordina'))}</span><select name="targetType"><option value="project">${escapeHtml(__('Project', 'coordina'))}</option><option value="task">${escapeHtml(__('Task', 'coordina'))}</option></select></label><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Convert now', 'coordina'))}</button></div></form>` }; render(); }
 		if (button.dataset.action === 'open-notifications') { if (!state.notifications) { await loadNotifications(); } openNotifications(); }
+		if (button.dataset.action === 'switch-notification-filter') {
+			state.notificationFilter = button.dataset.filter === 'all' ? 'all' : 'unread';
+			saveStoredFilters('notifications-ui', { filter: state.notificationFilter });
+			openNotifications();
+		}
 		if (button.dataset.action === 'switch-settings-tab') { state.settingsTab = button.dataset.tab || 'defaults'; render(); }
 		if (button.dataset.action === 'change-activity-page') {
 			const page = Math.max(1, Number(button.dataset.page || 1));
@@ -353,8 +388,19 @@ root.addEventListener('click', async (event) => {
 			render();
 		}
 		if (button.dataset.action === 'submit-settings') { const form = root.querySelector('form[data-action="settings-form"]'); if (form) { form.requestSubmit(); } }
-		if (button.dataset.action === 'toggle-notification') { await api(`/notifications/${button.dataset.id}`, { method: 'POST', body: { isRead: button.dataset.read === '1' } }); await loadNotifications(); if (state.page === 'coordina-my-work') { await loadMyWork(); } render(); }
-		if (button.dataset.action === 'quick-status') { const task = await api(`/tasks/${button.dataset.id}`); await api(`/tasks/${button.dataset.id}`, { method: 'POST', body: Object.assign({}, task, { status: button.dataset.status }) }); await loadMyWork(); if (hasTaskPage() && Number(state.taskContext.id || 0) === Number(button.dataset.id || 0)) { await loadTaskDetail().catch(() => null); } if (state.page === 'coordina-calendar') { await loadCalendar().catch(() => null); } if (state.page === 'coordina-workload') { await loadWorkload().catch(() => null); } notify('success', __('Task updated.', 'coordina')); render(); }
+		if (button.dataset.action === 'toggle-notification') {
+			await api(`/notifications/${button.dataset.id}`, { method: 'POST', body: { isRead: button.dataset.read === '1' } });
+			await loadNotifications();
+			if (state.page === 'coordina-my-work') { await loadMyWork(); }
+			if (state.drawer && state.drawer.title === __('Inbox', 'coordina')) {
+				openNotifications();
+			} else {
+				render();
+			}
+		}
+		if (button.dataset.action === 'mark-all-notifications-read') { await api('/notifications/mark-all-read', { method: 'POST', body: {} }); await loadNotifications(); if (state.page === 'coordina-my-work') { await loadMyWork(); } openNotifications(); }
+		if (button.dataset.action === 'open-notification-link') { await api(`/notifications/${button.dataset.id}`, { method: 'POST', body: { isRead: true } }); window.location.href = button.dataset.url || window.location.href; }
+		if (button.dataset.action === 'quick-status') { const task = await api(`/tasks/${button.dataset.id}`); await api(`/tasks/${button.dataset.id}`, { method: 'POST', body: Object.assign({}, task, { status: button.dataset.status }) }); await loadMyWork(); if (state.page === 'coordina-my-work') { await loadMyWorkTasks().catch(() => null); } if (hasTaskPage() && Number(state.taskContext.id || 0) === Number(button.dataset.id || 0)) { await loadTaskDetail().catch(() => null); } if (state.page === 'coordina-calendar') { await loadCalendar().catch(() => null); } if (state.page === 'coordina-workload') { await loadWorkload().catch(() => null); } notify('success', __('Task updated.', 'coordina')); render(); }
 		if (button.dataset.action === 'seed-demo-projects') {
 			const type = button.dataset.type || 'all';
 			button.disabled = true;
@@ -516,7 +562,7 @@ root.addEventListener('submit', async (event) => {
 		}
 		if (form.dataset.action === 'save-view-form' && currentModule()) { await api('/saved-views', { method: 'POST', body: { module: currentModule().key, view_name: values.view_name, is_default: !!values.is_default, view_config: state.filters } }); await loadViews(); state.modal = null; notify('success', __('View saved.', 'coordina')); render(); }
 		if (form.dataset.action === 'convert-form') { await api(`/requests/${form.dataset.id}/convert`, { method: 'POST', body: values }); await loadCollection(); state.modal = null; notify('success', __('Request converted.', 'coordina')); render(); }
-		if (form.dataset.action === 'save-prefs') { await api('/notification-preferences', { method: 'POST', body: values }); await loadNotifications(); state.modal = null; notify('success', __('Notification preferences updated.', 'coordina')); render(); }
+		if (form.dataset.action === 'save-prefs') { await api('/notification-preferences', { method: 'POST', body: values }); await loadNotifications(); state.modal = null; if (state.drawer && state.drawer.title === __('Inbox', 'coordina')) { openNotifications(); } notify('success', __('Notification preferences updated.', 'coordina')); render(); }
 		if (form.dataset.action === 'project-settings-form') { await api(`/projects/${form.dataset.projectId}/settings`, { method: 'POST', body: values }); await loadWorkspace(); notify('success', __('Project settings updated.', 'coordina')); render(); }
 		if (form.dataset.action === 'task-group-form') { await api(`/projects/${form.dataset.projectId}/task-groups`, { method: 'POST', body: values }); await loadWorkspace(); state.modal = null; notify('success', __('Task group added.', 'coordina')); render(); }
 		if (form.dataset.action === 'settings-form') { await api('/settings', { method: 'POST', body: collectSettingsPayload(form) }); await loadSettings(); state.shell = await api('/admin-shell'); notify('success', __('Settings updated.', 'coordina')); render(); }

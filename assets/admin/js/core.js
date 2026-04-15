@@ -25,12 +25,16 @@ const state = {
 	filters: null,
 	workspace: null,
 	workspaceView: 'list',
+	myWorkView: 'queue',
+	myWorkTasksCollection: null,
+	myWorkTasksFilters: null,
 	dashboard: null,
 	calendar: null,
 	workload: null,
 	collaboration: null,
 	settings: null,
 	settingsTab: 'defaults',
+	notificationFilter: 'unread',
 	calendarFilters: null,
 	workloadFilters: null,
 	collaborationFilters: null,
@@ -210,6 +214,10 @@ function defaultCollaborationFilters() {
 	return { search: '', object_type: '', project_id: '', recency: '', per_page: 10, order: 'desc' };
 }
 
+function defaultMyWorkTaskFilters() {
+	return { search: '', status: '', project_mode: 'all', project_id: '', page: 1, per_page: 12, orderby: 'updated_at', order: 'desc' };
+}
+
 async function api(path, options) {
 	const response = await window.fetch(apiBase + path, {
 		credentials: 'same-origin',
@@ -350,9 +358,16 @@ async function loadCollaboration() {
 	state.collaboration = { files, discussions };
 }
 
+async function loadMyWorkTasks() {
+	const filters = Object.assign({}, defaultMyWorkTaskFilters(), state.myWorkTasksFilters || {});
+	filters.assignee_user_id = state.shell && state.shell.user ? state.shell.user.id : 0;
+	state.myWorkTasksCollection = await api(`/tasks?${new URLSearchParams(filters)}`);
+}
+
 async function boot() {
 	try {
 		state.shell = await api('/admin-shell');
+		state.notificationFilter = getStoredFilters('notifications-ui', { filter: 'unread' }).filter === 'all' ? 'all' : 'unread';
 		if (hasProjectWorkspace()) {
 			await loadWorkspace();
 		} else if (hasTaskPage()) {
@@ -364,7 +379,10 @@ async function boot() {
 		} else if (state.page === 'coordina-dashboard') {
 			await loadDashboard();
 		} else if (state.page === 'coordina-my-work') {
-			await Promise.all([loadMyWork(), loadNotifications()]);
+			const savedMyWorkView = getStoredFilters('my-work-ui', { view: 'queue' }).view;
+			state.myWorkView = ['board', 'tasks'].includes(savedMyWorkView) ? savedMyWorkView : 'queue';
+			state.myWorkTasksFilters = getStoredFilters('my-work-tasks', defaultMyWorkTaskFilters());
+			await Promise.all([loadMyWork(), loadNotifications(), loadMyWorkTasks()]);
 		} else if (state.page === 'coordina-calendar') {
 			state.calendarFilters = getStoredFilters('calendar', defaultCalendarFilters());
 			await loadCalendar();
@@ -379,6 +397,12 @@ async function boot() {
 		} else if (currentModule()) {
 			state.filters = getFilters(currentModule().key);
 			await Promise.all([loadCollection(), loadViews()]);
+		}
+
+		if (!state.notifications) {
+			await loadNotifications().catch(() => {
+				state.notifications = { items: [], preferences: { digest: false, project_updates: true, approval_alerts: true } };
+			});
 		}
 	} catch (error) {
 		notify('error', error.message);
@@ -419,6 +443,7 @@ Object.assign(app, {
 	defaultCalendarFilters,
 	defaultWorkloadFilters,
 	defaultCollaborationFilters,
+	defaultMyWorkTaskFilters,
 	api,
 	notify,
 	loadCollection,
@@ -434,6 +459,7 @@ Object.assign(app, {
 	loadWorkload,
 	loadSettings,
 	loadCollaboration,
+	loadMyWorkTasks,
 	boot,
 	render: app.render || function () {},
 });

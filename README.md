@@ -165,18 +165,17 @@ Coordina includes a modern, cohesive design system:
 ### Q: Does Coordina have email notifications?
 **A:** Notifications are managed through WordPress. Email delivery uses your site's email configuration. You can extend with custom notification hooks.
 
-### Q: What's new in version 1.1.1?
-**A:** Version 1.1.1 includes:
-- **Access Control Tightening** – Separate authorization for view, edit, and delete; context-aware collaboration permissions; read-only UI when appropriate
-- **Modern Design System** – Refined colors, shadows, gradients, and transitions; Unicode icon system; improved visual hierarchy
-- **Detail Pages** – Tasks, milestones, and risks/issues now open into dedicated full pages for deeper context
-- **Improved Activity** – Timeline grouped by date; lightweight activity logging for better project history
+### Q: What's new in version 1.2.0?
+**A:** Version 1.2.0 includes:
+- **Richer My Work** – Queue, Board, and Tasks views now work together as a clearer daily execution hub
+- **Global Inbox** – A shared top-right inbox with unread count, drawer view, mark-read actions, and direct notification links
+- **Actionable Notifications** – Task assignments and approval requests now create useful inbox items by default until marked read
+- **My Work Controls** – Settings can now turn card guidance text and quick action buttons on or off globally
+- **Planning Refinements** – Queue mini calendar highlighting is stronger and Calendar is available more broadly to Coordina users
 
 ## Support & Documentation
 
 - **Documentation:** See [RELEASE_NOTES.md](RELEASE_NOTES.md) for feature details
-- **CHANGELOG:** [docs/memory/CHANGELOG.md](docs/memory/CHANGELOG.md) tracks durable changes
-- **Quick Reference:** [docs/memory/PROJECT_PROGRESS.md](docs/memory/PROJECT_PROGRESS.md) outlines current capabilities
 
 ## Plugin Details
 
@@ -184,7 +183,7 @@ Coordina includes a modern, cohesive design system:
 - **Requires at least:** WordPress 6.6
 - **Tested up to:** WordPress 6.6
 - **Requires PHP:** 7.4 or higher
-- **Stable tag:** 1.1.1
+- **Stable tag:** 1.2.0
 - **License:** GPLv2 or later
 - **Text Domain:** `coordina`
 

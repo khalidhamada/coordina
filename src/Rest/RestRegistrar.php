@@ -496,6 +496,18 @@ final class RestRegistrar {
 
 		register_rest_route(
 			self::NAMESPACE,
+			'/notifications/mark-all-read',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'mark_all_notifications_read' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
 			'/settings',
 			array(
 				array(
@@ -726,6 +738,8 @@ final class RestRegistrar {
 				'updateTypes' => $dropdowns['updateTypes'],
 				'taskGroupLabel' => $settings['general']['task_group_label'] ?? 'stage',
 				'activityPageSize' => (int) ( $settings['general']['activity_page_size'] ?? 10 ),
+				'myWorkCardGuidanceEnabled' => ! empty( $settings['general']['my_work_card_guidance_enabled'] ),
+				'myWorkCardActionsEnabled' => ! empty( $settings['general']['my_work_card_actions_enabled'] ),
 				'objectTypes'  => array( 'risk', 'issue' ),
 				'approvalObjectTypes' => array( 'project', 'task', 'request', 'risk', 'issue', 'milestone' ),
 				'contextObjectTypes'  => array( 'project', 'task', 'request', 'risk', 'issue', 'milestone', 'approval' ),
@@ -1489,6 +1503,8 @@ final class RestRegistrar {
 
 		return $this->respond(
 			array(
+				'items'            => $my_work['items'] ?? array(),
+				'focusQueue'       => $my_work['focusQueue'] ?? array(),
 				'sections'         => $my_work['sections'] ?? array(),
 				'summary'          => array_merge(
 					$my_work['summary'] ?? array(),
@@ -1588,6 +1604,17 @@ final class RestRegistrar {
 		update_user_meta( $user_id, 'coordina_notify_approval_alerts', rest_sanitize_boolean( $request->get_param( 'approvalAlerts' ) ) ? '1' : '0' );
 
 		return $this->respond( $this->get_notification_preferences( $user_id ) );
+	}
+
+	public function mark_all_notifications_read( WP_REST_Request $request ): WP_REST_Response {
+		unset( $request );
+		$user_id = get_current_user_id();
+
+		return $this->respond(
+			array(
+				'updated' => $this->notifications->mark_all_read( $user_id ),
+			)
+		);
 	}
 
 	public function get_settings( WP_REST_Request $request ): WP_REST_Response {
