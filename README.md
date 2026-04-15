@@ -165,13 +165,12 @@ Coordina includes a modern, cohesive design system:
 ### Q: Does Coordina have email notifications?
 **A:** Notifications are managed through WordPress. Email delivery uses your site's email configuration. You can extend with custom notification hooks.
 
-### Q: What's new in version 1.2.0?
-**A:** Version 1.2.0 includes:
-- **Richer My Work** – Queue, Board, and Tasks views now work together as a clearer daily execution hub
-- **Global Inbox** – A shared top-right inbox with unread count, drawer view, mark-read actions, and direct notification links
-- **Actionable Notifications** – Task assignments and approval requests now create useful inbox items by default until marked read
-- **My Work Controls** – Settings can now turn card guidance text and quick action buttons on or off globally
-- **Planning Refinements** – Queue mini calendar highlighting is stronger and Calendar is available more broadly to Coordina users
+### Q: What's new in version 1.2.1?
+**A:** Version 1.2.1 includes:
+- **Modular Admin Pages** – Large admin page rendering code is now split into smaller settings and surface modules for safer maintenance
+- **Modular Event Handling** – Admin event logic is now split into focused shared, click, and form modules instead of one oversized dispatcher
+- **Runtime Stability Fixes** – Split-module binding issues that could break Inbox, Settings, Dashboard, and My Work rendering were fixed
+- **No Schema Changes** – This is a direct patch upgrade from 1.2.0 with no database migration required
 
 ## Support & Documentation
 
@@ -183,7 +182,7 @@ Coordina includes a modern, cohesive design system:
 - **Requires at least:** WordPress 6.6
 - **Tested up to:** WordPress 6.6
 - **Requires PHP:** 7.4 or higher
-- **Stable tag:** 1.2.0
+- **Stable tag:** 1.2.1
 - **License:** GPLv2 or later
 - **Text Domain:** `coordina`
 

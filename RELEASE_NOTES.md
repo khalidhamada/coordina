@@ -4,6 +4,19 @@ Quick links to detailed release information for each version. For getting starte
 
 ## Current Release
 
+### [v1.2.1 — Modular Admin Runtime Stabilization](releases/v1.2.1/RELEASE_NOTES.md)
+**April 15, 2026**
+
+Coordina 1.2.1 is a patch release focused on admin maintainability and runtime stability after the admin JavaScript split.
+
+**Highlights:** Split page modules • Split event modules • Runtime binding fix • No database changes
+
+[View full details →](releases/v1.2.1/RELEASE_NOTES.md)
+
+---
+
+## Previous Releases
+
 ### [v1.2.0 — Daily Workspace & Global Inbox](releases/v1.2.0/RELEASE_NOTES.md)
 **April 15, 2026**
 
@@ -14,8 +27,6 @@ My Work now behaves like a fuller personal workspace with Queue, Board, and Task
 [View full details →](releases/v1.2.0/RELEASE_NOTES.md)
 
 ---
-
-## Previous Releases
 
 ### [v1.1.1 — Access Control Tightening & Design Refinement](releases/v1.1.1/RELEASE_NOTES.md)
 **April 12, 2026**
@@ -53,6 +64,7 @@ Complete foundation: My Work, Dashboard, Project Workspaces (9 tabs), approvals,
 ## Upgrade Path
 
 All upgrades are direct and backward-compatible:
+- **v1.2.0 → v1.2.1**: No database changes
 - **v1.1.1 → v1.2.0**: No database changes
 - **v1.0.0 → v1.1.0**: No database changes
 - **v1.1.0 → v1.1.1**: No database changes
