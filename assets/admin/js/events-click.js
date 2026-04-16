@@ -5,6 +5,31 @@ if (!app.root || !app.state) {
 	return;
 }
 
+function readSettingField(root, path, fallback) {
+	const field = root.querySelector(`[data-setting-path="${path}"]`);
+	return field ? field.value : fallback;
+}
+
+function slugifyThemeLabel(label) {
+	return String(label || '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.slice(0, 48);
+}
+
+function readAppearanceTheme(root, state) {
+	const appearance = (state.settings && state.settings.appearance) || {};
+	return {
+		color_source: readSettingField(root, 'appearance.color_source', appearance.color_source || 'custom'),
+		primary_color: readSettingField(root, 'appearance.primary_color', appearance.primary_color || 'cobalt'),
+		accent_color: readSettingField(root, 'appearance.accent_color', appearance.accent_color || 'amber'),
+		theme_mode: readSettingField(root, 'appearance.theme_mode', appearance.theme_mode || 'auto'),
+		primary_custom_color: readSettingField(root, 'appearance.primary_custom_color', appearance.primary_custom_color || '#2563eb'),
+		accent_custom_color: readSettingField(root, 'appearance.accent_custom_color', appearance.accent_custom_color || '#f59e0b'),
+	};
+}
+
 app.handleAdminClickAction = async function (button) {
 	const { root, state, modules, currentModule, openCreate, openRecord, openProjectWorkspace, openTaskPage, openMilestonePage, openRiskIssuePage, openRoute, editProject, backToProjects, render, saveStoredFilters, todayKey, loadCalendar, loadWorkload, weekStartKey, loadCollection, saveFilters, api, notify, loadNotifications, openNotifications, loadMyWork, loadMyWorkTasks, defaultMyWorkTaskFilters, hasTaskPage, loadTaskDetail, loadViews, loadCollaboration, __, escapeHtml, nice, checklistForm, checklistItemForm, refreshChecklistViews, deletePrompt, refreshAfterDelete, syncChecklistEditor, checklistEditorRowHtml, updateChecklistRemoveButtons } = app;
 
@@ -237,7 +262,81 @@ app.handleAdminClickAction = async function (button) {
 		saveStoredFilters('notifications-ui', { filter: state.notificationFilter });
 		openNotifications();
 	}
-	if (button.dataset.action === 'switch-settings-tab') { state.settingsTab = button.dataset.tab || 'defaults'; render(); }
+	if (button.dataset.action === 'save-appearance-theme') {
+		const labelField = root.querySelector('[name="appearance-theme-label"]');
+		const label = labelField ? labelField.value.trim() : '';
+		if (!label) {
+			notify('error', __('Enter a theme name before saving.', 'coordina'));
+			return;
+		}
+		state.settings = state.settings || {};
+		state.settings.appearance = state.settings.appearance || {};
+		const savedThemes = Array.isArray(state.settings.appearance.saved_themes) ? state.settings.appearance.saved_themes.slice() : [];
+		const appearanceTheme = readAppearanceTheme(root, state);
+		const lowerLabel = label.toLowerCase();
+		let themeKey = state.settingsThemeSelectedKey && savedThemes.some((theme) => theme.key === state.settingsThemeSelectedKey) ? state.settingsThemeSelectedKey : '';
+		let existingIndex = savedThemes.findIndex((theme) => theme.key === themeKey || String(theme.label || '').toLowerCase() === lowerLabel);
+		if (!themeKey) {
+			themeKey = slugifyThemeLabel(label) || `theme-${savedThemes.length + 1}`;
+			while (savedThemes.some((theme, index) => theme.key === themeKey && index !== existingIndex)) {
+				themeKey = `${themeKey}-${savedThemes.length + 1}`;
+			}
+		}
+		const nextTheme = Object.assign({ key: themeKey, label }, appearanceTheme);
+		if (existingIndex >= 0) {
+			savedThemes[existingIndex] = nextTheme;
+		} else {
+			savedThemes.unshift(nextTheme);
+		}
+		state.settings.appearance = Object.assign({}, state.settings.appearance, appearanceTheme, { saved_themes: savedThemes });
+		state.settingsThemeSelectedKey = themeKey;
+		state.settingsThemeDraftLabel = label;
+		render();
+		notify('success', __('Theme saved.', 'coordina'));
+	}
+	if (button.dataset.action === 'apply-appearance-theme') {
+		const savedThemes = state.settings && state.settings.appearance && Array.isArray(state.settings.appearance.saved_themes) ? state.settings.appearance.saved_themes : [];
+		const theme = savedThemes.find((item) => item.key === button.dataset.themeKey);
+		if (!theme) {
+			notify('error', __('Theme could not be found.', 'coordina'));
+			return;
+		}
+		state.settings = state.settings || {};
+		state.settings.appearance = Object.assign({}, state.settings.appearance || {}, {
+			color_source: theme.color_source || 'custom',
+			primary_color: theme.primary_color || 'cobalt',
+			accent_color: theme.accent_color || 'amber',
+			theme_mode: theme.theme_mode || 'auto',
+			primary_custom_color: theme.primary_custom_color || '',
+			accent_custom_color: theme.accent_custom_color || '',
+			saved_themes: savedThemes,
+		});
+		state.settingsThemeSelectedKey = theme.key;
+		state.settingsThemeDraftLabel = theme.label || '';
+		render();
+		notify('success', __('Theme applied to the form.', 'coordina'));
+	}
+	if (button.dataset.action === 'delete-appearance-theme') {
+		const savedThemes = state.settings && state.settings.appearance && Array.isArray(state.settings.appearance.saved_themes) ? state.settings.appearance.saved_themes : [];
+		const nextThemes = savedThemes.filter((theme) => theme.key !== button.dataset.themeKey);
+		if (nextThemes.length === savedThemes.length) {
+			notify('error', __('Theme could not be found.', 'coordina'));
+			return;
+		}
+		state.settings = state.settings || {};
+		state.settings.appearance = Object.assign({}, state.settings.appearance || {}, { saved_themes: nextThemes });
+		if (state.settingsThemeSelectedKey === button.dataset.themeKey) {
+			state.settingsThemeSelectedKey = '';
+		}
+		render();
+		notify('success', __('Theme removed.', 'coordina'));
+	}
+	if (button.dataset.action === 'switch-settings-tab') {
+		const labelField = root.querySelector('[name="appearance-theme-label"]');
+		state.settingsThemeDraftLabel = labelField ? labelField.value : state.settingsThemeDraftLabel || '';
+		state.settingsTab = button.dataset.tab || 'workspace';
+		render();
+	}
 	if (button.dataset.action === 'change-activity-page') {
 		const page = Math.max(1, Number(button.dataset.page || 1));
 		const scope = String(button.dataset.scope || '');

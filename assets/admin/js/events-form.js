@@ -56,7 +56,7 @@ app.handleAdminInputEvent = function (target) {
 };
 
 app.handleAdminSubmitEvent = async function (form) {
-	const { state, modules, currentModule, api, notify, refreshChecklistViews, syncChecklistEditor, loadWorkspace, hasProjectWorkspace, hasTaskPage, hasMilestonePage, hasRiskIssuePage, loadTaskDetail, loadMilestoneDetail, loadRiskIssueDetail, loadCalendar, loadWorkload, loadCollaboration, loadCollection, loadMyWork, loadViews, openNotifications, loadNotifications, loadSettings, boot, __, collectSettingsPayload } = app;
+	const { state, modules, currentModule, api, notify, refreshChecklistViews, syncChecklistEditor, loadWorkspace, hasProjectWorkspace, hasTaskPage, hasMilestonePage, hasRiskIssuePage, loadTaskDetail, loadMilestoneDetail, loadRiskIssueDetail, loadCalendar, loadWorkload, loadCollaboration, loadCollection, loadMyWork, loadViews, openNotifications, loadNotifications, loadSettings, boot, render, __, collectSettingsPayload } = app;
 	const values = Object.fromEntries(new window.FormData(form).entries());
 
 	form.querySelectorAll('input[type="checkbox"]').forEach((input) => {

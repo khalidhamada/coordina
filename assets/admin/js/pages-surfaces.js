@@ -7,6 +7,13 @@ return;
 
 const { state, escapeHtml, __, nice, dateLabel, todayKey, shiftDate, defaultCalendarFilters, defaultWorkloadFilters, canAccessPage, pageHeading, openProjectButton, openTaskButton, activityList, activityPager, shortText, routeButton, dashboardList } = app;
 
+function iconLabel(type, label, className) {
+	if (typeof app.iconLabel === 'function') {
+		return app.iconLabel(type, label, className);
+	}
+	return escapeHtml(label || '');
+}
+
 function notificationList(items, compact, options = {}) {
 	const config = Object.assign({ showOpenAction: true }, options || {});
 	if (!items.length) {
@@ -86,10 +93,13 @@ function myWorkTaskList(items, emptyMessage, options = {}) {
 		const note = myWorkShowGuidance() ? shortText(item.blocked_reason || reason.guidance || '', config.compact ? 96 : 140) : '';
 		const projectLink = Number(item.project_id || 0) > 0 ? openProjectButton(item.project_id, item.project_label, 'work') : `<span>${escapeHtml(__('Standalone', 'coordina'))}</span>`;
 		const dueLabel = item.due_date ? dateLabel(item.due_date) : __('No due date', 'coordina');
+		const tone = reason && reason.tone ? reason.tone : (item.blocked ? 'danger' : (String(item.status || '') === 'waiting' ? 'warning' : 'neutral'));
+		const ownerLabel = item.assignee_label || __('Unassigned', 'coordina');
+		const completion = Number(item.completion_percent || 0);
 		const actions = config.showActions && myWorkShowActions()
 			? `<div class="coordina-inline-actions coordina-my-work-row__actions"><button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="done">${escapeHtml(__('Done', 'coordina'))}</button><button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="waiting">${escapeHtml(__('Waiting', 'coordina'))}</button>${item.can_post_update ? `<button class="button button-small" data-action="open-discussion-create" data-object-type="task" data-object-id="${item.id}" data-object-label="${escapeHtml(item.title || __('Task', 'coordina'))}" data-lock-context="1">${escapeHtml(__('Add update', 'coordina'))}</button>` : ''}</div>`
 			: '';
-		return `<li><article class="coordina-my-work-row ${config.compact ? 'coordina-my-work-row--compact' : ''}"><div class="coordina-my-work-row__main"><div class="coordina-my-work-row__top"><div class="coordina-my-work-row__title">${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}</div><div class="coordina-my-work-row__badges">${myWorkReasonBadge(reason)}<span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status || 'new'))}</span>${item.blocked && reason.key !== 'blocked' && reason.key !== 'overdue-blocked' ? `<span class="coordina-status-badge status-blocked">${escapeHtml(__('Blocked', 'coordina'))}</span>` : ''}${item.approval_required && item.approval_state === 'pending' ? `<span class="coordina-status-badge">${escapeHtml(__('Approval pending', 'coordina'))}</span>` : ''}</div></div><div class="coordina-work-meta coordina-my-work-row__meta">${projectLink}<span>${escapeHtml(dueLabel)}</span><span>${escapeHtml(nice(item.priority || 'normal'))}</span></div>${note ? `<p class="coordina-my-work-row__note">${escapeHtml(note)}</p>` : ''}</div>${actions}</article></li>`;
+		return `<li><article class="coordina-my-work-row coordina-my-work-row--${escapeHtml(tone)} ${config.compact ? 'coordina-my-work-row--compact' : ''}"><div class="coordina-my-work-row__main"><div class="coordina-my-work-row__top"><div class="coordina-my-work-row__title">${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}</div><div class="coordina-my-work-row__badges">${myWorkReasonBadge(reason)}<span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status || 'new'))}</span>${item.blocked && reason.key !== 'blocked' && reason.key !== 'overdue-blocked' ? `<span class="coordina-status-badge status-blocked">${escapeHtml(__('Blocked', 'coordina'))}</span>` : ''}${item.approval_required && item.approval_state === 'pending' ? `<span class="coordina-status-badge">${escapeHtml(__('Approval pending', 'coordina'))}</span>` : ''}</div></div><div class="coordina-work-meta coordina-my-work-row__meta">${projectLink}<span>${escapeHtml(dueLabel)}</span><span>${escapeHtml(nice(item.priority || 'normal'))}</span><span>${escapeHtml(ownerLabel)}</span></div><div class="coordina-my-work-row__support"><span>${escapeHtml(`${completion}% ${__('complete', 'coordina')}`)}</span>${item.approval_required ? `<span>${escapeHtml(__('Approval path', 'coordina'))}</span>` : ''}</div>${note ? `<p class="coordina-my-work-row__note">${escapeHtml(note)}</p>` : ''}</div>${actions}</article></li>`;
 	}).join('')}</ul>`;
 }
 
@@ -97,7 +107,7 @@ function myWorkApprovalList(items) {
 	if (!items.length) {
 		return `<p class="coordina-empty-inline">${escapeHtml(__('Approvals assigned to you will appear here.', 'coordina'))}</p>`;
 	}
-	return `<ul class="coordina-work-list coordina-work-list--compact coordina-my-work-decision-list">${items.map((item) => `<li><div class="coordina-my-work-row coordina-my-work-row--compact"><div class="coordina-my-work-row__main"><div class="coordina-my-work-row__top"><div class="coordina-my-work-row__title"><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.object_label || nice(item.object_type || 'approval'))}</button></div><div class="coordina-my-work-row__badges"><span class="coordina-my-work-reason coordina-my-work-reason--accent">${escapeHtml(__('Decision required', 'coordina'))}</span><span class="coordina-status-badge status-${escapeHtml(item.status || 'pending')}">${escapeHtml(nice(item.status || 'pending'))}</span></div></div><div class="coordina-work-meta coordina-my-work-row__meta"><span>${escapeHtml(item.project_label || __('Standalone', 'coordina'))}</span><span>${escapeHtml(nice(item.object_type || 'approval'))}</span><span>${escapeHtml(dateLabel(item.submitted_at))}</span></div></div></div></li>`).join('')}</ul>`;
+	return `<ul class="coordina-work-list coordina-work-list--compact coordina-my-work-decision-list">${items.map((item) => `<li><div class="coordina-my-work-row coordina-my-work-row--accent coordina-my-work-row--compact"><div class="coordina-my-work-row__main"><div class="coordina-my-work-row__top"><div class="coordina-my-work-row__title"><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${iconLabel(item.object_type || 'approval', item.object_label || nice(item.object_type || 'approval'))}</button></div><div class="coordina-my-work-row__badges"><span class="coordina-my-work-reason coordina-my-work-reason--accent">${escapeHtml(__('Decision required', 'coordina'))}</span><span class="coordina-status-badge status-${escapeHtml(item.status || 'pending')}">${escapeHtml(nice(item.status || 'pending'))}</span></div></div><div class="coordina-work-meta coordina-my-work-row__meta"><span>${escapeHtml(item.project_label || __('Standalone', 'coordina'))}</span><span>${escapeHtml(nice(item.object_type || 'approval'))}</span><span>${escapeHtml(dateLabel(item.submitted_at))}</span></div></div></div></li>`).join('')}</ul>`;
 }
 
 function myWorkNotificationSummary(items) {
@@ -114,13 +124,14 @@ function myWorkBoardCard(item) {
 	const reason = myWorkContextReason(item, item.status === 'waiting' ? 'waiting' : 'up-next', { allowGeneric: false });
 	const note = myWorkShowGuidance() ? shortText(item.blocked_reason || (reason && reason.guidance) || '', 96) : '';
 	const isBlocked = !!item.blocked || item.status === 'blocked';
+	const tone = reason && reason.tone ? reason.tone : (isBlocked ? 'danger' : (String(item.status || '') === 'waiting' ? 'warning' : 'neutral'));
 	const actions = myWorkShowActions() ? [
 		!isBlocked && item.status !== 'in-progress' ? `<button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="in-progress">${escapeHtml(__('Start', 'coordina'))}</button>` : '',
 		item.status !== 'waiting' ? `<button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="waiting">${escapeHtml(__('Waiting', 'coordina'))}</button>` : '',
 		`<button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="done">${escapeHtml(__('Done', 'coordina'))}</button>`,
 	] : [];
 	const actionMarkup = actions.filter(Boolean).join('');
-	return `<article class="coordina-my-work-board-card"><div class="coordina-my-work-board-card__head"><div class="coordina-my-work-board-card__title">${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}</div><div class="coordina-my-work-board-card__badges">${myWorkReasonBadge(reason)}${item.approval_required && item.approval_state === 'pending' ? `<span class="coordina-status-badge">${escapeHtml(__('Approval pending', 'coordina'))}</span>` : ''}</div></div><div class="coordina-work-meta coordina-my-work-board-card__meta">${projectLabel}<span>${escapeHtml(dueLabel)}</span><span>${escapeHtml(nice(item.priority || 'normal'))}</span></div>${note ? `<p class="coordina-my-work-board-card__note">${escapeHtml(note)}</p>` : ''}${actionMarkup ? `<div class="coordina-inline-actions coordina-my-work-board-card__actions">${actionMarkup}</div>` : ''}</article>`;
+	return `<article class="coordina-my-work-board-card coordina-my-work-board-card--${escapeHtml(tone)}"><div class="coordina-my-work-board-card__head"><div class="coordina-my-work-board-card__title">${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}</div><div class="coordina-my-work-board-card__badges">${myWorkReasonBadge(reason)}${item.approval_required && item.approval_state === 'pending' ? `<span class="coordina-status-badge">${escapeHtml(__('Approval pending', 'coordina'))}</span>` : ''}</div></div><div class="coordina-work-meta coordina-my-work-board-card__meta">${projectLabel}<span>${escapeHtml(dueLabel)}</span><span>${escapeHtml(nice(item.priority || 'normal'))}</span></div>${note ? `<p class="coordina-my-work-board-card__note">${escapeHtml(note)}</p>` : ''}${actionMarkup ? `<div class="coordina-inline-actions coordina-my-work-board-card__actions">${actionMarkup}</div>` : ''}</article>`;
 }
 
 function myWorkTasksFilterBar(filters) {
@@ -141,10 +152,11 @@ function myWorkTaskCard(item) {
 	const note = myWorkShowGuidance() ? shortText(item.blocked_reason || (reason && reason.guidance) || '', 108) : '';
 	const dueLabel = item.due_date ? dateLabel(item.due_date) : __('No due date', 'coordina');
 	const projectLink = Number(item.project_id || 0) > 0 ? openProjectButton(item.project_id, item.project_label, 'work') : `<span>${escapeHtml(__('Standalone', 'coordina'))}</span>`;
+	const tone = reason && reason.tone ? reason.tone : (item.blocked ? 'danger' : (String(item.status || '') === 'waiting' ? 'warning' : 'neutral'));
 	const actions = myWorkShowActions()
 		? `<div class="coordina-inline-actions coordina-my-work-task-card__actions">${String(item.status || '') !== 'in-progress' ? `<button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="in-progress">${escapeHtml(__('Start', 'coordina'))}</button>` : ''}${String(item.status || '') !== 'waiting' ? `<button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="waiting">${escapeHtml(__('Waiting', 'coordina'))}</button>` : ''}<button class="button button-small" data-action="quick-status" data-id="${item.id}" data-status="done">${escapeHtml(__('Done', 'coordina'))}</button></div>`
 		: '';
-	return `<article class="coordina-card coordina-my-work-task-card"><div class="coordina-my-work-task-card__head"><div><h4>${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}</h4><div class="coordina-work-meta coordina-my-work-task-card__meta">${projectLink}<span>${escapeHtml(dueLabel)}</span><span>${escapeHtml(item.assignee_label || __('Unassigned', 'coordina'))}</span></div></div><div class="coordina-my-work-task-card__badges">${myWorkReasonBadge(reason)}<span class="coordina-status-badge status-${escapeHtml(item.status || 'new')}">${escapeHtml(nice(item.status || 'new'))}</span></div></div>${note ? `<p class="coordina-my-work-task-card__note">${escapeHtml(note)}</p>` : ''}${actions}</article>`;
+	return `<article class="coordina-card coordina-my-work-task-card coordina-my-work-task-card--${escapeHtml(tone)}"><div class="coordina-my-work-task-card__head"><div><h4>${openTaskButton(item.id, item.title, item.project_id, item.project_id ? 'work' : '')}</h4><div class="coordina-work-meta coordina-my-work-task-card__meta">${projectLink}<span>${escapeHtml(dueLabel)}</span><span>${escapeHtml(item.assignee_label || __('Unassigned', 'coordina'))}</span></div></div><div class="coordina-my-work-task-card__badges">${myWorkReasonBadge(reason)}<span class="coordina-status-badge status-${escapeHtml(item.status || 'new')}">${escapeHtml(nice(item.status || 'new'))}</span></div></div>${note ? `<p class="coordina-my-work-task-card__note">${escapeHtml(note)}</p>` : ''}${actions}</article>`;
 }
 
 function myWorkTasksGrid(collection) {

@@ -110,11 +110,11 @@
 .coordina-calendar__item:focus {
 	transform: translateY(-2px);
 	border-color: var(--coordina-info);
-	box-shadow: var(--coordina-shadow-sm);
+	box-shadow: 0 14px 28px -22px rgba(36, 72, 98, 0.45);
 }
 
 .coordina-calendar__item.type-project {
-	background: var(--coordina-info-soft);
+	background: linear-gradient(135deg, var(--coordina-primary-lighter) 0%, var(--coordina-accent-lighter) 100%);
 }
 
 .coordina-calendar__item-label,

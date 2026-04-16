@@ -76,6 +76,15 @@ final class SettingsRepository {
 				'my_work_card_guidance_enabled' => true,
 				'my_work_card_actions_enabled'  => true,
 			),
+			'appearance'   => array(
+				'color_source'  => 'custom',
+				'primary_color' => 'cobalt',
+				'accent_color'  => 'amber',
+				'primary_custom_color' => '',
+				'accent_custom_color'  => '',
+				'theme_mode'    => 'auto',
+				'saved_themes'  => array(),
+			),
 			'dropdowns'    => array(
 				'statuses'                      => array(
 					'projects'    => array( 'draft', 'planned', 'active', 'on-hold', 'at-risk', 'blocked', 'completed', 'cancelled', 'archived' ),
@@ -219,6 +228,41 @@ final class SettingsRepository {
 		$settings['general']['section_descriptions_enabled'] = (bool) ( $settings['general']['section_descriptions_enabled'] ?? $defaults['general']['section_descriptions_enabled'] );
 		$settings['general']['my_work_card_guidance_enabled'] = (bool) ( $settings['general']['my_work_card_guidance_enabled'] ?? $defaults['general']['my_work_card_guidance_enabled'] );
 		$settings['general']['my_work_card_actions_enabled'] = (bool) ( $settings['general']['my_work_card_actions_enabled'] ?? $defaults['general']['my_work_card_actions_enabled'] );
+		$legacy_palette = (string) ( $settings['appearance']['theme_palette'] ?? '' );
+		if ( '' === (string) ( $settings['appearance']['color_source'] ?? '' ) || '' === (string) ( $settings['appearance']['primary_color'] ?? '' ) ) {
+			$legacy_map = array(
+				'slate'     => array(
+					'color_source'  => 'custom',
+					'primary_color' => 'cobalt',
+					'accent_color'  => 'amber',
+				),
+				'forest'    => array(
+					'color_source'  => 'custom',
+					'primary_color' => 'spruce',
+					'accent_color'  => 'mint',
+				),
+				'ember'     => array(
+					'color_source'  => 'custom',
+					'primary_color' => 'terracotta',
+					'accent_color'  => 'amber',
+				),
+				'wordpress' => array(
+					'color_source'  => 'wordpress',
+					'primary_color' => 'cobalt',
+					'accent_color'  => 'amber',
+				),
+			);
+			if ( isset( $legacy_map[ $legacy_palette ] ) ) {
+				$settings['appearance'] = array_merge( $legacy_map[ $legacy_palette ], is_array( $settings['appearance'] ?? null ) ? $settings['appearance'] : array() );
+			}
+		}
+		$settings['appearance']['color_source'] = $this->choice( $settings['appearance']['color_source'] ?? '', array( 'custom', 'wordpress' ), $defaults['appearance']['color_source'] );
+		$settings['appearance']['primary_color'] = $this->choice( $settings['appearance']['primary_color'] ?? '', array( 'cobalt', 'spruce', 'berry', 'terracotta', 'indigo', 'custom' ), $defaults['appearance']['primary_color'] );
+		$settings['appearance']['accent_color'] = $this->choice( $settings['appearance']['accent_color'] ?? '', array( 'sky', 'mint', 'amber', 'rose', 'lilac', 'custom' ), $defaults['appearance']['accent_color'] );
+		$settings['appearance']['primary_custom_color'] = $this->hex_color( $settings['appearance']['primary_custom_color'] ?? '' );
+		$settings['appearance']['accent_custom_color'] = $this->hex_color( $settings['appearance']['accent_custom_color'] ?? '' );
+		$settings['appearance']['theme_mode'] = $this->choice( $settings['appearance']['theme_mode'] ?? '', array( 'auto', 'light', 'dark' ), $defaults['appearance']['theme_mode'] );
+		$settings['appearance']['saved_themes'] = $this->theme_list( $settings['appearance']['saved_themes'] ?? array() );
 
 		foreach ( $defaults['dropdowns']['statuses'] as $key => $fallback ) {
 			$settings['dropdowns']['statuses'][ $key ] = $this->token_list( $settings['dropdowns']['statuses'][ $key ] ?? array(), $fallback );
@@ -316,5 +360,70 @@ final class SettingsRepository {
 	private function choice( $value, array $allowed, string $fallback ): string {
 		$value = sanitize_key( (string) $value );
 		return in_array( $value, $allowed, true ) ? $value : $fallback;
+	}
+
+	/**
+	 * Sanitize a hex color or return an empty string.
+	 *
+	 * @param mixed $value Raw value.
+	 */
+	private function hex_color( $value ): string {
+		$color = trim( (string) $value );
+		if ( '' === $color ) {
+			return '';
+		}
+
+		if ( preg_match( '/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $color ) ) {
+			return strtolower( $color );
+		}
+
+		return '';
+	}
+
+	/**
+	 * Sanitize saved theme presets.
+	 *
+	 * @param mixed $value Raw value.
+	 * @return array<int, array<string, string>>
+	 */
+	private function theme_list( $value ): array {
+		if ( is_string( $value ) ) {
+			$decoded = json_decode( $value, true );
+			$value   = is_array( $decoded ) ? $decoded : array();
+		}
+
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+
+		$result = array();
+		foreach ( $value as $index => $theme ) {
+			if ( ! is_array( $theme ) ) {
+				continue;
+			}
+
+			$label = sanitize_text_field( (string) ( $theme['label'] ?? '' ) );
+			if ( '' === $label ) {
+				continue;
+			}
+
+			$key = sanitize_key( (string) ( $theme['key'] ?? $label ) );
+			if ( '' === $key ) {
+				$key = 'theme_' . (string) $index;
+			}
+
+			$result[] = array(
+				'key' => $key,
+				'label' => mb_substr( $label, 0, 60 ),
+				'color_source' => $this->choice( $theme['color_source'] ?? '', array( 'custom', 'wordpress' ), 'custom' ),
+				'primary_color' => $this->choice( $theme['primary_color'] ?? '', array( 'cobalt', 'spruce', 'berry', 'terracotta', 'indigo', 'custom' ), 'cobalt' ),
+				'accent_color' => $this->choice( $theme['accent_color'] ?? '', array( 'sky', 'mint', 'amber', 'rose', 'lilac', 'custom' ), 'amber' ),
+				'primary_custom_color' => $this->hex_color( $theme['primary_custom_color'] ?? '' ),
+				'accent_custom_color' => $this->hex_color( $theme['accent_custom_color'] ?? '' ),
+				'theme_mode' => $this->choice( $theme['theme_mode'] ?? '', array( 'auto', 'light', 'dark' ), 'auto' ),
+			);
+		}
+
+		return array_values( array_slice( $result, 0, 24 ) );
 	}
 }

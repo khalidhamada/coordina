@@ -2,6 +2,60 @@
    Uses standard Unicode characters that work with all system fonts
    No external font dependencies, renders reliably across browsers */
 
+.coordina-entity-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	vertical-align: middle;
+}
+
+.coordina-entity-label__text {
+	min-width: 0;
+}
+
+.coordina-entity-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.1em;
+	height: 1.1em;
+	color: var(--coordina-info);
+	font-size: 1em;
+	line-height: 1;
+	flex: 0 0 auto;
+	transform: translateY(0.03em);
+}
+
+.coordina-entity-icon--risk,
+.coordina-entity-icon--issue,
+.coordina-entity-icon--risk-issue {
+	color: var(--coordina-danger);
+}
+
+.coordina-entity-icon--approval,
+.coordina-entity-icon--milestone {
+	color: var(--coordina-warning);
+}
+
+.coordina-entity-icon--file,
+.coordina-entity-icon--discussion,
+.coordina-entity-icon--calendar,
+.coordina-entity-icon--workload,
+.coordina-entity-icon--settings {
+	color: var(--coordina-text);
+}
+
+.coordina-entity-icon svg {
+	width: 100%;
+	height: 100%;
+	stroke: currentColor;
+	fill: none;
+	stroke-width: 1.8;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
 /* Status badge icons */
 .coordina-status-badge.status-done::before,
 .coordina-status-badge.status-completed::before,

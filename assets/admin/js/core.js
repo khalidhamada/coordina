@@ -101,21 +101,95 @@ function nice(value) {
 	return value ? String(value).replace(/[-_]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()) : '--';
 }
 
-function dateLabel(value) {
+function parseDateValue(value) {
+	if (!value) {
+		return null;
+	}
+	const raw = String(value).trim();
+	if (!raw) {
+		return null;
+	}
+	const parsed = new Date(raw.replace(' ', 'T'));
+	if (Number.isNaN(parsed.getTime())) {
+		return null;
+	}
+	return { raw, parsed };
+}
+
+function activeDateDisplayMode() {
+	const mode = String((state.shell && state.shell.dateDisplay) || 'site');
+	return ['site', 'relative', 'absolute'].includes(mode) ? mode : 'site';
+}
+
+function startOfDay(date) {
+	const next = new Date(date);
+	next.setHours(0, 0, 0, 0);
+	return next;
+}
+
+function relativeDateLabel(date) {
+	const today = startOfDay(new Date());
+	const target = startOfDay(date);
+	const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+	if (diffDays === 0) {
+		return __('Today', 'coordina');
+	}
+	if (diffDays === 1) {
+		return __('Tomorrow', 'coordina');
+	}
+	if (diffDays === -1) {
+		return __('Yesterday', 'coordina');
+	}
+	if (diffDays > 1) {
+		return `${__('In', 'coordina')} ${diffDays} ${diffDays === 1 ? __('day', 'coordina') : __('days', 'coordina')}`;
+	}
+	const past = Math.abs(diffDays);
+	return `${past} ${past === 1 ? __('day', 'coordina') : __('days', 'coordina')} ${__('ago', 'coordina')}`;
+}
+
+function formatTimeLabel(date) {
+	return new Intl.DateTimeFormat(document.documentElement.lang || undefined, { hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
+function dateLabel(value, options = {}) {
 	if (!value) {
 		return '--';
 	}
 	try {
-		const raw = String(value).trim();
-		const parsed = new Date(raw.replace(' ', 'T'));
-		if (Number.isNaN(parsed.getTime())) {
-			return raw;
+		const parsedValue = parseDateValue(value);
+		if (!parsedValue) {
+			return String(value);
 		}
-		const hasTime = /[T\s]\d{2}:\d{2}/.test(raw);
-		const options = hasTime
-			? { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
-			: { year: 'numeric', month: 'short', day: 'numeric' };
-		return new Intl.DateTimeFormat(document.documentElement.lang || undefined, options).format(parsed);
+		const { raw, parsed } = parsedValue;
+		const mode = options.mode || activeDateDisplayMode();
+		if (mode === 'relative') {
+			return relativeDateLabel(parsed);
+		}
+		if (mode === 'absolute') {
+			return raw.slice(0, 10);
+		}
+		return new Intl.DateTimeFormat(document.documentElement.lang || undefined, { year: 'numeric', month: 'short', day: 'numeric' }).format(parsed);
+	} catch (error) {
+		return String(value);
+	}
+}
+
+function dateTimeLabel(value, options = {}) {
+	if (!value) {
+		return '--';
+	}
+	try {
+		const parsedValue = parseDateValue(value);
+		if (!parsedValue) {
+			return String(value);
+		}
+		const { raw, parsed } = parsedValue;
+		const mode = options.mode || activeDateDisplayMode();
+		const time = formatTimeLabel(parsed);
+		if (mode === 'absolute') {
+			return `${raw.slice(0, 10)} ${time}`;
+		}
+		return `${dateLabel(value, { mode })}, ${time}`;
 	} catch (error) {
 		return String(value);
 	}
@@ -429,6 +503,7 @@ Object.assign(app, {
 	escapeHtml,
 	nice,
 	dateLabel,
+	dateTimeLabel,
 	dateTimeInputValue,
 	activityPageSize,
 	isCheckedValue,

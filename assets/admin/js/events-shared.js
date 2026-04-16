@@ -24,6 +24,13 @@ function collectSettingsPayload(form) {
 	const payload = {};
 	form.querySelectorAll('[data-setting-path]').forEach((field) => {
 		let value = field.type === 'checkbox' ? field.checked : field.value;
+		if (field.dataset.settingSerializer === 'json') {
+			try {
+				value = value ? JSON.parse(String(value)) : [];
+			} catch (error) {
+				value = [];
+			}
+		}
 		if (field.tagName === 'TEXTAREA') {
 			value = String(value || '').split(/[\r\n,]+/).map((item) => item.trim()).filter(Boolean);
 		}

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#505064",
+                    "error-dim": "#6b0221",
+                    "on-surface": "#2d3335",
+                    "tertiary-fixed": "#f5cdf9",
+                    "primary-dim": "#3d3dcb",
+                    "on-tertiary": "#fff7fb",
+                    "on-tertiary-container": "#604266",
+                    "surface-container-high": "#e5e9eb",
+                    "on-secondary-fixed": "#3d3e51",
+                    "tertiary-container": "#f5cdf9",
+                    "on-secondary": "#fbf7ff",
+                    "tertiary-fixed-dim": "#e7bfea",
+                    "inverse-on-surface": "#9b9d9e",
+                    "secondary": "#5d5d72",
+                    "on-primary-fixed": "#000000",
+                    "primary-fixed": "#7073ff",
+                    "secondary-fixed": "#e2e0f9",
+                    "inverse-primary": "#8083ff",
+                    "background": "#f8f9fa",
+                    "outline-variant": "#adb3b5",
+                    "surface-container-lowest": "#ffffff",
+                    "surface": "#f8f9fa",
+                    "on-surface-variant": "#5a6062",
+                    "tertiary": "#745479",
+                    "primary-fixed-dim": "#6366f1",
+                    "primary-container": "#7073ff",
+                    "secondary-container": "#e2e0f9",
+                    "primary": "#4a4bd7",
+                    "surface-container": "#ebeef0",
+                    "error": "#a8364b",
+                    "tertiary-dim": "#67486c",
+                    "error-container": "#f97386",
+                    "on-primary": "#fbf7ff",
+                    "surface-container-highest": "#dee3e6",
+                    "secondary-fixed-dim": "#d4d2eb",
+                    "surface-bright": "#f8f9fa",
+                    "on-error": "#fff7f7",
+                    "surface-tint": "#4a4bd7",
+                    "surface-dim": "#d5dbdd",
+                    "on-tertiary-fixed-variant": "#6a4b70",
+                    "on-tertiary-fixed": "#4c2f52",
+                    "on-primary-fixed-variant": "#010028",
+                    "on-error-container": "#6e0523",
+                    "secondary-dim": "#515166",
+                    "on-primary-container": "#000000",
+                    "surface-variant": "#dee3e6",
+                    "on-background": "#2d3335",
+                    "inverse-surface": "#0c0f10",
+                    "surface-container-low": "#f1f4f5",
+                    "outline": "#767c7e",
+                    "on-secondary-fixed-variant": "#5a5a6f"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      h1, h2, h3, .font-headline {
+        font-family: 'Manrope', sans-serif;
+      }
+      .glass-effect {
+        backdrop-filter: blur(12px);
+      }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-sm dark:shadow-none">
+<div class="flex justify-between items-center px-8 h-16 w-full max-w-full">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-slate-900 dark:text-white">Architectural Editor</span>
+<!-- Search Bar -->
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="bg-surface-container-low border-none rounded-xl pl-10 pr-4 py-2 text-sm w-64 focus:ring-2 focus:ring-primary-fixed transition-all" placeholder="Search projects..." type="text"/>
+</div>
+<div class="hidden md:flex items-center gap-6">
+<a class="font-['Manrope'] font-semibold tracking-tight text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200" href="#">Dashboard</a>
+<a class="font-['Manrope'] font-semibold tracking-tight text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200" href="#">My Work</a>
+<a class="font-['Manrope'] font-semibold tracking-tight text-sm text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 pb-1" href="#">Projects</a>
+<a class="font-['Manrope'] font-semibold tracking-tight text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200" href="#">Tasks</a>
+<a class="font-['Manrope'] font-semibold tracking-tight text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200" href="#">Kanban</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-gradient-to-br from-primary to-primary-container text-white px-5 py-2 rounded-xl text-sm font-semibold shadow-md hover:shadow-lg scale-95 active:opacity-80 transition-all">
+                    Create New
+                </button>
+<div class="flex items-center gap-2 text-outline">
+<button class="p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-full transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<div class="h-8 w-8 rounded-full overflow-hidden bg-surface-container">
+<img alt="User profile" class="h-full w-full object-cover" data-alt="close-up portrait of a professional male designer with a focused and friendly expression in an office environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0HFx_BEiXZElq4fcAcgOciIlzKGhvzNkr5sO6xd8h7GgKs0InGXLpXA7ryb_GJuQPZK3FyGgOEnbLRR6Y7BQP8mvSC_LKoQnsdReYr-Rs9Uz8UDhLnc2eO2dghTxTzBM4rPYVu7oXyOLpgkKsX7niGYCWSpFZg8bAUsBYiOVV9SEtm4yBRD1CTiXwBBc_3-H6hEMQjacNP_CB0eZX6KNWkwPPDW5Lp2IWJcEmtJj7FEBmPaKWmL1xJ5tPieDblZ6DeeybuVGAd48"/>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="pt-24 pb-12 px-8 max-w-[1600px] mx-auto">
+<!-- Header Section -->
+<header class="mb-12 flex justify-between items-end">
+<div>
+<h1 class="text-4xl font-bold tracking-tight text-on-surface mb-2 font-headline">Projects Gallery</h1>
+<p class="text-on-surface-variant max-w-xl font-body">Manage your architectural ventures with precision. Track timelines, budgets, and team velocity across your active portfolio.</p>
+</div>
+<div class="flex gap-3">
+<div class="bg-surface-container-low p-1 rounded-xl flex">
+<button class="px-4 py-2 bg-surface-container-lowest shadow-sm rounded-lg text-sm font-medium">Grid</button>
+<button class="px-4 py-2 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">List</button>
+</div>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+<!-- Project Card 1: Active -->
+<div class="bg-surface-container-lowest rounded-xl p-8 transition-all hover:translate-y-[-4px] group">
+<div class="flex justify-between items-start mb-6">
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-primary/10 text-primary rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">Active</span>
+<span class="px-3 py-1 bg-tertiary/10 text-tertiary rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">Design Phase</span>
+</div>
+<button class="text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-1 font-headline">Metropolis Grand Plaza</h3>
+<p class="text-sm text-on-surface-variant mb-6 font-body">Client: Urban Horizon Dev.</p>
+<div class="space-y-6">
+<!-- Progress Section -->
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="text-[0.7rem] font-bold text-outline-variant uppercase tracking-widest font-label">Completion</span>
+<span class="text-sm font-bold text-on-surface">68%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 68%"></div>
+</div>
+</div>
+<!-- Meta Grid -->
+<div class="grid grid-cols-2 gap-4 pt-4 border-t-0 bg-surface-container-low rounded-xl p-4">
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Timeline</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+                                Oct 2023 - Jun 2024
+                            </span>
+</div>
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Budget</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">payments</span>
+                                $2.4M
+                            </span>
+</div>
+</div>
+<!-- Team Section -->
+<div class="flex justify-between items-center">
+<div class="flex -space-x-2">
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-surface-container-lowest object-cover" data-alt="professional headshot of a smiling woman with glasses in a modern office lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhxahVquOOlo7qttzOW2z_Y4LySlMq__zO6NY0HjgB-9DarWLnCb8WZQhqpb_Di3wu7o1tb7dQC4okROiTrwYLTXyNASzYR-k9zRzGSrapHdHUfZU9G5mvkP8nYF1fWU0R4LsQOOeD0rbuD1PrOXEd7ZWoIBSE8BDdXbsD2_NOg5plvNZK2K22xK5xj8A7kLW0sDxAI67k4IGVmwbDfklljOdPI0MI_P4zdMngLOSc17wxYi3tMcxnvwToXRUP9jHn9sVUGO2m1us"/>
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-surface-container-lowest object-cover" data-alt="portrait of a young male architect in a studio setting with creative lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4LzkIhYu2o_5uTPH_6ERUTCV7EhrlJzmAQuzoPnjx7e6mFPOTJQ0ADU3uXft35teZUhQIWSKk0iZVhu7oR5HRD4y2QhSsenCImfgtMY5zfOxYXKTLWDF_52xN-u0fzNQqkqCG-gN2mr-mJ_dG6B9--qCoO5CsIrndb4nTxFBFzHLbMVqEIZULO45tJxAnra9InVQUN-SpOY6MxKTzbSYXPPL-fLcbD0xZ56Zxtu9pDlxUAGCae5Db_GWjjWQYgyxeLRAHHV4o5Q8"/>
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-surface-container-lowest object-cover" data-alt="headshot of a middle-aged male executive against a neutral studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDUIFrczss3s2YNKH3KdIj8NSrDOfmDaABXEUXzGQM7aAXLQGGKOc2gwOwGfddKDyMIXnJ6ETkGeQXMYvz9NxIMZdO0j7lQyelUDIYFOsMf1R7Zu-_3tOlhni2eFMUpDso1qyBkMk2POP6GYpQ8v8r_XHqm49Ei7DdpDFEEgIdeecD72Oj165JhXl3YjkEOSQjGUlZ7xfxculKvR7TDTUkv3n6unqXfrqZzbMXPVPZs3doOLMJ1SbhLfU5JfcleH0KSJKrI2_e0nk"/>
+<div class="h-8 w-8 rounded-full ring-2 ring-surface-container-lowest bg-surface-container flex items-center justify-center text-[10px] font-bold">+2</div>
+</div>
+<button class="text-primary text-sm font-semibold hover:underline">View Tasks</button>
+</div>
+</div>
+</div>
+<!-- Project Card 2: On Hold -->
+<div class="bg-surface-container-lowest rounded-xl p-8 transition-all hover:translate-y-[-4px] group">
+<div class="flex justify-between items-start mb-6">
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">On Hold</span>
+<span class="px-3 py-1 bg-error/10 text-error rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">Urgent Review</span>
+</div>
+<button class="text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-1 font-headline">The Zenith Residency</h3>
+<p class="text-sm text-on-surface-variant mb-6 font-body">Client: Zenith Estates Group</p>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="text-[0.7rem] font-bold text-outline-variant uppercase tracking-widest font-label">Completion</span>
+<span class="text-sm font-bold text-on-surface">12%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-error-container rounded-full" style="width: 12%"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 bg-surface-container-low rounded-xl p-4">
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Timeline</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+                                Jan 2024 - Dec 2025
+                            </span>
+</div>
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Budget</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">payments</span>
+                                $12.8M
+                            </span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-2">
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-surface-container-lowest object-cover" data-alt="portrait of a focused professional woman in a creative workspace" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBv4RdfyBGcZe59k7zmQ1AckgqiIJFEftrsOYQvEwQ7Z9Y3NQgcZTbZUBmaynEvUnNlrbTor45G2e8uaR_f4551uHRzApJuUDl2ia_67yIYVR6Lyl--IaHGcOKv8lSnfypuS6aD4D-XgTa_mObrErInqD4URXSlRkkl4FdDkCHbLKzS9OuHf-Qtna3UgpT2NNWRMEMTbUCd0HCRNtrD-wRPqY4UYk--L0U2jfBB04sWypxzXsxgzmWh5Ljer5RyhhH7s-lK9Ml8lm8"/>
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-surface-container-lowest object-cover" data-alt="close-up of a creative director in an architectural firm setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSU4sEjzVR5hQXMLcO9rNNGQcTNt7LRp8mks1mifXkKti2ReIBqaXYmrsjtPGou-dbY5tTGUrf5Dyze2OgpxZoTNsVKfOpv-E0RDDf2gqigj3MQaY8s2g3dU1LUT3l6q3ytTe42vTLm6AnYwgS3qFku2QIsnJ2W2yMNS8NPI3z-l-lxQzdSQuZor84t35AedzQFByq2pwjIDNvz-pXOFZhlntVjrvHcDv2KBV_7xSRA07tJKvXswS92EUg6WUv4KqpSlH3uPBatjo"/>
+</div>
+<button class="text-primary text-sm font-semibold hover:underline">View Tasks</button>
+</div>
+</div>
+</div>
+<!-- Project Card 3: New/Featured -->
+<div class="bg-primary/5 rounded-xl p-8 border-2 border-primary/20 transition-all hover:translate-y-[-4px] relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4">
+<span class="material-symbols-outlined text-primary/20 text-6xl rotate-12 scale-150 group-hover:rotate-0 transition-transform duration-500" style="font-variation-settings: 'FILL' 1;">architecture</span>
+</div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-6">
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-primary text-white rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">Priority</span>
+<span class="px-3 py-1 bg-tertiary-container/30 text-tertiary-dim rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">Pre-Construction</span>
+</div>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-1 font-headline">Riverside Wellness Hub</h3>
+<p class="text-sm text-on-surface-variant mb-6 font-body">Client: HealthCore Solutions</p>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="text-[0.7rem] font-bold text-outline-variant uppercase tracking-widest font-label">Completion</span>
+<span class="text-sm font-bold text-on-surface">45%</span>
+</div>
+<div class="h-2 w-full bg-white/50 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 45%"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 bg-white/40 backdrop-blur-sm rounded-xl p-4">
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Timeline</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+                                    Nov 2023 - Aug 2024
+                                </span>
+</div>
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Budget</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">payments</span>
+                                    $5.1M
+                                </span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-2">
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-white/50 object-cover" data-alt="professional male project manager in a light-filled office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJqGuLzUl2KoojNg9s_IuXfS6ItpODrfU2IVU2k543MLPwDVZPgnIPUybsqfSuHjiv1nAnVVQoAyVvJYpaZpX9nWy4ei_XHR_Xo3waShhahkD_AaNDQZTNga1s_lGNzwM_IKjjx02I6azjFLYIeoP4lZQLJspBwcxf2dPisUzWJihbTOVJCUmQEEbkFapDmnxjRzzzn09kYVNuDxAs6L_y37FGHIRyN1tkD3Kx1ZOz-mhapzREgxEYVOjD5ULJU0AZnZNuDGj_sAA"/>
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-white/50 object-cover" data-alt="smiling female engineer in professional attire" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCrP9Rx1Y170ubKXhIdsnfec3oHoIdmXghaieYNLifsR9n5z67y_MlZQ5jdU7OdtKVipxpWycPP3TCGVp5YsMHuVSP4TgUTm2wdIBOLIjv5WgJU27Ceiof9mzSptesMYb7yegSH_CXJaA351KIKcSzyA8adKQUiCiLCfGVWT6-25Q0-RJUBAN7703OXTS5zf2C7debFGFeqHOBy_3leDarO-WNYfjqinTXwOI5qHPHU3jZQDa_cBauKLdx1PgpqRWZ20C4SfmDQCk"/>
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-white/50 object-cover" data-alt="portrait of a focused team member in a minimalist environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9l2qhJ0qJv3E1cjF8xDPRfnNGB_A_MKntHkVWEz2wAD_KpJvW7sJmMjKKG9srbrXeLNxHrNSxq1yu6I-N4dX9oVMo17ZqMiRiXkh5svvtQSLWLujpoul-Ll5dFhWK3RubsNypWvk--sTzV9BU5EJylYQlKCQr2x1Pxz06iqWR4pk2R2ahQoc9OIJZeXqqg_WqbCT2QlBVJ2AiUD3YcDTYOHHKqIL-jv201nb9u6CR9Vr6cSWm2vStIimPgBqWWMTxERdAJf4SxbE"/>
+</div>
+<button class="bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-primary-dim transition-colors">Open Project</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Project Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-8 transition-all hover:translate-y-[-4px] group">
+<div class="flex justify-between items-start mb-6">
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-primary/10 text-primary rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">Active</span>
+<span class="px-3 py-1 bg-tertiary/10 text-tertiary rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">Foundation</span>
+</div>
+<button class="text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-1 font-headline">Eco-Tower Sustainable Living</h3>
+<p class="text-sm text-on-surface-variant mb-6 font-body">Client: GreenFuture Housing</p>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="text-[0.7rem] font-bold text-outline-variant uppercase tracking-widest font-label">Completion</span>
+<span class="text-sm font-bold text-on-surface">32%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 32%"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 bg-surface-container-low rounded-xl p-4">
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Timeline</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+                                Dec 2023 - Jan 2025
+                            </span>
+</div>
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Budget</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">payments</span>
+                                $8.7M
+                            </span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-2">
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-surface-container-lowest object-cover" data-alt="professional portrait of an african american woman in business attire" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZ7zQ4hbpQo2uSsTOGBn4zoxrGdQVPcymhqji1jSCEi1Qx0MvITPm7jglA48qb_2AF4tgFBaFP9bfNAZNHgui9zrSlE6CT7p-szmzlQscnZwlDD_AYaMivprasjHqJYw9yAh3b7Z3eyI8eIuWCG9klyHntlLWA0tiDLq4SIxTqZrOpzbG2faWD0uEWVREgEBHmnMwAQmq0ZYXMKQIOfsnDDZY043BwmDBWtJ_gw0gSaHJtW5-qNncUI0GnE_Lnk52stvVZRXRjn44"/>
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-surface-container-lowest object-cover" data-alt="close-up of a middle-aged male architect with grey hair and glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB579Af6_LRbLOESqX5X4OvuJL7E8XkjlQ_lTZGu_f8uSRLJ4XQNmuYMDiL4YaZHPLnATeJ0M4y3YKddE4u1bwPvDlJzIusp9KgOPzVttehwp8B2y-NQG7NcyXrhtEmFCgfWH1s9lbeOaLMekQQQKAoPVsvVsPoK4UOh8DenNgSO2UdIdBWUHdggywhcjThDRZck7EtQN7aXqSUmCygFojR2hgVPdgXEv7HTu-M76b3rY289pGU9ZJLIyw7ozKdJcmSvKpiyx37OuI"/>
+</div>
+<button class="text-primary text-sm font-semibold hover:underline">View Tasks</button>
+</div>
+</div>
+</div>
+<!-- Project Card 5 -->
+<div class="bg-surface-container-lowest rounded-xl p-8 transition-all hover:translate-y-[-4px] group">
+<div class="flex justify-between items-start mb-6">
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">Planning</span>
+<span class="px-3 py-1 bg-tertiary-container/30 text-tertiary-dim rounded-full text-[0.65rem] font-bold tracking-wider uppercase font-label">Bidding</span>
+</div>
+<button class="text-outline-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<h3 class="text-xl font-bold text-on-surface mb-1 font-headline">North Terminal Extension</h3>
+<p class="text-sm text-on-surface-variant mb-6 font-body">Client: Metropolitan Airport Authority</p>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="text-[0.7rem] font-bold text-outline-variant uppercase tracking-widest font-label">Completion</span>
+<span class="text-sm font-bold text-on-surface">5%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 5%"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-4 bg-surface-container-low rounded-xl p-4">
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Timeline</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+                                May 2024 - Oct 2026
+                            </span>
+</div>
+<div>
+<span class="block text-[0.65rem] font-bold text-outline-variant uppercase tracking-widest font-label mb-1">Budget</span>
+<span class="text-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">payments</span>
+                                $45.0M
+                            </span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-2">
+<img alt="Team member" class="h-8 w-8 rounded-full ring-2 ring-surface-container-lowest object-cover" data-alt="professional male engineer with a blue shirt in a modern office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBK8KMGjHmUUBTxd1ejdUEfNzWWQwXdFB6S0x86utcPnyMDdYJ1rOpuWAiQOFETj61_dvhcDJ4BaIL53n4kFZ0MXQWn69brZ71WsdTOjpgo4gNyKjMg6-mLxLsZQ7vRuHTLpBrUhN4VF5RAVgUwM3-sXQewL-bl2n75ht-3djKScneIUtQqxj3HPMmbNwbehfwYOloVALkn9XODfhWFk-ABqOZc_oR2prZvZuKTu1akgrXYiltDqBocWemWLG57wUccFhjR7-p1aGg"/>
+</div>
+<button class="text-primary text-sm font-semibold hover:underline">View Tasks</button>
+</div>
+</div>
+</div>
+<!-- Quick Action Card -->
+<div class="bg-surface-container-low rounded-xl p-8 flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 hover:border-primary/50 transition-all group cursor-pointer">
+<div class="bg-white p-4 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl">add</span>
+</div>
+<span class="text-lg font-bold text-on-surface font-headline">New Architectural Project</span>
+<p class="text-xs text-on-surface-variant mt-2 font-body">Create workspace and assign team</p>
+</div>
+</div>
+<!-- Pagination/Footer -->
+<footer class="mt-16 flex items-center justify-between">
+<p class="text-sm text-on-surface-variant font-body">Showing 5 of 24 active projects</p>
+<div class="flex gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl bg-primary text-white font-bold text-sm">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm font-bold">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm font-bold">3</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</footer>
+</main>
+</body></html>

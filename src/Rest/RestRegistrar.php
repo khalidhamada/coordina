@@ -714,6 +714,7 @@ final class RestRegistrar {
 		);
 		$settings     = $this->settings->get();
 		$dropdowns    = $settings['dropdowns'];
+		$appearance   = is_array( $settings['appearance'] ?? null ) ? $settings['appearance'] : array();
 
 		return $this->respond(
 			array(
@@ -737,12 +738,19 @@ final class RestRegistrar {
 				'projectTypes' => $dropdowns['projectTypes'],
 				'fileCategories' => $dropdowns['fileCategories'],
 				'updateTypes' => $dropdowns['updateTypes'],
+				'dateDisplay' => (string) ( $settings['general']['date_display'] ?? 'site' ),
 				'taskGroupLabel' => $settings['general']['task_group_label'] ?? 'stage',
 				'activityPageSize' => (int) ( $settings['general']['activity_page_size'] ?? 10 ),
 				'pageDescriptionsEnabled' => ! empty( $settings['general']['page_descriptions_enabled'] ),
 				'sectionDescriptionsEnabled' => ! empty( $settings['general']['section_descriptions_enabled'] ),
 				'myWorkCardGuidanceEnabled' => ! empty( $settings['general']['my_work_card_guidance_enabled'] ),
 				'myWorkCardActionsEnabled' => ! empty( $settings['general']['my_work_card_actions_enabled'] ),
+				'themeColorSource' => (string) ( $appearance['color_source'] ?? 'custom' ),
+				'themePrimaryColor' => (string) ( $appearance['primary_color'] ?? 'cobalt' ),
+				'themeAccentColor' => (string) ( $appearance['accent_color'] ?? 'amber' ),
+				'themePrimaryCustomColor' => (string) ( $appearance['primary_custom_color'] ?? '' ),
+				'themeAccentCustomColor' => (string) ( $appearance['accent_custom_color'] ?? '' ),
+				'themeMode' => (string) ( $appearance['theme_mode'] ?? 'auto' ),
 				'objectTypes'  => array( 'risk', 'issue' ),
 				'approvalObjectTypes' => array( 'project', 'task', 'request', 'risk', 'issue', 'milestone' ),
 				'contextObjectTypes'  => array( 'project', 'task', 'request', 'risk', 'issue', 'milestone', 'approval' ),

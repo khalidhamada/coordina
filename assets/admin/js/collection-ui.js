@@ -61,7 +61,8 @@ function renderFilterBar(module, options, savedOptions) {
 }
 
 function renderTable(module, items, mode) {
-	const bulkHead = mode === 'workspace' ? '' : `<input type="checkbox" data-action="toggle-all" ${items.length && items.length === state.selection.length ? 'checked' : ''} />`;
+	const selectionEnabled = mode !== 'workspace' && module.key !== 'projects';
+	const bulkHead = selectionEnabled ? `<input type="checkbox" data-action="toggle-all" ${items.length && items.length === state.selection.length ? 'checked' : ''} />` : '';
 	const headers = module.columns.map((col) => `<th>${mode === 'workspace' ? escapeHtml(columnLabel(col)) : `<button class="coordina-sort-button" data-action="sort" data-orderby="${col}">${escapeHtml(columnLabel(col))}</button>`}</th>`).join('');
 	return `<div class="coordina-card coordina-table-wrap"><table class="coordina-table widefat striped"><thead><tr><th>${bulkHead}</th>${headers}<th>${escapeHtml(__('Actions', 'coordina'))}</th></tr></thead><tbody>${items.map((item) => rowHtml(item, module, mode)).join('')}</tbody></table></div>`;
 }
@@ -164,12 +165,19 @@ function shortExcerpt(value) {
 }
 
 function projectCompletion(item) {
-	const value = Number(item.completion_percent || 0);
+	const value = Number(item.completion_percent || item.completionPercent || 0);
 	return Math.max(0, Math.min(100, value));
 }
 
 function projectProgressBar(percent) {
 	return `<div class="coordina-project-card__progress"><span class="coordina-project-card__progress-track"><span class="coordina-project-card__progress-fill" style="width:${percent}%"></span></span><strong>${percent}%</strong></div>`;
+}
+
+function iconLabel(type, label, className) {
+	if (typeof app.iconLabel === 'function') {
+		return app.iconLabel(type, label, className);
+	}
+	return escapeHtml(label || '');
 }
 
 function deleteButton(item, moduleKey, label) {
@@ -182,15 +190,12 @@ function deleteButton(item, moduleKey, label) {
 
 function renderProjectCards(items, canManageModule) {
 	return `<div class="coordina-project-cards">${items.map((item) => {
-		const isSelected = state.selection.includes(item.id);
 		const completion = projectCompletion(item);
 		const description = shortExcerpt(item.description || '');
 		const targetEnd = dateLabel(item.target_end_date || '');
 		const startDate = dateLabel(item.start_date || '');
-		const openButton = item.can_open === false
-			? `<button class="button button-small" type="button" disabled>${escapeHtml(__('Assigned access only', 'coordina'))}</button>`
-			: `<button class="button button-small button-primary" data-action="open-project" data-id="${item.id}">${escapeHtml(__('Open workspace', 'coordina'))}</button>`;
-		return `<article class="coordina-card coordina-project-card"><div class="coordina-project-card__head"><label class="coordina-project-card__check"><input type="checkbox" data-action="toggle-selection" value="${item.id}" ${isSelected ? 'checked' : ''} /><span>${escapeHtml(__('Select', 'coordina'))}</span></label><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status || 'draft')}">${escapeHtml(nice(item.status || 'draft'))}</span><span class="coordina-status-badge status-${escapeHtml(item.health || 'neutral')}">${escapeHtml(nice(item.health || 'neutral'))}</span><span class="coordina-status-badge">${escapeHtml(nice(item.priority || 'normal'))}</span></div></div><h3><button class="coordina-link-button" data-action="open-project" data-id="${item.id}">${escapeHtml(item.title || __('Untitled project', 'coordina'))}</button></h3>${description ? `<p class="coordina-project-card__description">${escapeHtml(description)}</p>` : ''}${projectProgressBar(completion)}<div class="coordina-project-card__meta"><span>${escapeHtml(item.manager_label || __('No manager assigned', 'coordina'))}</span><span>${escapeHtml(__('Start:', 'coordina'))} ${escapeHtml(startDate)}</span><span>${escapeHtml(__('Target end:', 'coordina'))} ${escapeHtml(targetEnd)}</span></div><div class="coordina-project-card__actions">${openButton}${canManageModule ? `<button class="button button-small" data-action="open-record" data-module="projects" data-id="${item.id}">${escapeHtml(__('Open details', 'coordina'))}</button>` : ''}${deleteButton(item, 'projects', item.title || __('Project', 'coordina'))}</div></article>`;
+		void canManageModule;
+		return `<article class="coordina-card coordina-project-card"><div class="coordina-project-card__head"><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status || 'draft')}">${escapeHtml(nice(item.status || 'draft'))}</span><span class="coordina-status-badge status-${escapeHtml(item.health || 'neutral')}">${escapeHtml(nice(item.health || 'neutral'))}</span><span class="coordina-status-badge">${escapeHtml(nice(item.priority || 'normal'))}</span></div></div><h3><button class="coordina-link-button" data-action="open-project" data-id="${item.id}">${iconLabel('project', item.title || __('Untitled project', 'coordina'))}</button></h3>${description ? `<p class="coordina-project-card__description">${escapeHtml(description)}</p>` : ''}${projectProgressBar(completion)}<div class="coordina-project-card__meta"><span>${escapeHtml(item.manager_label || __('No manager assigned', 'coordina'))}</span><span>${escapeHtml(__('Start:', 'coordina'))} ${escapeHtml(startDate)}</span><span>${escapeHtml(__('Target end:', 'coordina'))} ${escapeHtml(targetEnd)}</span></div></article>`;
 	}).join('')}</div>`;
 }
 
@@ -208,7 +213,7 @@ function rowHtml(item, module, mode) {
 			? `<button class="button button-small button-primary" data-action="open-risk-issue-page" data-id="${item.id}" data-project-id="${item.project_id || ''}" data-project-tab="${item.project_id ? 'risks-issues' : ''}">${escapeHtml(__('Open', 'coordina'))}</button>`
 		: `<button class="button button-small button-primary" data-action="open-record" data-module="${module.key}" data-id="${item.id}">${escapeHtml(__('Open', 'coordina'))}</button>`;
 	const extra = module.key === 'requests' && item.can_convert ? `<button class="button button-small" data-action="open-convert" data-id="${item.id}">${escapeHtml(__('Convert', 'coordina'))}</button>` : '';
-	const checkbox = mode === 'workspace' ? '' : `<input type="checkbox" data-action="toggle-selection" value="${item.id}" ${state.selection.includes(item.id) ? 'checked' : ''} />`;
+	const checkbox = mode === 'workspace' || module.key === 'projects' ? '' : `<input type="checkbox" data-action="toggle-selection" value="${item.id}" ${state.selection.includes(item.id) ? 'checked' : ''} />`;
 	const deleteAction = deleteButton(item, module.key, item.title || item.object_label || item.file_name || __('Record', 'coordina'));
 	return `<tr><td>${checkbox}</td>${cells}<td><div class="coordina-row-actions">${openButton}${extra}${deleteAction}</div></td></tr>`;
 }

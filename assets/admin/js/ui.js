@@ -12,10 +12,16 @@ function renderAppView(name) {
 }
 
 function pageDescriptionsEnabled() {
+	if (state.page === 'coordina-settings') {
+		return true;
+	}
 	return !state.shell || state.shell.pageDescriptionsEnabled !== false;
 }
 
 function sectionDescriptionsEnabled() {
+	if (state.page === 'coordina-settings') {
+		return true;
+	}
 	return !state.shell || state.shell.sectionDescriptionsEnabled !== false;
 }
 
@@ -53,17 +59,6 @@ function buttonAction(label, data, tone) {
 	return { kind: 'button', label, data: data || {}, tone: tone || 'neutral' };
 }
 
-function statusBadge(label, className) {
-	return { label, className: className || '' };
-}
-
-function renderHeaderBadges(badges) {
-	if (!Array.isArray(badges) || !badges.length) {
-		return '';
-	}
-	return `<div class="coordina-shell__status-row">${badges.map((badge) => `<span class="coordina-status-badge ${escapeHtml(badge.className || '')}">${escapeHtml(badge.label || '')}</span>`).join('')}</div>`;
-}
-
 function renderHeaderAction(action) {
 	if (!action || !action.label) {
 		return '';
@@ -79,7 +74,154 @@ function renderHeaderActions(actions) {
 	if (!Array.isArray(actions) || !actions.length) {
 		return '';
 	}
-	return `<details class="coordina-shell-menu"><summary class="coordina-shell-trigger coordina-shell-trigger--menu"><span class="coordina-shell-trigger__label">${escapeHtml(__('Actions', 'coordina'))}</span><span class="coordina-shell-trigger__badge">${escapeHtml(__('Open', 'coordina'))}</span></summary><div class="coordina-shell-menu__panel">${actions.map(renderHeaderAction).join('')}</div></details>`;
+	return `<details class="coordina-shell-menu"><summary class="coordina-shell-trigger coordina-shell-trigger--icon coordina-shell-trigger--menu" aria-label="${escapeHtml(__('Open actions', 'coordina'))}">${shellIcon('actions')}<span class="screen-reader-text">${escapeHtml(__('Open actions', 'coordina'))}</span><span class="coordina-shell-trigger__badge">${actions.length}</span></summary><div class="coordina-shell-menu__panel">${actions.map(renderHeaderAction).join('')}</div></details>`;
+}
+
+function shellIcon(type) {
+	if (type === 'actions') {
+		return `<span class="coordina-shell-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 7.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM5 13.5A1.5 1.5 0 1 0 5 10.5a1.5 1.5 0 0 0 0 3Zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM5 19.5A1.5 1.5 0 1 0 5 16.5a1.5 1.5 0 0 0 0 3Zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path></svg></span>`;
+	}
+	if (type === 'inbox') {
+		return `<span class="coordina-shell-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v10A2.5 2.5 0 0 1 17.5 18H15a3 3 0 0 1-6 0H6.5A2.5 2.5 0 0 1 4 15.5v-10Zm2.5-.5a.5.5 0 0 0-.5.5v10c0 .276.224.5.5.5h4.085l.278 1.106a1 1 0 0 0 .97.894h.334a1 1 0 0 0 .97-.894L13.415 16H17.5a.5.5 0 0 0 .5-.5v-10a.5.5 0 0 0-.5-.5h-11Z"></path></svg></span>`;
+	}
+	return '';
+}
+
+function entityIconSvg(type) {
+	const map = {
+		dashboard: '<svg viewBox="0 0 24 24" focusable="false"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="4" rx="1.5"></rect><rect x="13" y="10" width="7" height="10" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect></svg>',
+		'my-work': '<svg viewBox="0 0 24 24" focusable="false"><path d="M6 12h12"></path><path d="M12 6v12"></path><circle cx="12" cy="12" r="7"></circle></svg>',
+		project: '<svg viewBox="0 0 24 24" focusable="false"><path d="M4 7.5h7"></path><path d="M4 12h16"></path><path d="M4 16.5h10"></path><rect x="3" y="4" width="18" height="16" rx="2"></rect></svg>',
+		task: '<svg viewBox="0 0 24 24" focusable="false"><path d="M9 7h10"></path><path d="M9 12h10"></path><path d="M9 17h10"></path><path d="m4.5 7 1.5 1.5 2.5-3"></path><path d="m4.5 12 1.5 1.5 2.5-3"></path><path d="m4.5 17 1.5 1.5 2.5-3"></path></svg>',
+		milestone: '<svg viewBox="0 0 24 24" focusable="false"><path d="M5 19V5"></path><path d="M6 6h11l-2.5 3 2.5 3H6"></path><path d="M5 19h14"></path></svg>',
+		'risk-issue': '<svg viewBox="0 0 24 24" focusable="false"><path d="M12 4 20 19H4Z"></path><path d="M12 9v4.5"></path><path d="M12 17h.01"></path></svg>',
+		risk: '<svg viewBox="0 0 24 24" focusable="false"><path d="M12 4 20 19H4Z"></path><path d="M12 9v4.5"></path><path d="M12 17h.01"></path></svg>',
+		issue: '<svg viewBox="0 0 24 24" focusable="false"><path d="M12 3 20 12 12 21 4 12Z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>',
+		request: '<svg viewBox="0 0 24 24" focusable="false"><path d="M5 7.5h9"></path><path d="M5 12h14"></path><path d="M5 16.5h10"></path><path d="m15 4 4 4-4 4"></path></svg>',
+		approval: '<svg viewBox="0 0 24 24" focusable="false"><path d="m5 12.5 4.2 4.2L19 7"></path></svg>',
+		calendar: '<svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M8 3v4"></path><path d="M16 3v4"></path><path d="M3 10h18"></path><path d="M8 14h3"></path><path d="M13 14h3"></path><path d="M8 18h3"></path></svg>',
+		workload: '<svg viewBox="0 0 24 24" focusable="false"><path d="M4 17h4"></path><path d="M10 17h4"></path><path d="M16 17h4"></path><path d="M6 17V9"></path><path d="M12 17V5"></path><path d="M18 17v-7"></path></svg>',
+		file: '<svg viewBox="0 0 24 24" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"></path><path d="M14 3v5h5"></path><path d="M8 13h8"></path><path d="M8 17h5"></path></svg>',
+		discussion: '<svg viewBox="0 0 24 24" focusable="false"><path d="M5 18.5V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 2.5Z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path></svg>',
+		settings: '<svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h6"></path><path d="M14 7h6"></path><path d="M4 17h10"></path><path d="M18 17h2"></path><circle cx="12" cy="7" r="2"></circle><circle cx="16" cy="17" r="2"></circle></svg>',
+		inbox: '<svg viewBox="0 0 24 24" focusable="false"><path d="M4 6h16v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"></path><path d="M4 8.5 12 13l8-4.5"></path></svg>',
+	};
+	return map[String(type || '')] || '<svg viewBox="0 0 24 24" focusable="false"><path d="M12 6v12"></path><path d="M6 12h12"></path></svg>';
+}
+
+function entityIcon(type, className) {
+	const classes = ['coordina-entity-icon', `coordina-entity-icon--${escapeHtml(String(type || 'generic'))}`];
+	if (className) {
+		classes.push(className);
+	}
+	return `<span class="${classes.join(' ')}" aria-hidden="true">${entityIconSvg(type)}</span>`;
+}
+
+function iconLabel(type, label, className) {
+	const classes = ['coordina-entity-label'];
+	if (className) {
+		classes.push(className);
+	}
+	return `<span class="${classes.join(' ')}">${entityIcon(type)}<span class="coordina-entity-label__text">${escapeHtml(label || '')}</span></span>`;
+}
+
+function moduleIconType(moduleKey) {
+	const map = {
+		projects: 'project',
+		tasks: 'task',
+		requests: 'request',
+		approvals: 'approval',
+		milestones: 'milestone',
+		'risks-issues': 'risk-issue',
+	};
+	return map[String(moduleKey || '')] || 'dashboard';
+}
+
+function pageIconType(page) {
+	const map = {
+		'coordina-dashboard': 'dashboard',
+		'coordina-my-work': 'my-work',
+		'coordina-projects': 'project',
+		'coordina-tasks': 'task',
+		'coordina-requests': 'request',
+		'coordina-approvals': 'approval',
+		'coordina-calendar': 'calendar',
+		'coordina-workload': 'workload',
+		'coordina-risks-issues': 'risk-issue',
+		'coordina-files-discussion': 'discussion',
+		'coordina-settings': 'settings',
+	};
+	return map[String(page || '')] || 'dashboard';
+}
+
+function normalizeHexColor(value) {
+	const color = String(value || '').trim();
+	if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color)) {
+		return '';
+	}
+	if (color.length === 4) {
+		return `#${color.slice(1).split('').map((char) => `${char}${char}`).join('')}`.toLowerCase();
+	}
+	return color.toLowerCase();
+}
+
+function hexToRgb(value) {
+	const hex = normalizeHexColor(value);
+	if (!hex) {
+		return null;
+	}
+	const normalized = hex.slice(1);
+	return {
+		r: parseInt(normalized.slice(0, 2), 16),
+		g: parseInt(normalized.slice(2, 4), 16),
+		b: parseInt(normalized.slice(4, 6), 16),
+	};
+}
+
+function rgbaColor(value, alpha) {
+	const rgb = hexToRgb(value);
+	if (!rgb) {
+		return '';
+	}
+	return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
+function darkenHex(value, factor) {
+	const rgb = hexToRgb(value);
+	if (!rgb) {
+		return '';
+	}
+	const scale = Math.max(0, Math.min(1, Number(factor || 1)));
+	const toHex = (channel) => Math.max(0, Math.min(255, Math.round(channel * scale))).toString(16).padStart(2, '0');
+	return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`;
+}
+
+function shellInlineStyle() {
+	const styles = [];
+	const primary = state.shell && state.shell.themePrimaryCustomColor ? normalizeHexColor(state.shell.themePrimaryCustomColor) : '';
+	const accent = state.shell && state.shell.themeAccentCustomColor ? normalizeHexColor(state.shell.themeAccentCustomColor) : '';
+	if (primary) {
+		styles.push(`--coordina-primary:${primary}`);
+		styles.push(`--coordina-primary-strong:${darkenHex(primary, 0.84) || primary}`);
+		styles.push(`--coordina-primary-soft:${rgbaColor(primary, 0.14)}`);
+		styles.push(`--coordina-primary-lighter:${rgbaColor(primary, 0.08)}`);
+		styles.push(`--coordina-info:${primary}`);
+		styles.push(`--coordina-info-strong:${darkenHex(primary, 0.84) || primary}`);
+		styles.push(`--coordina-info-soft:${rgbaColor(primary, 0.14)}`);
+		styles.push(`--coordina-info-lighter:${rgbaColor(primary, 0.08)}`);
+		styles.push(`--coordina-gradient-info:${primary}`);
+	}
+	if (accent) {
+		styles.push(`--coordina-accent:${accent}`);
+		styles.push(`--coordina-accent-soft:${rgbaColor(accent, 0.16)}`);
+		styles.push(`--coordina-accent-lighter:${rgbaColor(accent, 0.09)}`);
+	}
+	return styles.join(';');
+}
+
+function shellPrimaryNav() {
+	const fallbackPage = canAccessPage('coordina-dashboard') ? 'coordina-dashboard' : 'coordina-my-work';
+	return `<div class="coordina-shell__primary-nav"><button type="button" class="coordina-shell__brand" data-action="open-route" data-page="${escapeHtml(fallbackPage)}">${escapeHtml(__('Coordina', 'coordina'))}</button></div>`;
 }
 
 function breadcrumbHtml(items) {
@@ -872,10 +1014,19 @@ function drawerSummary(module, item, sourceButton) {
 function render() {
 	const shellHeader = shellHeaderHtml();
 	const shellClasses = ['coordina-shell'];
-	if (!pageDescriptionsEnabled()) {
+	const shellColorSource = state.shell && state.shell.themeColorSource ? String(state.shell.themeColorSource) : 'custom';
+	const shellPrimary = state.shell && state.shell.themePrimaryColor ? String(state.shell.themePrimaryColor) : 'cobalt';
+	const shellAccent = state.shell && state.shell.themeAccentColor ? String(state.shell.themeAccentColor) : 'amber';
+	const shellMode = state.shell && state.shell.themeMode ? String(state.shell.themeMode) : 'auto';
+	const inlineStyle = shellInlineStyle();
+	shellClasses.push(`coordina-shell--source-${shellColorSource}`);
+	shellClasses.push(`coordina-shell--primary-${shellPrimary}`);
+	shellClasses.push(`coordina-shell--accent-${shellAccent}`);
+	shellClasses.push(`coordina-shell--mode-${shellMode}`);
+	if (state.page !== 'coordina-settings' && !pageDescriptionsEnabled()) {
 		shellClasses.push('coordina-shell--hide-page-descriptions');
 	}
-	if (!sectionDescriptionsEnabled()) {
+	if (state.page !== 'coordina-settings' && !sectionDescriptionsEnabled()) {
 		shellClasses.push('coordina-shell--hide-section-descriptions');
 	}
 	const body = state.loading
@@ -903,15 +1054,14 @@ function render() {
 									: currentModule()
 										? modulePage()
 										: `<section class="coordina-card coordina-card--notice"><h2>${escapeHtml(__('Module shell ready', 'coordina'))}</h2><p>${escapeHtml(__('This screen keeps the shared patterns while deeper implementation is phased in.', 'coordina'))}</p></section>`;
-	root.innerHTML = `<div class="${shellClasses.join(' ')}">${noticesHtml()}${shellHeader}${body}</div>${drawerHtml()}${modalHtml()}`;
+	root.innerHTML = `<div class="${shellClasses.join(' ')}"${inlineStyle ? ` style="${inlineStyle}"` : ''}>${noticesHtml()}${shellHeader}${body}</div>${drawerHtml()}${modalHtml()}`;
 }
 
 function shellHeaderHtml() {
 	const meta = currentPageHeaderMeta();
 	const items = state.notifications && Array.isArray(state.notifications.items) ? state.notifications.items : [];
 	const unreadCount = items.filter((item) => !item.is_read).length;
-	const userLabel = state.shell && state.shell.user && (state.shell.user.label || state.shell.user.display_name) ? (state.shell.user.label || state.shell.user.display_name) : __('Team member', 'coordina');
-	return `<section class="coordina-shell__header coordina-shell__header--global"><div class="coordina-shell__header-copy">${breadcrumbHtml(meta.breadcrumbs)}<p class="coordina-shell__eyebrow">${escapeHtml(meta.eyebrow)}</p><h2>${escapeHtml(meta.title)}</h2>${renderHeaderBadges(meta.badges)}${pageDescriptionsEnabled() && meta.description ? `<p class="coordina-shell__description">${escapeHtml(meta.description)}</p>` : ''}</div><div class="coordina-shell__meta"><span class="coordina-status-badge">${escapeHtml(userLabel)}</span>${renderHeaderActions(meta.actions)}<button class="coordina-shell-trigger coordina-inbox-trigger ${unreadCount > 0 ? 'has-unread' : ''}" type="button" data-action="open-notifications" aria-label="${escapeHtml(__('Open inbox', 'coordina'))}"><span class="coordina-shell-trigger__label">${escapeHtml(__('Inbox', 'coordina'))}</span><span class="coordina-shell-trigger__badge coordina-inbox-trigger__count">${unreadCount}</span></button></div></section>`;
+	return `<section class="coordina-shell__header coordina-shell__header--global"><div class="coordina-shell__contextbar"><div class="coordina-shell__header-copy">${breadcrumbHtml(meta.breadcrumbs)}<div class="coordina-shell__title-block"><h2 class="coordina-shell__title">${iconLabel(meta.iconType || 'dashboard', meta.title, 'coordina-shell__title-label')}</h2>${pageDescriptionsEnabled() && meta.description ? `<p class="coordina-shell__description">${escapeHtml(meta.description)}</p>` : ''}</div></div><div class="coordina-shell__header-meta">${renderHeaderActions(meta.actions)}<button class="coordina-shell-trigger coordina-shell-trigger--icon coordina-inbox-trigger ${unreadCount > 0 ? 'has-unread' : ''}" type="button" data-action="open-notifications" aria-label="${escapeHtml(__('Open inbox', 'coordina'))}">${shellIcon('inbox')}<span class="screen-reader-text">${escapeHtml(__('Open inbox', 'coordina'))}</span><span class="coordina-shell-trigger__badge coordina-inbox-trigger__count">${unreadCount}</span></button></div></div></section>`;
 }
 
 function currentPageHeaderMeta() {
@@ -928,15 +1078,9 @@ function currentPageHeaderMeta() {
 			breadcrumbs.push({ label: workspaceTabLabel(activeTab, tabs) });
 		}
 		return {
-			eyebrow: __('Project workspace', 'coordina'),
+			iconType: 'project',
 			title: project.title || __('Project workspace', 'coordina'),
 			description: project.description || __('Track progress, decisions, and delivery details in one project workspace.', 'coordina'),
-			badges: [
-				statusBadge(nice(project.status || 'draft'), `status-${String(project.status || 'draft')}`),
-				statusBadge(nice(project.health || 'neutral'), `status-${String(project.health || 'neutral')}`),
-				statusBadge(project.manager_label || __('No manager assigned', 'coordina')),
-				statusBadge(dateLabel(project.target_end_date || '')),
-			],
 			actions: workspaceHeaderActions(project, actions),
 			breadcrumbs,
 		};
@@ -955,16 +1099,11 @@ function currentPageHeaderMeta() {
 				{ label: task.title || __('Task', 'coordina') },
 			];
 		return {
-			eyebrow: __('Task detail', 'coordina'),
+			iconType: 'task',
 			title: task.title || __('Task', 'coordina'),
 			description: Number(task.project_id || 0) > 0
 				? __('Review progress, updates, and files without leaving the parent project.', 'coordina')
 				: __('Review progress, updates, and files for this standalone task.', 'coordina'),
-			badges: [
-				statusBadge(nice(task.status || 'new'), `status-${String(task.status || 'new')}`),
-				statusBadge(`${Number(task.completion_percent || 0)}% ${__('complete', 'coordina')}`),
-				statusBadge(task.assignee_label || __('Unassigned', 'coordina')),
-			].concat(task.blocked ? [statusBadge(__('Blocked', 'coordina'), 'status-blocked')] : []).concat([statusBadge(task.project_label || __('Standalone', 'coordina'))]),
 			actions: taskHeaderActions(task),
 			breadcrumbs,
 		};
@@ -983,14 +1122,9 @@ function currentPageHeaderMeta() {
 				{ label: milestone.title || __('Milestone', 'coordina') },
 			];
 		return {
-			eyebrow: __('Milestone detail', 'coordina'),
+			iconType: 'milestone',
 			title: milestone.title || __('Milestone', 'coordina'),
 			description: __('Review the checkpoint, owner, due signal, and related updates in one place.', 'coordina'),
-			badges: [
-				statusBadge(nice(milestone.status || 'planned'), `status-${String(milestone.status || 'planned')}`),
-				statusBadge(milestone.owner_label || __('Unassigned', 'coordina')),
-				statusBadge(milestone.project_label || __('Project milestone', 'coordina')),
-			].concat(milestone.dependency_flag ? [statusBadge(__('Dependency', 'coordina'), 'status-waiting')] : []),
 			actions: milestoneHeaderActions(milestone),
 			breadcrumbs,
 		};
@@ -1009,16 +1143,9 @@ function currentPageHeaderMeta() {
 				{ label: riskIssue.title || __('Risk or issue', 'coordina') },
 			];
 		return {
-			eyebrow: __('Risk or issue detail', 'coordina'),
+			iconType: riskIssue.object_type === 'issue' ? 'issue' : 'risk',
 			title: riskIssue.title || __('Risk or issue', 'coordina'),
 			description: __('Review the exposure, owner, response plan, and supporting context here.', 'coordina'),
-			badges: [
-				statusBadge(nice(riskIssue.status || 'identified'), `status-${String(riskIssue.status || 'identified')}`),
-				statusBadge(nice(riskIssue.object_type || 'risk')),
-				statusBadge(nice(riskIssue.severity || 'medium')),
-				statusBadge(riskIssue.owner_label || __('Unassigned', 'coordina')),
-				statusBadge(riskIssue.project_label || __('Standalone exception', 'coordina')),
-			],
 			actions: riskIssueHeaderActions(riskIssue),
 			breadcrumbs,
 		};
@@ -1028,10 +1155,9 @@ function currentPageHeaderMeta() {
 	if (module) {
 		const actions = moduleHeaderActions(module);
 		return {
-			eyebrow: topLevelHeaderKind(state.page),
+			iconType: moduleIconType(module.key),
 			title: module.title,
 			description: pageDescriptionFor(state.page),
-			badges: [],
 			actions,
 			breadcrumbs: [
 				{ label: __('Coordina', 'coordina'), route: { page: canAccessPage('coordina-dashboard') ? 'coordina-dashboard' : 'coordina-my-work' } },
@@ -1043,68 +1169,35 @@ function currentPageHeaderMeta() {
 	const pageMeta = getPageMeta(state.page) || {};
 	const title = pageTitleFor(state.page);
 	let actions = [];
-	let badges = [];
 	if (state.page === 'coordina-my-work') {
 		actions = [
 			canAccessPage('coordina-calendar') ? routeAction(__('Calendar', 'coordina'), { page: 'coordina-calendar' }) : null,
 			canAccessPage('coordina-files-discussion') ? routeAction(__('Files & discussions', 'coordina'), { page: 'coordina-files-discussion' }) : null,
 			buttonAction(__('Quick task', 'coordina'), { action: 'open-task-create' }, 'primary'),
 		].filter(Boolean);
-		const summary = state.myWork && state.myWork.summary ? state.myWork.summary : {};
-		const items = state.notifications && Array.isArray(state.notifications.items) ? state.notifications.items : [];
-		const unreadCount = items.filter((item) => !item.is_read).length;
-		badges = [
-			statusBadge(`${Number(summary.attention || 0)} ${__('needs attention', 'coordina')}`),
-			statusBadge(`${Number(summary.pendingApprovals || 0)} ${__('approvals', 'coordina')}`),
-			statusBadge(`${unreadCount} ${__('unread', 'coordina')}`),
-		].filter((badge) => badge.label && badge.label !== `0 ${__('needs attention', 'coordina')}` ? true : true);
 	}
 	if (state.page === 'coordina-dashboard') {
 		actions = [
 			canAccessPage('coordina-projects') ? routeAction(__('View projects', 'coordina'), { page: 'coordina-projects' }) : null,
 			routeAction(__('Go to My Work', 'coordina'), { page: 'coordina-my-work' }, 'primary'),
 		].filter(Boolean);
-		const dashboard = state.dashboard || {};
-		const kpis = dashboard.kpis || {};
-		badges = [
-			statusBadge(`${Number(kpis.atRiskProjects || 0)} ${__('at risk', 'coordina')}`),
-			statusBadge(`${Number(kpis.pendingApprovals || 0)} ${__('pending approvals', 'coordina')}`),
-			statusBadge(`${Number(kpis.overdueTasks || 0)} ${__('overdue tasks', 'coordina')}`),
-		];
 	}
 	if (state.page === 'coordina-calendar') {
 		actions = [
 			canAccessPage('coordina-projects') ? routeAction(__('Projects', 'coordina'), { page: 'coordina-projects' }) : null,
 			canAccessPage('coordina-tasks') ? routeAction(__('Open task list', 'coordina'), { page: 'coordina-tasks' }, 'primary') : null,
 		].filter(Boolean);
-		const summary = state.calendar && state.calendar.summary ? state.calendar.summary : {};
-		badges = [
-			statusBadge(`${Number(summary.total || 0)} ${__('scheduled items', 'coordina')}`),
-			statusBadge(`${Number(summary.overdue || 0)} ${__('overdue tasks', 'coordina')}`),
-		];
 	}
 	if (state.page === 'coordina-workload') {
 		actions = [
 			canAccessPage('coordina-calendar') ? routeAction(__('Calendar', 'coordina'), { page: 'coordina-calendar' }) : null,
 			canAccessPage('coordina-projects') ? routeAction(__('Managed projects', 'coordina'), { page: 'coordina-projects' }, 'primary') : null,
 		].filter(Boolean);
-		const summary = state.workload && state.workload.summary ? state.workload.summary : {};
-		badges = [
-			statusBadge(`${Number(summary.people || 0)} ${__('people in view', 'coordina')}`),
-			statusBadge(`${Number(summary.overloaded || 0)} ${__('high pressure', 'coordina')}`),
-		];
 	}
 	if (state.page === 'coordina-files-discussion') {
 		actions = [
 			routeAction(__('Go to My Work', 'coordina'), { page: 'coordina-my-work' }),
 			routeAction(__('Open projects', 'coordina'), { page: 'coordina-projects' }, 'primary'),
-		];
-		const collaboration = state.collaboration || {};
-		const files = collaboration.files || {};
-		const discussions = collaboration.discussions || {};
-		badges = [
-			statusBadge(`${Number(files.total || 0)} ${__('files in view', 'coordina')}`),
-			statusBadge(`${Number(discussions.total || 0)} ${__('updates in view', 'coordina')}`),
 		];
 	}
 	if (state.page === 'coordina-settings') {
@@ -1112,18 +1205,16 @@ function currentPageHeaderMeta() {
 			routeAction(__('Project workspaces', 'coordina'), { page: 'coordina-projects' }),
 			buttonAction(__('Save section', 'coordina'), { action: 'submit-settings' }, 'primary'),
 		];
-		badges = [statusBadge((state.settingsTab || 'defaults') ? nice(state.settingsTab || 'defaults') : __('Defaults', 'coordina'))];
 	}
 	return {
-			eyebrow: topLevelHeaderKind(state.page),
-			title: title,
+		iconType: pageIconType(state.page),
+		title: title,
 		description: pageMeta.description || __('Stay on top of work, approvals, and updates from one shell.', 'coordina'),
-			badges,
-			actions,
-			breadcrumbs: [
-				{ label: __('Coordina', 'coordina'), route: { page: canAccessPage('coordina-dashboard') ? 'coordina-dashboard' : 'coordina-my-work' } },
-				{ label: title },
-			],
+		actions,
+		breadcrumbs: [
+			{ label: __('Coordina', 'coordina'), route: { page: canAccessPage('coordina-dashboard') ? 'coordina-dashboard' : 'coordina-my-work' } },
+			{ label: title },
+		],
 	};
 }
 
@@ -1274,6 +1365,8 @@ function openNotifications() {
 }
 
 Object.assign(app, {
+	entityIcon,
+	iconLabel,
 	approvalSourceRoute,
 	approvalDecisionForm,
 	contextSections,

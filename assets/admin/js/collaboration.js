@@ -5,7 +5,7 @@ if (!app.root || !app.state) {
 	return;
 }
 
-const { state, escapeHtml, __, nice, dateLabel } = app;
+const { state, escapeHtml, __, nice, dateLabel, dateTimeLabel } = app;
 const baseWorkspaceTabBody = app.workspaceTabBody;
 
 function collaborationProjectButton(item, tab) {
@@ -44,7 +44,7 @@ function collaborationContextButton(item, tab) {
 function collaborationMeta(item, tab, authorLabel) {
 	const context = collaborationContextButton(item, tab);
 	const project = item && item.object_type === 'project' ? '' : collaborationProjectButton(item, tab);
-	return `<div class="coordina-work-meta"><span class="coordina-status-badge">${escapeHtml(nice(item.object_type || 'context'))}</span>${context}${project}<span>${escapeHtml(authorLabel)}</span><span>${escapeHtml(dateLabel(item.created_at))}</span></div>`;
+	return `<div class="coordina-work-meta"><span class="coordina-status-badge">${escapeHtml(nice(item.object_type || 'context'))}</span>${context}${project}<span>${escapeHtml(authorLabel)}</span><span>${escapeHtml(dateTimeLabel(item.created_at))}</span></div>`;
 }
 
 function fileList(items, emptyMessage) {
@@ -53,6 +53,120 @@ function fileList(items, emptyMessage) {
 
 function discussionTimeline(items, emptyMessage) {
 	return items.length ? `<ul class="coordina-timeline">${items.map((item) => `<li><strong>${escapeHtml(item.created_by_label || __('System', 'coordina'))}</strong><p>${escapeHtml(item.body || item.excerpt || '')}</p>${collaborationMeta(item, 'discussion', item.created_by_label || __('System', 'coordina'))}</li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+}
+
+function rankingChart(series, emptyMessage) {
+	if (!series.length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+	}
+	const max = Math.max(1, ...series.map((item) => Number(item.count || 0)));
+	return `<div class="coordina-activity-chart coordina-activity-chart--ranking">${series.map((item) => `<div class="coordina-activity-chart__row"><div class="coordina-activity-chart__row-head"><span>${escapeHtml(item.label || '')}</span><strong>${Number(item.count || 0)}</strong></div><span class="coordina-activity-chart__row-bar"><span style="width:${Math.max(10, Math.round((Number(item.count || 0) / max) * 100))}%"></span></span></div>`).join('')}</div>`;
+}
+
+function columnsChart(series) {
+	const max = Math.max(1, ...series.map((item) => Number(item.count || 0)));
+	return `<div class="coordina-activity-chart coordina-activity-chart--columns" style="grid-template-columns:repeat(${Math.max(1, series.length)}, minmax(0, 1fr))">${series.map((item) => `<div class="coordina-activity-chart__column"><span class="coordina-activity-chart__track"><span class="coordina-activity-chart__bar" style="transform:scaleY(${Math.max(0.08, Number(item.count || 0) / max)})"></span></span><strong>${Number(item.count || 0)}</strong><span>${escapeHtml(item.label || '')}</span></div>`).join('')}</div>`;
+}
+
+function sortSeriesByCount(series) {
+	return series.slice().sort((left, right) => {
+		const countDelta = Number(right.count || 0) - Number(left.count || 0);
+		if (countDelta !== 0) {
+			return countDelta;
+		}
+		return String(left.label || '').localeCompare(String(right.label || ''));
+	});
+}
+
+function parseCreatedAt(value) {
+	const raw = String(value || '').trim();
+	if (!raw) {
+		return null;
+	}
+	const parsed = new Date(raw.replace(' ', 'T'));
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function bucketDateKey(date, mode) {
+	const year = date.getUTCFullYear();
+	const month = `${date.getUTCMonth() + 1}`.padStart(2, '0');
+	const day = `${date.getUTCDate()}`.padStart(2, '0');
+	if (mode === 'month') {
+		return `${year}-${month}-01`;
+	}
+	if (mode === 'week') {
+		const weekDate = new Date(Date.UTC(year, date.getUTCMonth(), date.getUTCDate()));
+		const weekDay = weekDate.getUTCDay() || 7;
+		weekDate.setUTCDate(weekDate.getUTCDate() - weekDay + 1);
+		return `${weekDate.getUTCFullYear()}-${`${weekDate.getUTCMonth() + 1}`.padStart(2, '0')}-${`${weekDate.getUTCDate()}`.padStart(2, '0')}`;
+	}
+	return `${year}-${month}-${day}`;
+}
+
+function bucketLabel(key, mode) {
+	const parsed = new Date(`${key}T00:00:00Z`);
+	if (Number.isNaN(parsed.getTime())) {
+		return key;
+	}
+	if (mode === 'month') {
+		return new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(parsed);
+	}
+	if (mode === 'week') {
+		return `${__('Week of', 'coordina')} ${new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(parsed)}`;
+	}
+	return new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(parsed);
+}
+
+function chooseDateGrouping(items) {
+	const dates = items.map((item) => parseCreatedAt(item.created_at)).filter(Boolean).sort((left, right) => left.getTime() - right.getTime());
+	if (!dates.length) {
+		return 'day';
+	}
+	const spanDays = Math.max(0, Math.round((dates[dates.length - 1].getTime() - dates[0].getTime()) / 86400000));
+	if (spanDays <= 21 || dates.length <= 8) {
+		return 'day';
+	}
+	if (spanDays <= 120) {
+		return 'week';
+	}
+	return 'month';
+}
+
+function seriesFromCounts(items, keyFn, labelFn, limit, preserveChronology = false) {
+	const counts = items.reduce((carry, item) => {
+		const key = keyFn(item);
+		if (!key) {
+			return carry;
+		}
+		carry[key] = (carry[key] || 0) + 1;
+		return carry;
+	}, {});
+	let series = Object.keys(counts).map((key) => ({ key, label: labelFn(key), count: counts[key] }));
+	if (preserveChronology) {
+		series = series.sort((left, right) => String(left.key).localeCompare(String(right.key))).slice(-limit);
+	} else {
+		series = sortSeriesByCount(series).slice(0, limit);
+	}
+	return series;
+}
+
+function updateUserSeries(items) {
+	return seriesFromCounts(items, (item) => String(item.created_by_label || __('System', 'coordina')), (key) => key, 5);
+}
+
+function updateDateSeries(items) {
+	const mode = chooseDateGrouping(items);
+	return {
+		mode,
+		series: seriesFromCounts(items, (item) => {
+			const parsed = parseCreatedAt(item.created_at);
+			return parsed ? bucketDateKey(parsed, mode) : '';
+		}, (key) => bucketLabel(key, mode), 8, true),
+	};
+}
+
+function fileTypeSeries(items) {
+	return seriesFromCounts(items, (item) => String(item.object_type || 'project'), (key) => nice(key), 6);
 }
 
 function collaborationActionButtons(seed, permissions) {
@@ -85,11 +199,20 @@ function collaborationPage() {
 app.workspaceTabBody = function (tab, project, overview, taskSummary) {
 	if (tab === 'files') {
 		const files = state.workspace && state.workspace.fileCollection ? state.workspace.fileCollection.items || [] : [];
-		return `<section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Project files', 'coordina'))}</h3>${collaborationActionButtons({ object_type: 'project', object_id: project.id || '', object_label: project.title || __('Project workspace', 'coordina') })}</div>${fileList(files, __('No project files yet. Attach the first file to keep project context together.', 'coordina'))}</section>`;
+		const summary = state.workspace && state.workspace.fileSummary ? state.workspace.fileSummary : {};
+		const workspaceActions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
+		const fileActions = collaborationActionButtons({ object_type: 'project', object_id: project.id || '', object_label: project.title || __('Project workspace', 'coordina') }, { canPostUpdate: false, canAttachFile: !!workspaceActions.canAttachFile });
+		const typeSeries = fileTypeSeries(files);
+		return `<div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project files', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Files attached to this project and its related work.', 'coordina'))}</p></div>${fileActions}</div>${fileList(files, __('No project files yet. Attach the first file to keep project context together.', 'coordina'))}</section><div class="coordina-project-side-stack"><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Files by item type', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See which project records are carrying the most file context.', 'coordina'))}</p></div></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Linked files', 'coordina'))}</span></div>${rankingChart(typeSeries, __('No file distribution to chart yet.', 'coordina'))}</section></div></div>`;
 	}
 	if (tab === 'discussion') {
 		const discussions = state.workspace && state.workspace.discussionCollection ? state.workspace.discussionCollection.items || [] : [];
-		return `<section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Project updates', 'coordina'))}</h3>${collaborationActionButtons({ object_type: 'project', object_id: project.id || '', object_label: project.title || __('Project workspace', 'coordina') })}</div>${discussionTimeline(discussions, __('No project updates yet. Add a quick update to keep the team aligned.', 'coordina'))}</section>`;
+		const summary = state.workspace && state.workspace.discussionSummary ? state.workspace.discussionSummary : {};
+		const workspaceActions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
+		const discussionActions = collaborationActionButtons({ object_type: 'project', object_id: project.id || '', object_label: project.title || __('Project workspace', 'coordina') }, { canPostUpdate: !!workspaceActions.canPostUpdate, canAttachFile: false });
+		const authorSeries = updateUserSeries(discussions);
+		const datedSeries = updateDateSeries(discussions);
+		return `<div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project updates', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recent updates from this project and its related work.', 'coordina'))}</p></div>${discussionActions}</div>${discussionTimeline(discussions, __('No project updates yet. Add a quick update to keep the team aligned.', 'coordina'))}</section><div class="coordina-project-side-stack"><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Updates by person', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See who is contributing most often to the current project narrative.', 'coordina'))}</p></div></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Updates logged', 'coordina'))}</span></div>${rankingChart(authorSeries, __('No update activity to chart yet.', 'coordina'))}</section><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Updates over time', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(`${__('Grouped by', 'coordina')} ${nice(datedSeries.mode || 'day')}`)}</p></div></div>${datedSeries.series.length ? columnsChart(datedSeries.series) : `<p class="coordina-empty-inline">${escapeHtml(__('No timeline data to chart yet.', 'coordina'))}</p>`}</section></div></div>`;
 	}
 	return baseWorkspaceTabBody(tab, project, overview, taskSummary);
 };

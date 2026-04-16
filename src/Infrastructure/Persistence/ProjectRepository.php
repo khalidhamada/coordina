@@ -410,10 +410,37 @@ final class ProjectRepository extends AbstractRepository {
 		$item['task_group_label'] = $item['task_group_label'] ?? '';
 		$item['closeout_notes'] = $item['closeout_notes'] ?? '';
 		$item['archived_at'] = $item['archived_at'] ?? '';
+		$item['completionPercent'] = $this->get_completion_percent( (int) ( $item['id'] ?? 0 ) );
 		$item['can_edit'] = $this->access->can_edit_project( (int) ( $item['id'] ?? 0 ) );
 		$item['can_delete'] = $this->access->can_delete_project( (int) ( $item['id'] ?? 0 ) );
 		$item['can_open'] = $this->access->can_view_project( (int) ( $item['id'] ?? 0 ) );
 		return $item;
+	}
+
+	/**
+	 * Get task completion percentage for a project.
+	 *
+	 * @param int $project_id Project id.
+	 */
+	private function get_completion_percent( int $project_id ): int {
+		if ( $project_id <= 0 ) {
+			return 0;
+		}
+
+		$tasks_table = $this->table( 'tasks' );
+		list( $task_access_sql, $task_access_params ) = $this->access->task_access_where( 'id' );
+		$row = $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT COUNT(*) AS total_count, SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS completed_count FROM {$tasks_table} WHERE project_id = %d AND {$task_access_sql}",
+				array_merge( array( $project_id ), $task_access_params )
+			)
+		);
+
+		$summary = $this->row_to_array( $row );
+		$total   = (int) ( $summary['total_count'] ?? 0 );
+		$done    = (int) ( $summary['completed_count'] ?? 0 );
+
+		return $total > 0 ? (int) round( ( $done / $total ) * 100 ) : 0;
 	}
 
 	/**
