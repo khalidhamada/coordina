@@ -87,34 +87,38 @@ function shellIcon(type) {
 	return '';
 }
 
-function entityIconSvg(type) {
+
+function entityDashiconClass(type) {
 	const map = {
-		dashboard: '<svg viewBox="0 0 24 24" focusable="false"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="4" rx="1.5"></rect><rect x="13" y="10" width="7" height="10" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect></svg>',
-		'my-work': '<svg viewBox="0 0 24 24" focusable="false"><path d="M6 12h12"></path><path d="M12 6v12"></path><circle cx="12" cy="12" r="7"></circle></svg>',
-		project: '<svg viewBox="0 0 24 24" focusable="false"><path d="M4 7.5h7"></path><path d="M4 12h16"></path><path d="M4 16.5h10"></path><rect x="3" y="4" width="18" height="16" rx="2"></rect></svg>',
-		task: '<svg viewBox="0 0 24 24" focusable="false"><path d="M9 7h10"></path><path d="M9 12h10"></path><path d="M9 17h10"></path><path d="m4.5 7 1.5 1.5 2.5-3"></path><path d="m4.5 12 1.5 1.5 2.5-3"></path><path d="m4.5 17 1.5 1.5 2.5-3"></path></svg>',
-		milestone: '<svg viewBox="0 0 24 24" focusable="false"><path d="M5 19V5"></path><path d="M6 6h11l-2.5 3 2.5 3H6"></path><path d="M5 19h14"></path></svg>',
-		'risk-issue': '<svg viewBox="0 0 24 24" focusable="false"><path d="M12 4 20 19H4Z"></path><path d="M12 9v4.5"></path><path d="M12 17h.01"></path></svg>',
-		risk: '<svg viewBox="0 0 24 24" focusable="false"><path d="M12 4 20 19H4Z"></path><path d="M12 9v4.5"></path><path d="M12 17h.01"></path></svg>',
-		issue: '<svg viewBox="0 0 24 24" focusable="false"><path d="M12 3 20 12 12 21 4 12Z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>',
-		request: '<svg viewBox="0 0 24 24" focusable="false"><path d="M5 7.5h9"></path><path d="M5 12h14"></path><path d="M5 16.5h10"></path><path d="m15 4 4 4-4 4"></path></svg>',
-		approval: '<svg viewBox="0 0 24 24" focusable="false"><path d="m5 12.5 4.2 4.2L19 7"></path></svg>',
-		calendar: '<svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M8 3v4"></path><path d="M16 3v4"></path><path d="M3 10h18"></path><path d="M8 14h3"></path><path d="M13 14h3"></path><path d="M8 18h3"></path></svg>',
-		workload: '<svg viewBox="0 0 24 24" focusable="false"><path d="M4 17h4"></path><path d="M10 17h4"></path><path d="M16 17h4"></path><path d="M6 17V9"></path><path d="M12 17V5"></path><path d="M18 17v-7"></path></svg>',
-		file: '<svg viewBox="0 0 24 24" focusable="false"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"></path><path d="M14 3v5h5"></path><path d="M8 13h8"></path><path d="M8 17h5"></path></svg>',
-		discussion: '<svg viewBox="0 0 24 24" focusable="false"><path d="M5 18.5V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 2.5Z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path></svg>',
-		settings: '<svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h6"></path><path d="M14 7h6"></path><path d="M4 17h10"></path><path d="M18 17h2"></path><circle cx="12" cy="7" r="2"></circle><circle cx="16" cy="17" r="2"></circle></svg>',
-		inbox: '<svg viewBox="0 0 24 24" focusable="false"><path d="M4 6h16v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"></path><path d="M4 8.5 12 13l8-4.5"></path></svg>',
+		dashboard: 'dashicons-dashboard',
+		'my-work': 'dashicons-clock',
+		overview: 'dashicons-dashboard',
+		details: 'dashicons-id',
+		project: 'dashicons-portfolio',
+		task: 'dashicons-list-view',
+		milestone: 'dashicons-flag',
+		gantt: 'dashicons-chart-bar',
+		'risk-issue': 'dashicons-warning',
+		risk: 'dashicons-warning',
+		issue: 'dashicons-warning',
+		request: 'dashicons-arrow-right-alt2',
+		approval: 'dashicons-yes-alt',
+		calendar: 'dashicons-calendar-alt',
+		workload: 'dashicons-chart-bar',
+		file: 'dashicons-media-default',
+		discussion: 'dashicons-format-chat',
+		settings: 'dashicons-admin-generic',
+		inbox: 'dashicons-email',
 	};
-	return map[String(type || '')] || '<svg viewBox="0 0 24 24" focusable="false"><path d="M12 6v12"></path><path d="M6 12h12"></path></svg>';
+	return map[String(type || '')] || 'dashicons-marker';
 }
 
 function entityIcon(type, className) {
-	const classes = ['coordina-entity-icon', `coordina-entity-icon--${escapeHtml(String(type || 'generic'))}`];
+	const classes = ['coordina-entity-icon', 'dashicons', entityDashiconClass(type), `coordina-entity-icon--${escapeHtml(String(type || 'generic'))}`];
 	if (className) {
 		classes.push(className);
 	}
-	return `<span class="${classes.join(' ')}" aria-hidden="true">${entityIconSvg(type)}</span>`;
+	return `<span class="${classes.join(' ')}" aria-hidden="true"></span>`;
 }
 
 function iconLabel(type, label, className) {
@@ -419,6 +423,156 @@ function approvalSourceRoute(item) {
 	return null;
 }
 
+function fileSourceRoute(item) {
+	const objectType = String(item && item.object_type ? item.object_type : '');
+	const objectId = Number(item && item.object_id ? item.object_id : 0);
+	const projectId = Number(item && item.project_id ? item.project_id : 0);
+	if (objectType === 'project' && objectId > 0) {
+		return { page: 'coordina-projects', project_id: objectId, project_tab: 'files' };
+	}
+	if (objectType === 'task') {
+		return { page: 'coordina-task', task_id: objectId, project_id: projectId, project_tab: projectId > 0 ? 'work' : '' };
+	}
+	if (objectType === 'milestone') {
+		return { page: 'coordina-milestone', milestone_id: objectId, project_id: projectId, project_tab: projectId > 0 ? 'milestones' : '' };
+	}
+	if (objectType === 'risk' || objectType === 'issue') {
+		return { page: 'coordina-risk-issue', risk_issue_id: objectId, project_id: projectId, project_tab: projectId > 0 ? 'risks-issues' : '' };
+	}
+	if (objectType === 'request') {
+		return { page: 'coordina-requests' };
+	}
+	if (objectType === 'approval') {
+		return { page: 'coordina-approvals' };
+	}
+	return null;
+}
+
+function fileSizeLabel(bytes) {
+	const size = Number(bytes || 0);
+	if (!Number.isFinite(size) || size <= 0) {
+		return __('Unknown size', 'coordina');
+	}
+	const units = ['B', 'KB', 'MB', 'GB'];
+	let value = size;
+	let unitIndex = 0;
+	while (value >= 1024 && unitIndex < units.length - 1) {
+		value /= 1024;
+		unitIndex += 1;
+	}
+	return `${value >= 10 || unitIndex === 0 ? Math.round(value) : value.toFixed(1)} ${units[unitIndex]}`;
+}
+
+function fileExtension(item) {
+	const raw = String(item && (item.file_name || item.attachment_title || '') ? (item.file_name || item.attachment_title || '') : '').trim();
+	if (!raw || raw.indexOf('.') === -1) {
+		return '';
+	}
+	return raw.split('.').pop().toLowerCase();
+}
+
+function fileTypeDashicon(item) {
+	const extension = fileExtension(item);
+	const mimeGroup = String(item && item.mime_group ? item.mime_group : '').toLowerCase();
+	if (mimeGroup === 'image') {
+		return 'dashicons-format-image';
+	}
+	if (mimeGroup === 'audio') {
+		return 'dashicons-format-audio';
+	}
+	if (mimeGroup === 'video') {
+		return 'dashicons-format-video';
+	}
+	if (['pdf'].includes(extension)) {
+		return 'dashicons-media-document';
+	}
+	if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension)) {
+		return 'dashicons-media-archive';
+	}
+	if (['csv', 'xls', 'xlsx'].includes(extension)) {
+		return 'dashicons-media-spreadsheet';
+	}
+	if (['doc', 'docx', 'txt', 'rtf', 'md'].includes(extension)) {
+		return 'dashicons-media-text';
+	}
+	if (['js', 'ts', 'css', 'html', 'php', 'json', 'xml', 'yml', 'yaml'].includes(extension)) {
+		return 'dashicons-media-code';
+	}
+	return 'dashicons-media-default';
+}
+
+function fileTypeLabel(item) {
+	const mimeType = String(item && item.mime_type ? item.mime_type : '').toLowerCase();
+	const extension = fileExtension(item);
+	const labelMap = {
+		'application/pdf': __('PDF document', 'coordina'),
+		'application/msword': __('Word document', 'coordina'),
+		'application/vnd.openxmlformats-officedocument.wordprocessingml.document': __('Word document', 'coordina'),
+		'application/vnd.ms-excel': __('Excel spreadsheet', 'coordina'),
+		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': __('Excel spreadsheet', 'coordina'),
+		'application/vnd.ms-powerpoint': __('PowerPoint presentation', 'coordina'),
+		'application/vnd.openxmlformats-officedocument.presentationml.presentation': __('PowerPoint presentation', 'coordina'),
+		'application/zip': __('ZIP archive', 'coordina'),
+		'application/x-zip-compressed': __('ZIP archive', 'coordina'),
+		'application/json': __('JSON file', 'coordina'),
+		'text/plain': __('Text file', 'coordina'),
+		'text/csv': __('CSV file', 'coordina'),
+		'text/html': __('HTML file', 'coordina'),
+		'text/markdown': __('Markdown file', 'coordina'),
+	};
+	if (labelMap[mimeType]) {
+		return labelMap[mimeType];
+	}
+	if (extension) {
+		const extensionMap = {
+			doc: __('Word document', 'coordina'),
+			docx: __('Word document', 'coordina'),
+			xls: __('Excel spreadsheet', 'coordina'),
+			xlsx: __('Excel spreadsheet', 'coordina'),
+			ppt: __('PowerPoint presentation', 'coordina'),
+			pptx: __('PowerPoint presentation', 'coordina'),
+			jpg: __('JPEG image', 'coordina'),
+			jpeg: __('JPEG image', 'coordina'),
+			png: __('PNG image', 'coordina'),
+			gif: __('GIF image', 'coordina'),
+			webp: __('WEBP image', 'coordina'),
+			svg: __('SVG image', 'coordina'),
+			mp4: __('MP4 video', 'coordina'),
+			mp3: __('MP3 audio', 'coordina'),
+			zip: __('ZIP archive', 'coordina'),
+			txt: __('Text file', 'coordina'),
+			md: __('Markdown file', 'coordina'),
+		};
+		if (extensionMap[extension]) {
+			return extensionMap[extension];
+		}
+		return `${extension.toUpperCase()} ${__('file', 'coordina')}`;
+	}
+	if (item && item.mime_group) {
+		return nice(item.mime_group);
+	}
+	return __('File', 'coordina');
+}
+
+function fileRecordTitle(item) {
+	return item.file_name || item.attachment_title || item.title || __('File', 'coordina');
+}
+
+function fileDrawerActions(item, sourceButton) {
+	const actions = [];
+	if (item.attachment_url) {
+		actions.push(`<a class="button coordina-file-drawer-action is-primary" href="${escapeHtml(item.attachment_url)}" target="_blank" rel="noopener noreferrer"><span class="coordina-button-label"><span class="dashicons dashicons-visibility" aria-hidden="true"></span><span>${escapeHtml(__('View file', 'coordina'))}</span></span></a>`);
+		actions.push(`<a class="button coordina-file-drawer-action" href="${escapeHtml(item.attachment_url)}" download="${escapeHtml(fileRecordTitle(item))}"><span class="coordina-button-label"><span class="dashicons dashicons-download" aria-hidden="true"></span><span>${escapeHtml(__('Download', 'coordina'))}</span></span></a>`);
+	}
+	if (sourceButton) {
+		actions.push(sourceButton);
+	}
+	if (item.can_delete) {
+		actions.push(`<button class="button coordina-file-drawer-action is-danger" data-action="delete-record" data-module="files" data-id="${item.id}" data-label="${escapeHtml(fileRecordTitle(item))}"><span class="coordina-button-label"><span class="dashicons dashicons-trash" aria-hidden="true"></span><span>${escapeHtml(__('Delete file', 'coordina'))}</span></span></button>`);
+	}
+	return actions.length ? `<div class="coordina-file-drawer-actions">${actions.join('')}</div>` : '';
+}
+
 function approvalDecisionForm(values) {
 	if (!values || !values.id) {
 		return `<section class="coordina-card coordina-card--notice"><p>${escapeHtml(__('Approvals are generated from linked work items. Create or update the parent project, task, request, or other record instead of creating an approval directly.', 'coordina'))}</p><div class="coordina-form-actions"><button class="button" type="button" data-action="close-drawer">${escapeHtml(__('Close', 'coordina'))}</button></div></section>`;
@@ -459,7 +613,13 @@ function fileForm(values) {
 	const attachmentId = values && values.attachment_id ? values.attachment_id : '';
 	const attachmentLabel = values && values.attachment_title ? values.attachment_title : __('No file selected yet.', 'coordina');
 	const locked = !!(values && values.lock_context && objectType && objectId);
-	const contextFields = locked
+	const isEdit = !!(values && values.id);
+	const hiddenContextFields = objectType && objectId
+		? `<input type="hidden" name="object_type" value="${escapeHtml(objectType)}" /><input type="hidden" name="object_id" value="${escapeHtml(objectId)}" />`
+		: '';
+	const contextFields = isEdit
+		? hiddenContextFields
+		: locked
 		? lockedContextSummary(values, values && values.object_label ? values.object_label : __('Linked work', 'coordina'))
 		: `<div class="coordina-form-grid"><label><span>${escapeHtml(__('Context type', 'coordina'))}</span><select name="object_type">${contextTypeOptions(objectType)}</select></label><label><span>${escapeHtml(__('Context id', 'coordina'))}</span><input type="number" name="object_id" min="1" value="${escapeHtml(objectId)}" required /></label></div>`;
 	return `<form class="coordina-form" data-action="save-form" data-module="files" data-id="${values && values.id ? values.id : ''}">${contextFields}<div class="coordina-form-grid"><label class="coordina-file-picker"><span>${escapeHtml(__('Selected file', 'coordina'))}</span><input type="hidden" name="attachment_id" value="${escapeHtml(attachmentId)}" /><span data-role="selected-file-label">${escapeHtml(attachmentLabel)}</span><button class="button" type="button" data-action="select-file">${escapeHtml(__('Choose file', 'coordina'))}</button></label><label><span>${escapeHtml(__('Note', 'coordina'))}</span><textarea name="note">${escapeHtml(values && values.note ? values.note : '')}</textarea></label></div><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Attach file', 'coordina'))}</button><button class="button" type="button" data-action="close-modal">${escapeHtml(__('Cancel', 'coordina'))}</button></div></form>`;
@@ -1058,12 +1218,23 @@ function drawerSummary(module, item, sourceButton) {
 		rows.push(`<div><dt>${escapeHtml(__('Approver', 'coordina'))}</dt><dd>${escapeHtml(item.approver_label || __('Unassigned', 'coordina'))}</dd></div>`);
 		rows.push(`<div><dt>${escapeHtml(__('Submitted', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(item.submitted_at))}</dd></div>`);
 	}
+	if (module.key === 'files') {
+		if (item.mime_type) {
+			rows.push(`<div><dt>${escapeHtml(__('Type', 'coordina'))}</dt><dd><span class="coordina-file-drawer-type"><span class="dashicons ${fileTypeDashicon(item)}" aria-hidden="true"></span><span>${escapeHtml(fileTypeLabel(item))}</span></span></dd></div>`);
+		}
+		rows.push(`<div><dt>${escapeHtml(__('Size', 'coordina'))}</dt><dd>${escapeHtml(fileSizeLabel(item.file_size))}</dd></div>`);
+		rows.push(`<div><dt>${escapeHtml(__('Attached to', 'coordina'))}</dt><dd>${escapeHtml(item.object_label || __('Linked work', 'coordina'))}</dd></div>`);
+		rows.push(`<div><dt>${escapeHtml(__('Uploaded by', 'coordina'))}</dt><dd>${escapeHtml(item.created_by_label || __('Unknown uploader', 'coordina'))}</dd></div>`);
+		rows.push(`<div><dt>${escapeHtml(__('Uploaded', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(item.created_at))}</dd></div>`);
+	}
 	const note = module.key === 'risks-issues'
 		? (item.mitigation_plan || item.description || __('No mitigation plan recorded yet.', 'coordina'))
 		: module.key === 'approvals'
 			? (item.object_label || __('This approval is linked to a tracked item.', 'coordina'))
+			: module.key === 'files'
+				? (item.note || '')
 			: (item.description || item.business_reason || item.notes || '');
-	return `<section class="coordina-drawer-summary"><div class="coordina-summary-row">${badges.join('')}</div>${note ? `<p>${escapeHtml(note)}</p>` : ''}${rows.length ? `<dl class="coordina-key-value">${rows.join('')}</dl>` : ''}${sourceButton ? `<div class="coordina-inline-actions">${sourceButton}</div>` : ''}</section>`;
+	return `<section class="coordina-drawer-summary"><div class="coordina-summary-row">${badges.join('')}</div>${note ? `<p>${escapeHtml(note)}</p>` : ''}${rows.length ? `<dl class="coordina-key-value">${rows.join('')}</dl>` : ''}${sourceButton && module.key !== 'files' ? `<div class="coordina-inline-actions">${sourceButton}</div>` : ''}</section>`;
 }
 
 function render() {
@@ -1373,7 +1544,8 @@ function openRoute(route) {
 
 async function openCreate(moduleKey, seedValues) {
 	const module = modules[moduleKey ? `coordina-${moduleKey}` : state.page] || currentModule() || modules['coordina-tasks'];
-	state.modal = { title: `${__('Create', 'coordina')} ${module.singular}`, body: formHtml(module, Object.assign({}, seedValues || {})) };
+	const title = module.key === 'files' ? __('Attach file', 'coordina') : `${__('Create', 'coordina')} ${module.singular}`;
+	state.modal = { title, body: formHtml(module, Object.assign({}, seedValues || {})) };
 	render();
 }
 
@@ -1400,10 +1572,11 @@ async function openRecord(moduleKey, id) {
 	const item = await api(`/${module.endpoint}/${id}`);
 	const seed = contextSeed(module, item);
 	const [files, discussions] = await loadRecordCollaboration(seed);
-	const route = module.key === 'approvals' ? approvalSourceRoute(item) : null;
-	const sourceButton = route ? `<button class="button button-small" data-action="open-route" data-page="${route.page || ''}" data-project-id="${route.project_id || ''}" data-project-tab="${route.project_tab || ''}" data-milestone-id="${route.milestone_id || ''}" data-risk-issue-id="${route.risk_issue_id || ''}">${escapeHtml(__('Open source item', 'coordina'))}</button>` : '';
+	const route = module.key === 'approvals' ? approvalSourceRoute(item) : module.key === 'files' ? fileSourceRoute(item) : null;
+	const sourceButton = route ? `<button class="button ${module.key === 'files' ? 'coordina-file-drawer-action' : 'button-small'}" data-action="open-route" data-page="${route.page || ''}" data-project-id="${route.project_id || ''}" data-project-tab="${route.project_tab || ''}" data-task-id="${route.task_id || ''}" data-milestone-id="${route.milestone_id || ''}" data-risk-issue-id="${route.risk_issue_id || ''}">${module.key === 'files' ? `<span class="coordina-button-label"><span class="dashicons dashicons-admin-links" aria-hidden="true"></span><span>${escapeHtml(__('Open linked item', 'coordina'))}</span></span>` : escapeHtml(__('Open source item', 'coordina'))}</button>` : '';
 	const summary = drawerSummary(module, item, sourceButton);
-	state.drawer = { title: module.key === 'approvals' ? (item.object_label || __('Approval', 'coordina')) : item.title, subtitle: drawerSubtitle(module), body: `${summary}<div class="coordina-drawer-section">${formHtml(module, item)}</div>${module.key === 'requests' && item.can_convert ? `<div class="coordina-drawer-section"><button class="button" data-action="open-convert" data-id="${item.id}">${escapeHtml(__('Convert request', 'coordina'))}</button></div>` : ''}${contextSections(module, item, files, discussions)}` };
+	const drawerTitle = module.key === 'approvals' ? (item.object_label || __('Approval', 'coordina')) : module.key === 'files' ? fileRecordTitle(item) : item.title;
+	state.drawer = { title: drawerTitle, subtitle: drawerSubtitle(module), body: `${summary}${module.key === 'files' ? `<div class="coordina-drawer-section">${fileDrawerActions(item, sourceButton)}</div>` : ''}<div class="coordina-drawer-section">${formHtml(module, item)}</div>${module.key === 'requests' && item.can_convert ? `<div class="coordina-drawer-section"><button class="button" data-action="open-convert" data-id="${item.id}">${escapeHtml(__('Convert request', 'coordina'))}</button></div>` : ''}${contextSections(module, item, files, discussions)}` };
 	render();
 }
 

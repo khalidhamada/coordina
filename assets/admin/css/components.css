@@ -176,6 +176,190 @@
 	transform: translateY(-2px);
 }
 
+.coordina-file-card-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 14px;
+}
+
+.coordina-file-card {
+	display: grid;
+	gap: 12px;
+	padding: 16px;
+	border: 1px solid var(--coordina-border);
+	border-radius: 14px;
+	background: linear-gradient(135deg, #ffffff 0%, #f9fbfc 100%);
+	box-shadow: 0 8px 24px -24px rgba(14, 24, 34, 0.28);
+	transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.coordina-file-card:hover {
+	border-color: var(--coordina-border-strong);
+	box-shadow: 0 16px 30px -24px rgba(14, 24, 34, 0.28);
+	transform: translateY(-2px);
+}
+
+.coordina-file-card__head {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: 12px;
+	align-items: start;
+}
+
+.coordina-file-card__type {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 38px;
+	height: 38px;
+	border-radius: 12px;
+	background: var(--coordina-primary-lighter);
+	color: var(--coordina-info);
+	font-size: 18px;
+	box-shadow: inset 0 0 0 1px rgba(31, 94, 255, 0.08);
+}
+
+.coordina-file-card__title-block {
+	display: grid;
+	gap: 6px;
+	min-width: 0;
+}
+
+.coordina-file-card__title {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--coordina-text);
+	text-decoration: none;
+}
+
+.coordina-file-card__title:hover {
+	color: var(--coordina-info);
+	text-decoration: none;
+}
+
+.coordina-file-card__subline {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	font-size: 12px;
+	color: var(--coordina-text-muted);
+}
+
+.coordina-file-card__actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.coordina-file-card__icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border: 1px solid var(--coordina-border);
+	border-radius: 10px;
+	background: #fff;
+	color: var(--coordina-text-muted);
+	text-decoration: none;
+	box-shadow: 0 1px 2px rgba(19, 26, 35, 0.03);
+	transition: border-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+	cursor: pointer;
+}
+
+.coordina-file-card__icon-button:hover,
+.coordina-file-card__icon-button:focus {
+	border-color: var(--coordina-info);
+	color: var(--coordina-info);
+	box-shadow: 0 8px 18px -18px rgba(31, 94, 255, 0.4);
+	transform: translateY(-1px);
+	text-decoration: none;
+}
+
+.coordina-file-card__note {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.55;
+	color: var(--coordina-text-muted);
+}
+
+.coordina-file-drawer-actions {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.coordina-file-drawer-type {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	font-weight: 600;
+}
+
+.coordina-file-drawer-type .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+	line-height: 1;
+	color: var(--coordina-info);
+}
+
+.coordina-file-drawer-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 36px;
+	padding: 0 14px;
+	border: 1px solid var(--coordina-border) !important;
+	border-radius: 10px !important;
+	background: #fff !important;
+	color: var(--coordina-text) !important;
+	box-shadow: 0 1px 2px rgba(19, 26, 35, 0.04);
+	transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.coordina-file-drawer-action:hover,
+.coordina-file-drawer-action:focus {
+	border-color: var(--coordina-info) !important;
+	color: var(--coordina-info) !important;
+	background: #fff !important;
+	box-shadow: 0 10px 22px -18px rgba(31, 94, 255, 0.45);
+	transform: translateY(-1px);
+}
+
+.coordina-file-drawer-action.is-primary {
+	border-color: var(--coordina-info) !important;
+	background: var(--coordina-info) !important;
+	color: #fff !important;
+}
+
+.coordina-file-drawer-action.is-primary:hover,
+.coordina-file-drawer-action.is-primary:focus {
+	border-color: var(--coordina-info-strong) !important;
+	background: var(--coordina-info-strong) !important;
+	color: #fff !important;
+	box-shadow: 0 12px 24px -18px rgba(31, 94, 255, 0.5);
+}
+
+.coordina-file-drawer-action.is-danger {
+	border-color: rgba(187, 36, 36, 0.2) !important;
+	color: var(--coordina-danger) !important;
+	background: rgba(187, 36, 36, 0.04) !important;
+	box-shadow: none;
+	cursor: pointer;
+}
+
+.coordina-file-drawer-action.is-danger:hover,
+.coordina-file-drawer-action.is-danger:focus {
+	border-color: rgba(187, 36, 36, 0.35) !important;
+	color: var(--coordina-danger) !important;
+	background: rgba(187, 36, 36, 0.08) !important;
+	box-shadow: 0 10px 22px -18px rgba(187, 36, 36, 0.45);
+}
+
 .coordina-notification-list li.is-unread { 
 	border-color: var(--coordina-info);
 	background: var(--coordina-primary-lighter);
@@ -248,7 +432,14 @@
 .coordina-drawer { position: fixed; z-index: 9999; box-shadow: var(--coordina-shadow-md); }
 .coordina-modal { top: 8vh; left: 50%; transform: translateX(-50%); width: min(720px, calc(100vw - 32px)); max-height: 84vh; overflow: auto; }
 .coordina-drawer { top: 0; right: 0; width: min(560px, 100vw); height: 100vh; overflow: auto; }
+body.admin-bar .coordina-drawer { top: 32px; height: calc(100vh - 32px); }
+@media (max-width: 782px) {
+	body.admin-bar .coordina-drawer { top: 46px; height: calc(100vh - 46px); }
+}
 .coordina-tab { 
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
 	border: 1px solid var(--coordina-border); 
 	background: #fff;
 	border-radius: 8px; 
@@ -260,6 +451,27 @@
 	font-weight: 500;
 	font-size: 13px;
 	cursor: pointer;
+}
+
+.coordina-tab__label,
+.coordina-button-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.coordina-tab__label .coordina-entity-icon,
+.coordina-button-label .coordina-entity-icon {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+	transform: none;
+}
+
+.coordina-tab__label .coordina-entity-label__text,
+.coordina-button-label .coordina-entity-label__text {
+	line-height: 1.2;
 }
 .coordina-tab:hover { 
 	transform: translateY(-1px); 
@@ -607,6 +819,13 @@
 	background: transparent;
 	box-shadow: none;
 }
+.coordina-my-work-section--card {
+	padding: 18px;
+	border: 1px solid var(--coordina-border-subtle);
+	border-radius: 22px;
+	background: var(--coordina-surface-elevated);
+	box-shadow: var(--coordina-shadow-xs);
+}
 .coordina-my-work-section--wide {
 	padding-top: 4px;
 	border-top: 1px solid var(--coordina-border-subtle);
@@ -614,6 +833,9 @@
 .coordina-my-work-section--calendar {
 	padding-bottom: 6px;
 	border-bottom: 1px solid var(--coordina-border-subtle);
+}
+.coordina-my-work-section--calendar.coordina-my-work-section--card {
+	padding-bottom: 18px;
 }
 .coordina-my-work-briefing__intro { align-content: start; }
 .coordina-my-work-briefing__eyebrow { color: var(--coordina-info); }
@@ -714,6 +936,10 @@
 .coordina-my-work-list { gap: 12px; }
 .coordina-my-work-list li { padding: 0; background: transparent; border: 0; box-shadow: none; }
 .coordina-my-work-list li:hover { transform: none; box-shadow: none; border-color: transparent; }
+.coordina-my-work-decision-list li,
+.coordina-my-work-update-list li { padding: 0; background: transparent; border: 0; box-shadow: none; }
+.coordina-my-work-decision-list li:hover,
+.coordina-my-work-update-list li:hover { transform: none; box-shadow: none; border-color: transparent; }
 .coordina-my-work-row {
 	position: relative;
 	display: grid;
@@ -767,6 +993,7 @@
 .coordina-my-work-reason--accent { background: rgba(49, 90, 120, 0.12); border-color: rgba(49, 90, 120, 0.16); color: var(--coordina-info); }
 .coordina-my-work-reason--danger { background: rgba(173, 76, 57, 0.12); border-color: rgba(173, 76, 57, 0.16); color: var(--coordina-danger); }
 .coordina-my-work-reason--warning { background: rgba(157, 98, 40, 0.12); border-color: rgba(157, 98, 40, 0.16); color: var(--coordina-warning); }
+.coordina-my-work-update-list strong { font-size: 13px; color: var(--coordina-text); }
 .coordina-my-work-note-list { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
 .coordina-my-work-note {
 	display: grid;

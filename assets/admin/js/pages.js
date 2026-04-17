@@ -38,6 +38,27 @@ function pageIconType(page) {
 	return map[String(page || '')] || 'dashboard';
 }
 
+function workspaceTabIconType(tabKey) {
+	const map = {
+		overview: 'overview',
+		details: 'details',
+		work: 'task',
+		milestones: 'milestone',
+		approvals: 'approval',
+		gantt: 'gantt',
+		calendar: 'calendar',
+		files: 'file',
+		discussion: 'discussion',
+		'risks-issues': 'risk-issue',
+		settings: 'settings',
+	};
+	return map[String(tabKey || '')] || 'dashboard';
+}
+
+function buttonLabel(type, label, className) {
+	return iconLabel(type, label, className || 'coordina-button-label');
+}
+
 function openProjectButton(projectId, label, tab) {
 	if (Number(projectId || 0) <= 0) {
 		return `<span class="coordina-empty-inline">${escapeHtml(label || __('Standalone', 'coordina'))}</span>`;
@@ -190,6 +211,18 @@ function ganttPosition(range, startValue, endValue) {
 	return { left, width, marker };
 }
 
+function ganttCompactDateLabel(value) {
+	const date = ganttDateValue(value);
+	if (!date) {
+		return '';
+	}
+	try {
+		return new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'short', day: 'numeric' }).format(date);
+	} catch (error) {
+		return dateLabel(value);
+	}
+}
+
 function workspaceGanttPrimaryAction(row) {
 	if (row.type === 'milestone') {
 		return openMilestoneButton(row.recordId, row.title, state.projectContext.id, 'milestones');
@@ -197,42 +230,85 @@ function workspaceGanttPrimaryAction(row) {
 	return openTaskButton(row.recordId, row.title, state.projectContext.id, 'work');
 }
 
-function workspaceGanttRowMeta(row) {
-	const meta = [
-		row.ownerLabel || (row.type === 'milestone' ? __('No owner assigned', 'coordina') : __('Unassigned', 'coordina')),
-		row.startDate && row.endDate && row.startDate !== row.endDate
-			? `${dateLabel(row.startDate)} - ${dateLabel(row.endDate)}`
-			: dateLabel(row.endDate || row.startDate || ''),
-	];
-	if (row.type === 'task' && Number(row.checklistTotal || 0) > 0) {
-		meta.push(`${Number(row.checklistDone || 0)} / ${Number(row.checklistTotal || 0)} ${__('checklist', 'coordina')}`);
+function workspaceGanttDateSummary(row) {
+	const start = ganttCompactDateLabel(row.startDate || '') || dateLabel(row.startDate || '');
+	const end = ganttCompactDateLabel(row.endDate || row.startDate || '') || dateLabel(row.endDate || row.startDate || '');
+	if (start && end && start !== end) {
+		return `${start} - ${end}`;
 	}
-	return meta.filter(Boolean).map((item) => `<span class="coordina-gantt__meta-item">${escapeHtml(item)}</span>`).join('');
+	return start || end || __('No dates', 'coordina');
 }
 
-function workspaceGanttTrack(range, weeks, row) {
+function workspaceGanttDateColumn(row) {
+	return `<span class="coordina-gantt__date-range">${escapeHtml(workspaceGanttDateSummary(row))}</span>`;
+}
+
+function workspaceGanttPeriodMinWidth(grouping) {
+	if (grouping === 'month') {
+		return 62;
+	}
+	if (grouping === 'half-month') {
+		return 56;
+	}
+	return 68;
+}
+
+function workspaceGanttGridTemplate(periods) {
+	return periods.length ? periods.map((period) => `${Math.max(1, Number(period.spanDays || 1))}fr`).join(' ') : 'minmax(0, 1fr)';
+}
+
+function workspaceGanttTimelineWidth(periods, grouping) {
+	return Math.max(540, Math.max(periods.length, 1) * workspaceGanttPeriodMinWidth(grouping));
+}
+
+function workspaceGanttTooltip(row) {
+	const details = [
+		row.title || __('Work item', 'coordina'),
+		`${__('Type', 'coordina')}: ${row.type === 'milestone' ? __('Milestone', 'coordina') : __('Task', 'coordina')}`,
+		`${__('Status', 'coordina')}: ${nice(row.status || (row.type === 'milestone' ? 'planned' : 'new'))}`,
+		`${__('Owner', 'coordina')}: ${row.ownerLabel || (row.type === 'milestone' ? __('No owner assigned', 'coordina') : __('Unassigned', 'coordina'))}`,
+		`${__('Dates', 'coordina')}: ${workspaceGanttDateSummary(row)}`,
+	];
+	if (row.type === 'task') {
+		details.push(`${__('Completion', 'coordina')}: ${Math.max(0, Math.min(100, Number(row.completion || 0)))}%`);
+	}
+	if (row.blocked) {
+		details.push(__('Blocked', 'coordina'));
+	}
+	if (row.dependencyFlag) {
+		details.push(__('Dependency', 'coordina'));
+	}
+	return details.join('\n');
+}
+
+function workspaceGanttTooltipTarget(className, style, tooltip, body) {
+	return `<span class="coordina-gantt__hint-target ${className}" style="${style}" data-tooltip="${escapeHtml(tooltip)}" tabindex="0" aria-label="${escapeHtml(tooltip)}">${body}</span>`;
+}
+
+function workspaceGanttTrack(range, periods, row, timelineWidth, gridTemplate) {
 	const position = ganttPosition(range, row.startDate, row.endDate);
 	const today = ganttPosition(range, range && range.today, range && range.today);
 	const showToday = !!(range && range.today && range.start && range.end && range.today >= range.start && range.today <= range.end);
 	const tone = row.isDone ? 'done' : row.blocked ? 'blocked' : row.isOverdue ? 'overdue' : row.type === 'milestone' ? 'milestone' : 'active';
-	const gridStyle = `style="grid-template-columns:repeat(${Math.max(weeks.length, 1)}, minmax(88px, 1fr))"`;
-	const weekCells = weeks.map((week, index) => `<span class="coordina-gantt__week-cell ${index === 0 || (weeks[index - 1] && weeks[index - 1].monthLabel !== week.monthLabel) ? 'is-month-start' : ''}"></span>`).join('');
+	const tooltip = workspaceGanttTooltip(row);
+	const gridStyle = `style="grid-template-columns:${gridTemplate};min-width:${timelineWidth}px"`;
+	const periodCells = periods.map((period, index) => `<span class="coordina-gantt__week-cell ${index === 0 || (periods[index - 1] && periods[index - 1].start.slice(0, 7) !== period.start.slice(0, 7)) ? 'is-month-start' : ''}"></span>`).join('');
 	if (row.type === 'milestone') {
-		return `<div class="coordina-gantt__track"><div class="coordina-gantt__track-grid" ${gridStyle}>${weekCells}</div>${showToday ? `<span class="coordina-gantt__today-line" style="left:${today.marker}%"></span>` : ''}<span class="coordina-gantt__marker tone-${escapeHtml(tone)}" style="left:${position.marker}%"></span></div>`;
+		return `<div class="coordina-gantt__track" style="min-width:${timelineWidth}px"><div class="coordina-gantt__track-grid" ${gridStyle}>${periodCells}</div>${showToday ? `<span class="coordina-gantt__today-line" style="left:${today.marker}%"></span>` : ''}${workspaceGanttTooltipTarget(`coordina-gantt__hint-target--marker tone-${escapeHtml(tone)}`, `left:${position.marker}%`, tooltip, `<span class="coordina-gantt__marker tone-${escapeHtml(tone)}"></span>`)}</div>`;
 	}
-	const barLabel = position.width >= 18 ? escapeHtml(row.title || __('Task', 'coordina')) : '';
-	return `<div class="coordina-gantt__track"><div class="coordina-gantt__track-grid" ${gridStyle}>${weekCells}</div>${showToday ? `<span class="coordina-gantt__today-line" style="left:${today.marker}%"></span>` : ''}<span class="coordina-gantt__bar tone-${escapeHtml(tone)}" style="left:${position.left}%;width:${position.width}%">${barLabel}</span></div>`;
+	return `<div class="coordina-gantt__track" style="min-width:${timelineWidth}px"><div class="coordina-gantt__track-grid" ${gridStyle}>${periodCells}</div>${showToday ? `<span class="coordina-gantt__today-line" style="left:${today.marker}%"></span>` : ''}${workspaceGanttTooltipTarget(`coordina-gantt__hint-target--bar tone-${escapeHtml(tone)}`, `left:${position.left}%;width:${position.width}%`, tooltip, `<span class="coordina-gantt__bar tone-${escapeHtml(tone)}"></span>`)}</div>`;
 }
 
 function workspaceGanttTab() {
-	const gantt = state.workspace && state.workspace.ganttData ? state.workspace.ganttData : { range: {}, weeks: [], groups: [], summary: {}, unscheduledTasks: [], projectFrame: {} };
+	const gantt = state.workspace && state.workspace.ganttData ? state.workspace.ganttData : { range: {}, periods: [], weeks: [], groups: [], summary: {}, unscheduledTasks: [], projectFrame: {} };
 	const actions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
 	const summary = gantt.summary || {};
-	const weeks = gantt.weeks || [];
+	const periods = gantt.periods || gantt.weeks || [];
+	const grouping = gantt.grouping || 'week';
 	const groups = gantt.groups || [];
 	const unscheduled = gantt.unscheduledTasks || [];
 	const projectFrame = gantt.projectFrame || {};
-	const toolbar = `<div class="coordina-action-bar__actions">${actions.canCreateTask ? `<button class="button button-primary" data-action="open-project-task-create">${escapeHtml(__('Add task', 'coordina'))}</button>` : ''}${actions.canCreateMilestone ? `<button class="button" data-action="open-project-milestone-create">${escapeHtml(__('Add milestone', 'coordina'))}</button>` : ''}<button class="button" data-action="switch-project-tab" data-tab="work">${escapeHtml(__('Open work', 'coordina'))}</button><button class="button" data-action="switch-project-tab" data-tab="milestones">${escapeHtml(__('Open milestones', 'coordina'))}</button></div>`;
+	const toolbar = `<div class="coordina-action-bar__actions">${actions.canCreateTask ? `<button class="button button-primary" data-action="open-project-task-create">${buttonLabel('task', __('Add task', 'coordina'))}</button>` : ''}${actions.canCreateMilestone ? `<button class="button" data-action="open-project-milestone-create">${buttonLabel('milestone', __('Add milestone', 'coordina'))}</button>` : ''}<button class="button" data-action="switch-project-tab" data-tab="work">${buttonLabel('task', __('Open work', 'coordina'))}</button><button class="button" data-action="switch-project-tab" data-tab="milestones">${buttonLabel('milestone', __('Open milestones', 'coordina'))}</button></div>`;
 	const summaryRow = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.scheduledTasks || 0)}</strong>${escapeHtml(__('Scheduled tasks', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.milestones || 0)}</strong>${escapeHtml(__('Milestones', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.unscheduledTasks || 0)}</strong>${escapeHtml(__('Unscheduled tasks', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.blockedTasks || 0)}</strong>${escapeHtml(__('Blocked', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.overdueItems || 0)}</strong>${escapeHtml(__('Overdue', 'coordina'))}</span></div>`;
 	const frame = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-status-badge">${escapeHtml(__('Project start', 'coordina'))}: ${escapeHtml(dateLabel(projectFrame.start || ''))}</span><span class="coordina-status-badge">${escapeHtml(__('Target end', 'coordina'))}: ${escapeHtml(dateLabel(projectFrame.target || ''))}</span><span class="coordina-status-badge">${escapeHtml(__('Actual end', 'coordina'))}: ${escapeHtml(dateLabel(projectFrame.end || ''))}</span></div>`;
 	if (!groups.length) {
@@ -241,11 +317,17 @@ function workspaceGanttTab() {
 		return `<div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project timeline', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See task timing and milestone dates across the project.', 'coordina'))}</p></div>${toolbar}</div>${summaryRow}${frame}<section class="coordina-empty-state"><h3>${escapeHtml(__('No scheduled work to plot yet', 'coordina'))}</h3><p>${escapeHtml(__('Add start dates, due dates, or milestones to show work on the timeline.', 'coordina'))}</p>${emptyAction}</section></section><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Needs scheduling', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('These tasks do not have a start date or due date yet.', 'coordina'))}</p></div></div>${unscheduledBody}</section></div>`;
 	}
 
-	const timelineStyle = `style="grid-template-columns:repeat(${Math.max(weeks.length, 1)}, minmax(88px, 1fr))"`;
-	const headerWeeks = weeks.map((week) => `<div class="coordina-gantt__week-head"><strong>${escapeHtml(week.label || '')}</strong><span>${escapeHtml(week.monthLabel || '')}</span></div>`).join('');
-	const groupMarkup = groups.map((group) => `<section class="coordina-gantt__group"><div class="coordina-gantt__group-head"><strong>${escapeHtml(group.title || __('Workstream', 'coordina'))}</strong><span class="coordina-summary-chip"><strong>${Number((group.rows || []).length)}</strong>${escapeHtml(__('Items', 'coordina'))}</span></div>${(group.rows || []).map((row) => `<article class="coordina-gantt__row"><div class="coordina-gantt__label"><div class="coordina-gantt__label-line">${workspaceGanttPrimaryAction(row)}<div class="coordina-gantt__badges"><span class="coordina-status-badge status-${escapeHtml(row.status || 'planned')}">${escapeHtml(nice(row.status || 'planned'))}</span>${row.blocked ? `<span class="coordina-status-badge status-blocked">${escapeHtml(__('Blocked', 'coordina'))}</span>` : ''}${row.dependencyFlag ? `<span class="coordina-status-badge">${escapeHtml(__('Dependency', 'coordina'))}</span>` : ''}</div><div class="coordina-gantt__meta">${workspaceGanttRowMeta(row)}</div></div></div>${workspaceGanttTrack(gantt.range || {}, weeks, row)}</article>`).join('')}</section>`).join('');
+	const timelineWidth = workspaceGanttTimelineWidth(periods, grouping);
+	const gridTemplate = workspaceGanttGridTemplate(periods);
+	const layoutStyle = `style="grid-template-columns:minmax(220px, 280px) minmax(118px, 140px) minmax(${timelineWidth}px, 1fr)"`;
+	const timelineStyle = `style="grid-template-columns:${gridTemplate};min-width:${timelineWidth}px"`;
+	const headerWeeks = periods.map((period, index) => {
+		const isMonthStart = index === 0 || (periods[index - 1] && periods[index - 1].start.slice(0, 7) !== period.start.slice(0, 7));
+		return `<div class="coordina-gantt__week-head ${isMonthStart ? 'is-month-start' : ''}"><strong>${escapeHtml(period.label || '')}</strong><span>${escapeHtml(period.secondaryLabel || '')}</span></div>`;
+	}).join('');
+	const groupMarkup = groups.map((group) => `<section class="coordina-gantt__group"><div class="coordina-gantt__group-head"><strong>${escapeHtml(group.title || __('Workstream', 'coordina'))}</strong><span class="coordina-summary-chip"><strong>${Number((group.rows || []).length)}</strong>${escapeHtml(__('Items', 'coordina'))}</span></div>${(group.rows || []).map((row) => `<article class="coordina-gantt__row" ${layoutStyle}><div class="coordina-gantt__label"><div class="coordina-gantt__label-line">${workspaceGanttPrimaryAction(row)}</div></div><div class="coordina-gantt__schedule-cell">${workspaceGanttDateColumn(row)}</div>${workspaceGanttTrack(gantt.range || {}, periods, row, timelineWidth, gridTemplate)}</article>`).join('')}</section>`).join('');
 	const unscheduledCard = `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Needs scheduling', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Add dates here to place these items on the timeline.', 'coordina'))}</p></div></div>${unscheduled.length ? `<ul class="coordina-work-list coordina-work-list--compact">${unscheduled.map((item) => `<li>${workspaceGanttPrimaryAction(item)}<div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status || 'new')}">${escapeHtml(nice(item.status || 'new'))}</span><span>${escapeHtml(item.ownerLabel || __('Unassigned', 'coordina'))}</span></div></li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('Everything in this workspace has at least one planning date.', 'coordina'))}</p>`}</section>`;
-	return `<div class="coordina-gantt-layout"><section class="coordina-card coordina-card--wide coordina-gantt-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project timeline', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See task spans, milestones, and today\'s position across the project.', 'coordina'))}</p></div>${toolbar}</div>${summaryRow}${frame}<div class="coordina-gantt-shell"><div class="coordina-gantt__header"><div class="coordina-gantt__sidebar-head">${escapeHtml(__('Work item', 'coordina'))}</div><div class="coordina-gantt__timeline-head" ${timelineStyle}>${headerWeeks}</div></div><div class="coordina-gantt__body">${groupMarkup}</div></div></section><div class="coordina-gantt-layout__secondary">${unscheduledCard}<section class="coordina-card coordina-card--notice"><div class="coordina-section-header"><div><h3>${escapeHtml(__('How to use this', 'coordina'))}</h3></div></div><p class="coordina-empty-inline">${escapeHtml(__('Use this view to spot timing issues, then open Work or Milestones to update the plan.', 'coordina'))}</p></section></div></div>`;
+	return `<div class="coordina-gantt-layout"><section class="coordina-card coordina-card--wide coordina-gantt-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project timeline', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See task spans, milestones, and today\'s position across the project.', 'coordina'))}</p></div>${toolbar}</div>${summaryRow}${frame}<div class="coordina-gantt-shell"><div class="coordina-gantt__header" ${layoutStyle}><div class="coordina-gantt__sidebar-head">${escapeHtml(__('Work item', 'coordina'))}</div><div class="coordina-gantt__date-head">${escapeHtml(__('Dates', 'coordina'))}</div><div class="coordina-gantt__timeline-head" ${timelineStyle}>${headerWeeks}</div></div><div class="coordina-gantt__body">${groupMarkup}</div></div></section><div class="coordina-gantt-layout__secondary">${unscheduledCard}</div></div>`;
 }
 
 function plainText(value) {
@@ -640,7 +722,7 @@ function workspaceActivityTab() {
 	const summary = state.workspace && state.workspace.activitySummary ? state.workspace.activitySummary : {};
 	const summaryChips = `<div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Recent events', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${escapeHtml(dateLabel(summary.latestAt))}</strong>${escapeHtml(__('Latest', 'coordina'))}</span></div>`;
 	const insights = workspaceActivityInsights(summary);
-	const groupedTimeline = groupedActivityTimeline(collection, __('No project activity has been logged yet.', 'coordina'), { showContextLink: true, showProjectLabel: false, linkLabelMode: 'type' });
+	const groupedTimeline = groupedActivityTimeline(collection, __('No project activity has been logged yet.', 'coordina'), { showContextLink: true, showProjectLabel: false, linkLabelMode: 'title' });
 	return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project activity', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See recent project activity, who is active, and where work is happening.', 'coordina'))}</p></div></div>${summaryChips}${insights}${groupedTimeline}${activityPager(collection, 'project')}</section>`;
 }
 
@@ -666,7 +748,7 @@ function workspaceSettingsTab() {
 	if (!actions.canViewSettings) {
 		return `<section class="coordina-card coordina-card--notice"><h3>${escapeHtml(__('Project settings', 'coordina'))}</h3><p>${escapeHtml(__('Project settings are available to project managers and administrators only.', 'coordina'))}</p></section>`;
 	}
-	return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project settings', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Keep governance, people, and close-out details tidy inside the workspace.', 'coordina'))}</p></div></div><form class="coordina-form coordina-workspace-settings-form" data-action="project-settings-form" data-project-id="${project.id || state.projectContext.id}"><div class="coordina-settings-layout coordina-workspace-settings-layout"><div class="coordina-settings-stack"><section class="coordina-settings-block is-notice"><p>${escapeHtml(__('Changes here apply only to this project. Global defaults stay in Settings.', 'coordina'))}</p></section><section class="coordina-settings-block"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Project pulse', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Status, health, priority, and the main owner stay together here.', 'coordina'))}</p></div></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Status', 'coordina'))}</span><select name="status">${statusOptions}</select></label><label><span>${escapeHtml(__('Health', 'coordina'))}</span><select name="health">${healthOptions}</select></label><label><span>${escapeHtml(__('Priority', 'coordina'))}</span><select name="priority">${priorityOptions}</select></label><label><span>${escapeHtml(__('Manager', 'coordina'))}</span><select name="manager_user_id"><option value="">${escapeHtml(__('Unassigned', 'coordina'))}</option>${managerOptions}</select></label></div></section><section class="coordina-settings-block"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Access and collaboration', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Control visibility, notices, task-group language, and who belongs to this project.', 'coordina'))}</p></div></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Visibility', 'coordina'))}</span><select name="visibility">${visibilityOptions}</select></label><label><span>${escapeHtml(__('Project notifications', 'coordina'))}</span><select name="notification_policy">${notificationOptions}</select></label><label><span>${escapeHtml(__('Task group name', 'coordina'))}</span><select name="task_group_label">${taskGroupLabelOptions}</select></label><label class="coordina-form-grid__wide"><span>${escapeHtml(__('Team members', 'coordina'))}</span><select name="team_member_ids" multiple size="6">${memberOptions}</select></label></div></section><section class="coordina-settings-block"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Close-out and completion', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Capture the actual finish and any final notes once the project wraps up.', 'coordina'))}</p></div></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Actual end date', 'coordina'))}</span><input type="datetime-local" name="actual_end_date" value="${escapeHtml(app.dateTimeInputValue(project.actual_end_date || ''))}" /></label><label class="coordina-form-grid__wide"><span>${escapeHtml(__('Close-out notes', 'coordina'))}</span><textarea name="closeout_notes">${escapeHtml(project.closeout_notes || '')}</textarea></label></div></section></div><aside class="coordina-settings-aside"><section class="coordina-settings-block"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Current setup', 'coordina'))}</h4></div></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${escapeHtml(nice(project.status || 'draft'))}</strong>${escapeHtml(__('Status', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${escapeHtml(nice(project.visibility || 'team'))}</strong>${escapeHtml(__('Visibility', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${members.length}</strong>${escapeHtml(__('Members', 'coordina'))}</span></div><p class="coordina-empty-inline">${escapeHtml(__('Use this panel for project-level governance only. Workflow defaults and broader access rules stay in global Settings.', 'coordina'))}</p></section></aside></div><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save project settings', 'coordina'))}</button></div></form></section>`;
+	return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project settings', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Keep governance, people, and close-out details tidy inside the workspace.', 'coordina'))}</p></div></div><form class="coordina-form coordina-workspace-settings-form" data-action="project-settings-form" data-project-id="${project.id || state.projectContext.id}"><div class="coordina-settings-layout coordina-workspace-settings-layout coordina-workspace-settings-layout--single"><div class="coordina-settings-stack"><section class="coordina-settings-block is-notice"><p>${escapeHtml(__('Changes here apply only to this project. Global defaults stay in Settings.', 'coordina'))}</p></section><section class="coordina-settings-block"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Project pulse', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Status, health, priority, and the main owner stay together here.', 'coordina'))}</p></div></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Status', 'coordina'))}</span><select name="status">${statusOptions}</select></label><label><span>${escapeHtml(__('Health', 'coordina'))}</span><select name="health">${healthOptions}</select></label><label><span>${escapeHtml(__('Priority', 'coordina'))}</span><select name="priority">${priorityOptions}</select></label><label><span>${escapeHtml(__('Manager', 'coordina'))}</span><select name="manager_user_id"><option value="">${escapeHtml(__('Unassigned', 'coordina'))}</option>${managerOptions}</select></label></div></section><section class="coordina-settings-block"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Access and collaboration', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Control visibility, notices, task-group language, and who belongs to this project.', 'coordina'))}</p></div></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Visibility', 'coordina'))}</span><select name="visibility">${visibilityOptions}</select></label><label><span>${escapeHtml(__('Project notifications', 'coordina'))}</span><select name="notification_policy">${notificationOptions}</select></label><label><span>${escapeHtml(__('Task group name', 'coordina'))}</span><select name="task_group_label">${taskGroupLabelOptions}</select></label><label class="coordina-form-grid__wide"><span>${escapeHtml(__('Team members', 'coordina'))}</span><select name="team_member_ids" multiple size="6">${memberOptions}</select></label></div></section><section class="coordina-settings-block"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Close-out and completion', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Capture the actual finish and any final notes once the project wraps up.', 'coordina'))}</p></div></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Actual end date', 'coordina'))}</span><input type="datetime-local" name="actual_end_date" value="${escapeHtml(app.dateTimeInputValue(project.actual_end_date || ''))}" /></label><label class="coordina-form-grid__wide"><span>${escapeHtml(__('Close-out notes', 'coordina'))}</span><textarea name="closeout_notes">${escapeHtml(project.closeout_notes || '')}</textarea></label></div></section></div></div><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save project settings', 'coordina'))}</button></div></form></section>`;
 }
 
 function workspaceProjectDetailsTab(project, overview, taskSummary) {
@@ -757,10 +839,17 @@ function workspaceTabBody(tab, project, overview, taskSummary) {
 		const items = state.workspace && state.workspace.approvalCollection ? state.workspace.approvalCollection.items || [] : [];
 		const summary = state.workspace && state.workspace.approvalSummary ? state.workspace.approvalSummary : {};
 		const prefs = workspaceCardDisplayPrefs();
-		const list = items.length ? `<ul class="coordina-work-list coordina-work-list--stacked">${items.map((item) => {
+		const list = items.length ? `<div class="coordina-project-item-grid">${items.map((item) => {
 			const nextStep = item.status === 'pending' ? __('Decision needed before work can proceed', 'coordina') : item.status === 'rejected' ? __('Rework or follow-up is needed', 'coordina') : __('Decision captured and ready for reference', 'coordina');
-			return `<li><div class="coordina-work-item-split"><div><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.object_label || nice(item.object_type || 'approval'))}</button><p class="coordina-work-item-note">${escapeHtml(`${nice(item.object_type || 'approval')} ${__('in', 'coordina')} ${item.project_label || __('this project', 'coordina')}`)}</p><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span>${escapeHtml(item.approver_label || __('No approver assigned', 'coordina'))}</span><span>${escapeHtml(item.submitted_by_label || __('Unknown submitter', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.submitted_at))}</span></div></div><div class="coordina-work-item-side">${prefs.showGuidance ? `<span class="coordina-work-item-next">${escapeHtml(nextStep)}</span>` : ''}${prefs.showActions ? `<button class="button button-small" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(__('Open', 'coordina'))}</button>` : ''}</div></div></li>`;
-		}).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(__('No approvals are linked to this project yet.', 'coordina'))}</p>`;
+			const fallbackNote = item.status === 'pending'
+				? `${nice(item.object_type || 'approval')} ${__('submitted for review by', 'coordina')} ${item.submitted_by_label || __('Unknown submitter', 'coordina')}.`
+				: item.status === 'rejected'
+					? __('The latest decision blocked progress. Review the note and follow-up required next steps.', 'coordina')
+					: __('The decision is recorded here for traceability and follow-up.', 'coordina');
+			const note = workspaceItemDescription(item.rejection_reason || '', fallbackNote, 155);
+			const actionsMarkup = prefs.showActions ? `<div class="coordina-inline-actions"><button class="button button-small button-primary" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(__('Open approval', 'coordina'))}</button></div>` : '';
+			return `<article class="coordina-project-item-card"><div class="coordina-project-item-card__heading"><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.object_label || nice(item.object_type || 'approval'))}</button><p class="coordina-project-item-card__note">${escapeHtml(note)}</p></div><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span class="coordina-status-badge">${escapeHtml(nice(item.object_type || 'approval'))}</span><span>${escapeHtml(item.approver_label || __('No approver assigned', 'coordina'))}</span><span>${escapeHtml(item.submitted_by_label || __('Unknown submitter', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.submitted_at))}</span></div>${prefs.showGuidance ? `<p class="coordina-project-item-card__hint">${escapeHtml(nextStep)}</p>` : ''}${actionsMarkup}</article>`;
+		}).join('')}</div>` : `<p class="coordina-empty-inline">${escapeHtml(__('No approvals are linked to this project yet.', 'coordina'))}</p>`;
 		return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project approvals', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Pending decisions and the items they affect.', 'coordina'))}</p></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.pending || 0)}</strong>${escapeHtml(__('Pending', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.approved || 0)}</strong>${escapeHtml(__('Approved', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(summary.rejected || 0)}</strong>${escapeHtml(__('Rejected', 'coordina'))}</span></div></div>${list}</section>`;
 	}
 	if (tab === 'board') {
@@ -801,7 +890,7 @@ function workspacePage() {
 	].map((item) => `<article class="coordina-card coordina-metric-card coordina-metric-card--${escapeHtml(item.tone || 'neutral')}"><span class="coordina-metric-card__label">${escapeHtml(item.label)}</span><strong class="coordina-metric-card__value">${escapeHtml(item.value)}</strong></article>`).join('');
 	const overviewMetrics = activeTab === 'overview' ? `<div class="coordina-summary-grid coordina-summary-grid--workspace">${metricCards}</div>` : '';
 	void headerActions;
-	return `<section class="coordina-page coordina-project-workspace"><div class="coordina-workspace-tabs">${tabs.map((tab) => `<button class="coordina-tab ${activeTab === tab.key ? 'is-active' : ''}" data-action="switch-project-tab" data-tab="${tab.key}">${escapeHtml(tab.label)}${typeof tab.count !== 'undefined' ? ` <span class="coordina-tab-count">${Number(tab.count)}</span>` : ''}</button>`).join('')}</div>${overviewMetrics}${workspaceTabBody(activeTab, project, overview, taskSummary)}</section>`;
+	return `<section class="coordina-page coordina-project-workspace"><div class="coordina-workspace-tabs">${tabs.map((tab) => `<button class="coordina-tab ${activeTab === tab.key ? 'is-active' : ''}" data-action="switch-project-tab" data-tab="${tab.key}">${iconLabel(workspaceTabIconType(tab.key), tab.label, 'coordina-tab__label')}${typeof tab.count !== 'undefined' ? `<span class="coordina-tab-count">${Number(tab.count)}</span>` : ''}</button>`).join('')}</div>${overviewMetrics}${workspaceTabBody(activeTab, project, overview, taskSummary)}</section>`;
 }
 
 function normalizeChecklistCollection(collection, fallback) {

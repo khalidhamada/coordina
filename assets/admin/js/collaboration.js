@@ -8,6 +8,71 @@ if (!app.root || !app.state) {
 const { state, escapeHtml, __, nice, dateLabel, dateTimeLabel } = app;
 const baseWorkspaceTabBody = app.workspaceTabBody;
 
+function fileExtension(item) {
+	const raw = String(item.file_name || item.attachment_title || '').trim();
+	if (!raw || raw.indexOf('.') === -1) {
+		return '';
+	}
+	return raw.split('.').pop().toLowerCase();
+}
+
+function fileSizeLabel(bytes) {
+	const size = Number(bytes || 0);
+	if (!Number.isFinite(size) || size <= 0) {
+		return __('Unknown size', 'coordina');
+	}
+	const units = ['B', 'KB', 'MB', 'GB'];
+	let value = size;
+	let unitIndex = 0;
+	while (value >= 1024 && unitIndex < units.length - 1) {
+		value /= 1024;
+		unitIndex += 1;
+	}
+	return `${value >= 10 || unitIndex === 0 ? Math.round(value) : value.toFixed(1)} ${units[unitIndex]}`;
+}
+
+function fileTypeDashicon(item) {
+	const extension = fileExtension(item);
+	const mimeGroup = String(item.mime_group || '').toLowerCase();
+	if (mimeGroup === 'image') {
+		return 'dashicons-format-image';
+	}
+	if (mimeGroup === 'audio') {
+		return 'dashicons-format-audio';
+	}
+	if (mimeGroup === 'video') {
+		return 'dashicons-format-video';
+	}
+	if (['pdf'].includes(extension)) {
+		return 'dashicons-media-document';
+	}
+	if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension)) {
+		return 'dashicons-media-archive';
+	}
+	if (['csv', 'xls', 'xlsx'].includes(extension)) {
+		return 'dashicons-media-spreadsheet';
+	}
+	if (['doc', 'docx', 'txt', 'rtf', 'md'].includes(extension)) {
+		return 'dashicons-media-text';
+	}
+	if (['js', 'ts', 'css', 'html', 'php', 'json', 'xml', 'yml', 'yaml'].includes(extension)) {
+		return 'dashicons-media-code';
+	}
+	return 'dashicons-media-default';
+}
+
+function fileTypeLabel(item) {
+	const extension = fileExtension(item);
+	if (extension) {
+		return extension.toUpperCase();
+	}
+	return nice(item.mime_group || __('file', 'coordina'));
+}
+
+function fileDrawerTrigger(item, className, label) {
+	return `<button class="${className}" data-action="open-record" data-module="files" data-id="${item.id}">${label}</button>`;
+}
+
 function collaborationProjectButton(item, tab) {
 	if (!item || Number(item.project_id || 0) <= 0) {
 		return `<span>${escapeHtml(__('Standalone', 'coordina'))}</span>`;
@@ -62,7 +127,7 @@ function collaborationMeta(item, tab, authorLabel) {
 
 function fileList(items, emptyMessage, options) {
 	const metaOptions = Object.assign({ showAuthor: true }, options && options.metaOptions ? options.metaOptions : {});
-	return items.length ? `<ul class="coordina-work-list">${items.map((item) => `<li><a class="coordina-link-button" href="${escapeHtml(item.attachment_url || '#')}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.file_name || item.attachment_title || __('File', 'coordina'))}</a>${collaborationMeta(item, 'files', item.created_by_label || __('Unknown uploader', 'coordina'), metaOptions)}${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}</li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+	return items.length ? `<div class="coordina-file-card-grid">${items.map((item) => `<article class="coordina-file-card"><div class="coordina-file-card__head"><span class="coordina-file-card__type dashicons ${fileTypeDashicon(item)}" aria-hidden="true"></span><div class="coordina-file-card__title-block">${fileDrawerTrigger(item, 'coordina-link-button coordina-file-card__title', escapeHtml(item.file_name || item.attachment_title || __('File', 'coordina')))}<div class="coordina-file-card__subline"><span class="coordina-status-badge">${escapeHtml(fileTypeLabel(item))}</span><span>${escapeHtml(fileSizeLabel(item.file_size))}</span></div></div><div class="coordina-file-card__actions">${fileDrawerTrigger(item, 'coordina-file-card__icon-button', `<span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">${escapeHtml(__('Open file details', 'coordina'))}</span>`)}${item.attachment_url ? `<a class="coordina-file-card__icon-button" href="${escapeHtml(item.attachment_url)}" download="${escapeHtml(item.file_name || item.attachment_title || '')}"><span class="dashicons dashicons-download" aria-hidden="true"></span><span class="screen-reader-text">${escapeHtml(__('Download file', 'coordina'))}</span></a>` : ''}</div></div>${collaborationMeta(item, 'files', item.created_by_label || __('Unknown uploader', 'coordina'), metaOptions)}${item.note ? `<p class="coordina-file-card__note">${escapeHtml(item.note)}</p>` : ''}</article>`).join('')}</div>` : `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
 }
 
 function discussionTimeline(items, emptyMessage, options) {

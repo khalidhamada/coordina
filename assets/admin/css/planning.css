@@ -29,13 +29,14 @@
 .coordina-calendar-shell {
 	padding: 0;
 	overflow: hidden;
+	background: #f4f7fb;
 }
 
 .coordina-calendar__weekdays {
 	display: grid;
 	grid-template-columns: repeat(7, minmax(0, 1fr));
-	background: var(--coordina-surface-muted);
-	border-bottom: 1px solid var(--coordina-border);
+	background: linear-gradient(180deg, #f8fafc 0%, #eef3f8 100%);
+	border-bottom: 1px solid rgba(177, 189, 204, 0.75);
 }
 
 .coordina-calendar__weekday {
@@ -44,7 +45,7 @@
 	font-weight: 700;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
-	color: var(--coordina-text-muted);
+	color: var(--coordina-text-light);
 }
 
 .coordina-calendar__grid {
@@ -53,30 +54,31 @@
 }
 
 .coordina-calendar__grid.view-week {
-	grid-auto-rows: minmax(220px, auto);
+	grid-auto-rows: minmax(200px, auto);
 }
 
 .coordina-calendar__grid.view-month {
-	grid-auto-rows: minmax(180px, auto);
+	grid-auto-rows: minmax(164px, auto);
 }
 
 .coordina-calendar__day {
 	display: grid;
 	align-content: start;
 	gap: 10px;
-	min-height: 180px;
+	min-height: 164px;
 	padding: 14px;
-	border-right: 1px solid var(--coordina-border);
-	border-bottom: 1px solid var(--coordina-border);
-	background: var(--coordina-surface);
+	border-right: 1px solid rgba(177, 189, 204, 0.68);
+	border-bottom: 1px solid rgba(177, 189, 204, 0.68);
+	background: #ffffff;
 }
 
 .coordina-calendar__day.is-outside {
-	background: var(--coordina-surface-muted);
+	background: #f3f6f9;
 }
 
 .coordina-calendar__day.is-today {
-	background: linear-gradient(135deg, var(--coordina-info-soft) 0%, var(--coordina-surface) 100%);
+	background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+	box-shadow: inset 0 0 0 2px rgba(31, 94, 255, 0.12);
 }
 
 .coordina-calendar__day-head {
@@ -91,6 +93,7 @@
 .coordina-calendar__day-head strong {
 	font-size: 18px;
 	color: var(--coordina-text);
+	line-height: 1;
 }
 
 .coordina-calendar__item {
@@ -98,12 +101,13 @@
 	gap: 4px;
 	width: 100%;
 	padding: 10px 12px;
-	border: 1px solid var(--coordina-border);
-	border-radius: 8px;
-	background: var(--coordina-surface);
+	border: 1px solid rgba(171, 184, 201, 0.82);
+	border-radius: 10px;
+	background: #ffffff;
 	text-align: left;
 	cursor: pointer;
 	transition: all 120ms cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: 0 1px 2px rgba(19, 26, 35, 0.04);
 }
 
 .coordina-calendar__item:hover,
@@ -114,7 +118,8 @@
 }
 
 .coordina-calendar__item.type-project {
-	background: linear-gradient(135deg, var(--coordina-primary-lighter) 0%, var(--coordina-accent-lighter) 100%);
+	background: linear-gradient(135deg, #f7fbff 0%, #eef5ff 100%);
+	border-color: rgba(74, 122, 201, 0.34);
 }
 
 .coordina-calendar__item-label,
@@ -172,7 +177,7 @@
 
 .coordina-gantt-layout {
 	display: grid;
-	gap: 16px;
+	gap: 14px;
 }
 
 .coordina-gantt-layout__secondary {
@@ -182,7 +187,7 @@
 }
 
 .coordina-gantt-card {
-	padding: 20px;
+	padding: 18px;
 	border-radius: 12px;
 	background: linear-gradient(135deg, var(--coordina-surface) 0%, var(--coordina-surface-soft) 100%);
 	border: 1px solid var(--coordina-border);
@@ -194,53 +199,69 @@
 	gap: 0;
 	border: 1px solid var(--coordina-border);
 	border-radius: 12px;
-	overflow: hidden;
+	overflow-x: auto;
+	overflow-y: hidden;
 	background: linear-gradient(135deg, var(--coordina-surface) 0%, var(--coordina-surface-soft) 100%);
 	box-shadow: var(--coordina-shadow-xs);
 }
 
 .coordina-gantt__header {
 	display: grid;
-	grid-template-columns: minmax(360px, 420px) minmax(980px, 1fr);
+	grid-template-columns: minmax(220px, 280px) minmax(118px, 140px) minmax(840px, 1fr);
 	border-bottom: 1px solid rgba(190, 200, 219, 0.55);
-	background: rgba(244, 246, 251, 0.92);
+	background: rgba(244, 246, 251, 0.96);
 }
 
 .coordina-gantt__sidebar-head,
+.coordina-gantt__date-head,
 .coordina-gantt__timeline-head {
-	padding: 16px 18px;
+	padding: 12px 14px;
 }
 
-.coordina-gantt__sidebar-head {
+.coordina-gantt__sidebar-head,
+.coordina-gantt__date-head {
 	font-size: 12px;
 	font-weight: 700;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	color: var(--coordina-text-muted);
+	background: rgba(244, 246, 251, 0.96);
+	border-right: 1px solid rgba(190, 200, 219, 0.55);
+}
+
+.coordina-gantt__sidebar-head {
 	border-right: 1px solid rgba(190, 200, 219, 0.55);
 }
 
 .coordina-gantt__timeline-head {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+	grid-template-columns: minmax(0, 1fr);
 	gap: 0;
-	min-width: 980px;
+	min-width: 840px;
 }
 
 .coordina-gantt__week-head {
 	display: grid;
-	gap: 4px;
-	padding: 0 10px;
+	gap: 2px;
+	padding: 0 8px;
 	border-right: 1px solid rgba(190, 200, 219, 0.38);
 }
 
+.coordina-gantt__week-head.is-month-start {
+	border-left: 2px solid rgba(86, 110, 141, 0.3);
+	padding-left: 10px;
+}
+
 .coordina-gantt__week-head strong {
-	font-size: 12px;
+	font-size: 11px;
 	color: var(--coordina-text);
 }
 
 .coordina-gantt__week-head span {
-	font-size: 11px;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 	color: var(--coordina-text-muted);
 }
 
@@ -261,15 +282,15 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
-	padding: 14px 18px;
+	padding: 10px 14px;
 	background: rgba(244, 246, 251, 0.72);
 	border-bottom: 1px solid rgba(190, 200, 219, 0.38);
 }
 
 .coordina-gantt__row {
 	display: grid;
-	grid-template-columns: minmax(360px, 420px) minmax(980px, 1fr);
-	min-height: 60px;
+	grid-template-columns: minmax(220px, 280px) minmax(118px, 140px) minmax(840px, 1fr);
+	min-height: 42px;
 }
 
 .coordina-gantt__row + .coordina-gantt__row {
@@ -279,75 +300,56 @@
 .coordina-gantt__label {
 	display: flex;
 	align-items: center;
-	padding: 10px 18px;
+	padding: 6px 12px;
 	border-right: 1px solid rgba(190, 200, 219, 0.45);
 	background: rgba(255, 255, 255, 0.92);
 	min-width: 0;
 }
 
-.coordina-gantt__label-line {
+.coordina-gantt__schedule-cell {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	padding: 6px 10px;
+	border-right: 1px solid rgba(190, 200, 219, 0.45);
+	background: rgba(252, 253, 255, 0.96);
+	min-width: 0;
+}
+
+.coordina-gantt__label-line {
+	display: grid;
+	gap: 4px;
 	width: 100%;
 	min-width: 0;
-	flex-wrap: nowrap;
 }
 
 .coordina-gantt__label .coordina-link-button {
-	flex: 0 1 auto;
+	justify-self: start;
 	min-width: 0;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	font-size: 13px;
-}
-
-.coordina-gantt__badges {
-	display: flex;
-	flex: 0 0 auto;
-	gap: 6px;
-	min-width: 0;
-	white-space: nowrap;
-}
-
-.coordina-gantt__badges .coordina-status-badge {
-	padding: 4px 8px;
-	font-size: 10px;
-}
-
-.coordina-gantt__meta {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	min-width: 0;
-	margin-left: auto;
 	font-size: 12px;
+	font-weight: 600;
+}
+
+.coordina-gantt__date-range {
+	display: block;
+	width: 100%;
+	min-width: 0;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.2;
 	color: var(--coordina-text-muted);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-.coordina-gantt__meta-item {
-	position: relative;
-	display: inline-flex;
-	align-items: center;
-}
-
-.coordina-gantt__meta-item + .coordina-gantt__meta-item::before {
-	content: '';
-	width: 4px;
-	height: 4px;
-	margin-right: 8px;
-	border-radius: 999px;
-	background: rgba(95, 107, 124, 0.45);
+	font-variant-numeric: tabular-nums;
 }
 
 .coordina-gantt__track {
 	position: relative;
-	min-width: 980px;
-	padding: 10px 0;
+	min-width: 840px;
+	padding: 4px 0;
 	background: rgba(255, 255, 255, 0.86);
 }
 
@@ -355,7 +357,7 @@
 	position: absolute;
 	inset: 0;
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+	grid-template-columns: minmax(0, 1fr);
 	pointer-events: none;
 }
 
@@ -365,6 +367,7 @@
 
 .coordina-gantt__week-cell.is-month-start {
 	background: linear-gradient(180deg, rgba(233, 240, 255, 0.18) 0%, rgba(233, 240, 255, 0.04) 100%);
+	border-left: 2px solid rgba(86, 110, 141, 0.22);
 }
 
 .coordina-gantt__today-line {
@@ -378,37 +381,90 @@
 	z-index: 2;
 }
 
-.coordina-gantt__bar,
-.coordina-gantt__marker {
+.coordina-gantt__hint-target {
 	position: absolute;
 	top: 50%;
-	transform: translateY(-50%);
 	z-index: 3;
+	outline: none;
+}
+
+.coordina-gantt__hint-target--bar {
+	transform: translateY(-50%);
+	max-width: calc(100% - 8px);
+}
+
+.coordina-gantt__hint-target--marker {
+	transform: translate(-50%, -50%);
+	width: 12px;
+	height: 12px;
+}
+
+.coordina-gantt__hint-target::before,
+.coordina-gantt__hint-target::after {
+	position: absolute;
+	left: 50%;
+	bottom: calc(100% + 10px);
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+}
+
+.coordina-gantt__hint-target::before {
+	content: '';
+	transform: translate(-50%, 6px);
+	border-left: 6px solid transparent;
+	border-right: 6px solid transparent;
+	border-top: 7px solid rgba(18, 27, 40, 0.96);
+	margin-bottom: -10px;
+}
+
+.coordina-gantt__hint-target::after {
+	content: attr(data-tooltip);
+	width: max-content;
+	max-width: 260px;
+	padding: 10px 12px;
+	border-radius: 10px;
+	background: rgba(18, 27, 40, 0.96);
+	box-shadow: 0 18px 32px -24px rgba(12, 18, 27, 0.72);
+	color: #fff;
+	font-size: 11px;
+	line-height: 1.5;
+	white-space: pre-line;
+	text-align: left;
+	transform: translate(-50%, 8px);
+}
+
+.coordina-gantt__hint-target:hover::before,
+.coordina-gantt__hint-target:hover::after,
+.coordina-gantt__hint-target:focus-visible::before,
+.coordina-gantt__hint-target:focus-visible::after {
+	opacity: 1;
+	visibility: visible;
+	transform: translate(-50%, 0);
+}
+
+.coordina-gantt__bar,
+.coordina-gantt__marker {
+	display: block;
+	width: 100%;
+	height: 100%;
 }
 
 .coordina-gantt__bar {
-	display: inline-flex;
-	align-items: center;
 	min-width: 14px;
-	max-width: calc(100% - 8px);
-	height: 16px;
-	padding: 0 8px;
+	height: 12px;
+	padding: 0 6px;
 	border-radius: 999px;
-	box-shadow: 0 8px 20px rgba(24, 34, 48, 0.12);
-	font-size: 10px;
-	font-weight: 700;
-	line-height: 1;
-	color: #fff;
-	overflow: hidden;
-	white-space: nowrap;
+	box-shadow: 0 6px 16px rgba(24, 34, 48, 0.12);
+	cursor: help;
 }
 
 .coordina-gantt__marker {
-	width: 16px;
-	height: 16px;
-	border-radius: 4px;
-	transform: translate(-50%, -50%) rotate(45deg);
-	box-shadow: 0 8px 20px rgba(24, 34, 48, 0.14);
+	border-radius: 3px;
+	transform: rotate(45deg);
+	box-shadow: 0 6px 16px rgba(24, 34, 48, 0.14);
+	cursor: help;
 }
 
 .coordina-gantt__bar.tone-active,
@@ -443,12 +499,12 @@
 
 	.coordina-gantt__header,
 	.coordina-gantt__row {
-		grid-template-columns: 320px minmax(760px, 1fr);
+		grid-template-columns: 200px 124px minmax(560px, 1fr);
 	}
 
 	.coordina-gantt__timeline-head,
 	.coordina-gantt__track {
-		min-width: 760px;
+		min-width: 560px;
 	}
 }
 
@@ -464,7 +520,8 @@
 		grid-template-columns: 1fr;
 	}
 
-	.coordina-gantt__sidebar-head {
+	.coordina-gantt__sidebar-head,
+	.coordina-gantt__date-head {
 		border-right: 0;
 		border-bottom: 1px solid rgba(190, 200, 219, 0.45);
 	}
@@ -474,12 +531,16 @@
 		border-bottom: 1px solid rgba(190, 200, 219, 0.28);
 	}
 
-	.coordina-gantt__label-line {
-		flex-wrap: wrap;
+	.coordina-gantt__schedule-cell {
+		border-right: 0;
+		border-bottom: 1px solid rgba(190, 200, 219, 0.28);
 	}
 
-	.coordina-gantt__meta {
-		margin-left: 0;
-		width: 100%;
+	.coordina-gantt__label-line {
+		gap: 6px;
+	}
+
+	.coordina-gantt__hint-target::after {
+		max-width: min(260px, calc(100vw - 48px));
 	}
 }

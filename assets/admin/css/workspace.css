@@ -104,6 +104,7 @@
 .coordina-project-item-card .coordina-inline-actions { justify-content: flex-start; }
 .coordina-workspace-settings-form { display: grid; gap: 18px; }
 .coordina-workspace-settings-layout { align-items: start; }
+.coordina-workspace-settings-layout--single { grid-template-columns: minmax(0, 1fr); }
 .coordina-task-page { display: grid; gap: 18px; }
 .coordina-task-page__layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); gap: 18px; align-items: start; }
 .coordina-task-page__main,

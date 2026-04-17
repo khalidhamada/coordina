@@ -1241,11 +1241,14 @@ final class RestRegistrar {
 		$milestone_rows    = array();
 		$task_group_rows   = array();
 		$ungrouped_rows    = array();
+		$project_start_key = $this->normalize_workspace_date_key( (string) ( $project['start_date'] ?? '' ) );
+		$project_target_key = $this->normalize_workspace_date_key( (string) ( $project['target_end_date'] ?? '' ) );
+		$project_actual_end_key = $this->normalize_workspace_date_key( (string) ( $project['actual_end_date'] ?? '' ) );
 		$range_dates       = array_filter(
 			array(
-				$this->normalize_workspace_date_key( (string) ( $project['start_date'] ?? '' ) ),
-				$this->normalize_workspace_date_key( (string) ( $project['target_end_date'] ?? '' ) ),
-				$this->normalize_workspace_date_key( (string) ( $project['actual_end_date'] ?? '' ) ),
+				$project_start_key,
+				$project_target_key,
+				$project_actual_end_key,
 			)
 		);
 
@@ -1344,21 +1347,31 @@ final class RestRegistrar {
 
 		sort( $range_dates );
 
-		$range_start = ! empty( $range_dates ) ? $this->week_start_key( $this->shift_date_key( (string) reset( $range_dates ), -7 ) ) : $this->week_start_key( $today_key );
-		$range_end   = ! empty( $range_dates ) ? $this->week_end_key( $this->shift_date_key( (string) end( $range_dates ), 7 ) ) : $this->week_end_key( $today_key );
-		$weeks       = array();
-		$cursor      = strtotime( $range_start . ' 00:00:00 UTC' );
-		$end_ts      = strtotime( $range_end . ' 00:00:00 UTC' );
-
-		while ( false !== $cursor && false !== $end_ts && $cursor <= $end_ts ) {
-			$weeks[] = array(
-				'start'      => gmdate( 'Y-m-d', $cursor ),
-				'end'        => gmdate( 'Y-m-d', strtotime( '+6 days', $cursor ) ),
-				'label'      => wp_date( 'M j', $cursor ),
-				'monthLabel' => wp_date( 'M Y', $cursor ),
-			);
-			$cursor = strtotime( '+7 days', $cursor );
+		$project_frame_end = '';
+		if ( '' !== $project_target_key && '' !== $project_actual_end_key ) {
+			$project_frame_end = $project_target_key > $project_actual_end_key ? $project_target_key : $project_actual_end_key;
+		} elseif ( '' !== $project_actual_end_key ) {
+			$project_frame_end = $project_actual_end_key;
+		} else {
+			$project_frame_end = $project_target_key;
 		}
+
+		$range_min = ! empty( $range_dates ) ? (string) reset( $range_dates ) : $today_key;
+		$range_max = ! empty( $range_dates ) ? (string) end( $range_dates ) : $today_key;
+
+		if ( '' !== $project_start_key && $project_start_key < $range_min ) {
+			$range_min = $project_start_key;
+		}
+
+		if ( '' !== $project_frame_end && $project_frame_end > $range_max ) {
+			$range_max = $project_frame_end;
+		}
+
+		$range_start    = $range_min;
+		$range_end      = $range_max;
+		$periods_config = $this->build_workspace_gantt_periods( $range_start, $range_end );
+		$periods        = $periods_config['periods'];
+		$grouping       = (string) ( $periods_config['grouping'] ?? 'week' );
 
 		$groups = array();
 
@@ -1390,11 +1403,13 @@ final class RestRegistrar {
 				'end'   => $range_end,
 				'today' => $today_key,
 			),
-			'weeks'            => $weeks,
+			'grouping'         => $grouping,
+			'periods'          => $periods,
+			'weeks'            => $periods,
 			'projectFrame'     => array(
-				'start'  => $this->normalize_workspace_date_key( (string) ( $project['start_date'] ?? '' ) ),
-				'target' => $this->normalize_workspace_date_key( (string) ( $project['target_end_date'] ?? '' ) ),
-				'end'    => $this->normalize_workspace_date_key( (string) ( $project['actual_end_date'] ?? '' ) ),
+				'start'  => $project_start_key,
+				'target' => $project_target_key,
+				'end'    => $project_actual_end_key,
 			),
 			'summary'          => array(
 				'scheduledTasks'   => count(
@@ -1500,6 +1515,96 @@ final class RestRegistrar {
 
 		$day_of_week = (int) gmdate( 'N', $timestamp );
 		return gmdate( 'Y-m-d', strtotime( '+' . ( 7 - $day_of_week ) . ' days', $timestamp ) );
+	}
+
+	/**
+	 * Get the inclusive number of days between two Y-m-d keys.
+	 *
+	 * @param string $start_key Start date key.
+	 * @param string $end_key End date key.
+	 * @return int
+	 */
+	private function workspace_date_diff_days( string $start_key, string $end_key ): int {
+		$start = strtotime( $start_key . ' 00:00:00 UTC' );
+		$end   = strtotime( $end_key . ' 00:00:00 UTC' );
+
+		if ( false === $start || false === $end ) {
+			return 0;
+		}
+
+		return (int) round( ( $end - $start ) / DAY_IN_SECONDS );
+	}
+
+	/**
+	 * Build clipped Gantt periods for the current project span.
+	 *
+	 * @param string $range_start Start date key.
+	 * @param string $range_end End date key.
+	 * @return array{grouping:string, periods:array<int, array<string, mixed>>}
+	 */
+	private function build_workspace_gantt_periods( string $range_start, string $range_end ): array {
+		$span_days = max( 1, $this->workspace_date_diff_days( $range_start, $range_end ) + 1 );
+		$grouping  = 'week';
+
+		if ( $span_days > 180 ) {
+			$grouping = 'month';
+		} elseif ( $span_days > 92 ) {
+			$grouping = 'half-month';
+		}
+
+		$periods = array();
+		$cursor  = $range_start;
+
+		while ( $cursor <= $range_end ) {
+			$cursor_ts = strtotime( $cursor . ' 00:00:00 UTC' );
+			if ( false === $cursor_ts ) {
+				break;
+			}
+
+			$period_end      = $cursor;
+			$label           = wp_date( 'M j', $cursor_ts );
+			$secondary_label = wp_date( 'M j', $cursor_ts );
+
+			if ( 'month' === $grouping ) {
+				$period_end      = gmdate( 'Y-m-t', $cursor_ts );
+				$label           = wp_date( 'M', $cursor_ts );
+				$secondary_label = wp_date( 'Y', $cursor_ts );
+			} elseif ( 'half-month' === $grouping ) {
+				if ( (int) gmdate( 'j', $cursor_ts ) <= 15 ) {
+					$period_end = gmdate( 'Y-m-15', $cursor_ts );
+				} else {
+					$period_end = gmdate( 'Y-m-t', $cursor_ts );
+				}
+				$secondary_ts    = strtotime( $period_end . ' 00:00:00 UTC' ) ?: $cursor_ts;
+				$label           = wp_date( 'M j', $cursor_ts );
+				$secondary_label = wp_date( 'M j', $secondary_ts );
+			} else {
+				$period_end      = $this->shift_date_key( $cursor, 6 );
+				$secondary_ts    = strtotime( $period_end . ' 00:00:00 UTC' ) ?: $cursor_ts;
+				$label           = wp_date( 'M j', $cursor_ts );
+				$secondary_label = wp_date( 'M j', $secondary_ts );
+			}
+
+			if ( $period_end > $range_end ) {
+				$period_end      = $range_end;
+				$secondary_label = wp_date( 'M j', strtotime( $period_end . ' 00:00:00 UTC' ) ?: $cursor_ts );
+			}
+
+			$periods[] = array(
+				'start'          => $cursor,
+				'end'            => $period_end,
+				'label'          => $label,
+				'secondaryLabel' => $secondary_label,
+				'spanDays'       => max( 1, $this->workspace_date_diff_days( $cursor, $period_end ) + 1 ),
+			);
+
+			$cursor = $this->shift_date_key( $period_end, 1 );
+		}
+
+		return array(
+			'grouping' => $grouping,
+			'periods'  => $periods,
+		);
 	}
 
 	private function normalize_workspace_tab( string $tab ): string {

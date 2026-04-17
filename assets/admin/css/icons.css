@@ -1,6 +1,4 @@
-/* Icon System - Working version with Unicode symbols
-   Uses standard Unicode characters that work with all system fonts
-   No external font dependencies, renders reliably across browsers */
+/* Icon System - WordPress Dashicons-backed labels for admin surfaces */
 
 .coordina-entity-label {
 	display: inline-flex;
@@ -18,13 +16,13 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 1.1em;
-	height: 1.1em;
+	width: 18px;
+	height: 18px;
 	color: var(--coordina-info);
-	font-size: 1em;
+	font-size: 18px;
 	line-height: 1;
 	flex: 0 0 auto;
-	transform: translateY(0.03em);
+	transform: translateY(1px);
 }
 
 .coordina-entity-icon--risk,
@@ -46,14 +44,11 @@
 	color: var(--coordina-text);
 }
 
-.coordina-entity-icon svg {
-	width: 100%;
-	height: 100%;
-	stroke: currentColor;
-	fill: none;
-	stroke-width: 1.8;
-	stroke-linecap: round;
-	stroke-linejoin: round;
+.coordina-entity-icon::before {
+	font-size: inherit;
+	width: auto;
+	height: auto;
+	line-height: 1;
 }
 
 /* Status badge icons */

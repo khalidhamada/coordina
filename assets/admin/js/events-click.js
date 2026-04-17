@@ -31,7 +31,7 @@ function readAppearanceTheme(root, state) {
 }
 
 app.handleAdminClickAction = async function (button) {
-	const { root, state, modules, currentModule, openCreate, openRecord, openProjectWorkspace, openTaskPage, openMilestonePage, openRiskIssuePage, openRoute, editProject, backToProjects, render, saveStoredFilters, todayKey, loadCalendar, loadWorkload, weekStartKey, loadCollection, saveFilters, api, notify, loadNotifications, openNotifications, loadMyWork, loadMyWorkTasks, defaultMyWorkTaskFilters, hasProjectWorkspace, loadWorkspace, hasTaskPage, loadTaskDetail, loadViews, loadCollaboration, __, escapeHtml, nice, checklistForm, checklistItemForm, refreshChecklistViews, deletePrompt, refreshAfterDelete, syncChecklistEditor, checklistEditorRowHtml, updateChecklistRemoveButtons } = app;
+	const { root, state, modules, currentModule, openCreate, openRecord, openProjectWorkspace, openTaskPage, openMilestonePage, openRiskIssuePage, openRoute, editProject, backToProjects, render, saveStoredFilters, todayKey, shiftDate, loadCalendar, loadWorkload, weekStartKey, loadCollection, saveFilters, api, notify, loadNotifications, openNotifications, loadMyWork, loadMyWorkTasks, defaultMyWorkTaskFilters, hasProjectWorkspace, loadWorkspace, hasTaskPage, loadTaskDetail, loadViews, loadCollaboration, __, escapeHtml, nice, checklistForm, checklistItemForm, refreshChecklistViews, deletePrompt, refreshAfterDelete, syncChecklistEditor, checklistEditorRowHtml, updateChecklistRemoveButtons } = app;
 
 	if (button.dataset.action === 'open-create') { await openCreate(); }
 	if (button.dataset.action === 'open-task-create') { await openCreate('tasks'); }

@@ -6,7 +6,7 @@ if (!app.root || !app.state) {
 }
 
 app.handleAdminChangeEvent = async function (target) {
-	const { state, currentModule, api, notify, refreshChecklistViews, render, syncChecklistEditor, updateChecklistRemoveButtons, saveFilters, loadCollection, __ } = app;
+	const { root, state, currentModule, api, notify, refreshChecklistViews, render, syncChecklistEditor, updateChecklistRemoveButtons, saveFilters, saveStoredFilters, loadCollection, loadCalendar, todayKey, weekStartKey, __ } = app;
 
 	if (target && target.dataset.checklistToggle === '1') {
 		try {
@@ -40,6 +40,19 @@ app.handleAdminChangeEvent = async function (target) {
 		} catch (error) {
 			notify('error', error.message);
 		}
+	}
+
+	if (state.page === 'coordina-calendar' && target && (target.matches('[name="calendar-view"]') || target.matches('[name="calendar-focus-date"]'))) {
+		const current = Object.assign({}, app.defaultCalendarFilters(), state.calendarFilters || {});
+		const nextView = root.querySelector('[name="calendar-view"]') ? root.querySelector('[name="calendar-view"]').value : current.view;
+		const rawFocusDate = root.querySelector('[name="calendar-focus-date"]') ? (root.querySelector('[name="calendar-focus-date"]').value || todayKey()) : (current.focus_date || todayKey());
+		state.calendarFilters = Object.assign({}, current, {
+			view: nextView,
+			focus_date: nextView === 'week' ? weekStartKey(rawFocusDate) : rawFocusDate,
+		});
+		saveStoredFilters('calendar', state.calendarFilters);
+		await loadCalendar();
+		render();
 	}
 };
 
