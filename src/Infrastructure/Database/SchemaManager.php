@@ -18,7 +18,7 @@ final class SchemaManager {
 	/**
 	 * Current schema version.
 	 */
-	private const VERSION = '0.2.7';
+	private const VERSION = '0.2.8';
 
 	/**
 	 * Install or upgrade schema.
@@ -37,6 +37,7 @@ final class SchemaManager {
 
 		$this->migrate_task_checklists( $wpdb->prefix );
 		$this->migrate_grouped_checklists( $wpdb->prefix );
+		$this->migrate_project_sponsor_field( $wpdb->prefix );
 
 		update_option( self::OPTION_KEY, self::VERSION, false );
 	}
@@ -69,6 +70,7 @@ final class SchemaManager {
 				health varchar(50) NOT NULL DEFAULT 'neutral',
 				priority varchar(50) NOT NULL DEFAULT 'normal',
 				manager_user_id bigint(20) unsigned NOT NULL DEFAULT 0,
+				sponsor_user_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				visibility varchar(50) NOT NULL DEFAULT 'team',
 				notification_policy varchar(50) NOT NULL DEFAULT 'default',
 				task_group_label varchar(50) NOT NULL DEFAULT '',
@@ -84,6 +86,7 @@ final class SchemaManager {
 				PRIMARY KEY  (id),
 				KEY status (status),
 				KEY manager_user_id (manager_user_id),
+				KEY sponsor_user_id (sponsor_user_id),
 				KEY visibility (visibility),
 				KEY workspace_id (workspace_id),
 				KEY target_end_date (target_end_date),
@@ -464,6 +467,38 @@ final class SchemaManager {
 					)
 				);
 			}
+		}
+
+		update_option( $migration_key, self::VERSION, false );
+	}
+
+	/**
+	 * Add the project sponsor field for existing installs.
+	 *
+	 * @param string $prefix Table prefix.
+	 * @return void
+	 */
+	private function migrate_project_sponsor_field( string $prefix ): void {
+		global $wpdb;
+
+		$migration_key = 'coordina_project_sponsor_migrated_0_2_8';
+		$table         = $prefix . 'coordina_projects';
+
+		if ( get_option( $migration_key, false ) ) {
+			return;
+		}
+
+		$table_exists = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+
+		if ( $table !== $table_exists ) {
+			update_option( $migration_key, 'missing-table', false );
+			return;
+		}
+
+		$column_exists = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW COLUMNS FROM ' . $table . ' LIKE %s', 'sponsor_user_id' ) );
+
+		if ( '' === $column_exists ) {
+			$wpdb->query( "ALTER TABLE {$table} ADD COLUMN sponsor_user_id bigint(20) unsigned NOT NULL DEFAULT 0 AFTER manager_user_id" );
 		}
 
 		update_option( $migration_key, self::VERSION, false );

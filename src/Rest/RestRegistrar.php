@@ -430,6 +430,27 @@ final class RestRegistrar {
 
 		register_rest_route(
 			self::NAMESPACE,
+			'/task-groups/(?P<id>\\d+)',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'update_task_group' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_manage_projects' ) || current_user_can( 'coordina_manage_settings' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( $this, 'delete_task_group' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_manage_projects' ) || current_user_can( 'coordina_manage_settings' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
 			'/requests/(?P<id>\\d+)/convert',
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
@@ -1107,6 +1128,7 @@ final class RestRegistrar {
 		$task_group_label     = ! empty( $workspace['project']['task_group_label'] ) ? (string) $workspace['project']['task_group_label'] : (string) ( $settings['general']['task_group_label'] ?? 'stage' );
 		$tabs                 = array(
 			array( 'key' => 'overview', 'label' => __( 'Overview', 'coordina' ) ),
+			array( 'key' => 'details', 'label' => __( 'Details', 'coordina' ) ),
 			array( 'key' => 'work', 'label' => __( 'Work', 'coordina' ), 'count' => (int) ( $task_summary['total'] ?? 0 ) ),
 			array( 'key' => 'gantt', 'label' => __( 'Gantt', 'coordina' ) ),
 			array( 'key' => 'milestones', 'label' => __( 'Milestones', 'coordina' ), 'count' => (int) ( $milestone_summary['open'] ?? 0 ) ),
@@ -1485,7 +1507,7 @@ final class RestRegistrar {
 			return 'work';
 		}
 
-		if ( in_array( $tab, array( 'overview', 'work', 'gantt', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity', 'settings' ), true ) ) {
+		if ( in_array( $tab, array( 'overview', 'details', 'work', 'gantt', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity', 'settings' ), true ) ) {
 			return $tab;
 		}
 
@@ -1575,6 +1597,22 @@ final class RestRegistrar {
 	public function create_project_task_group( WP_REST_Request $request ): WP_REST_Response {
 		try {
 			return $this->respond( $this->tasks->create_group( (int) $request['id'], $this->sanitize_payload( $request ) ) );
+		} catch ( Throwable $exception ) {
+			return $this->error_response( $exception->getMessage(), 400 );
+		}
+	}
+
+	public function update_task_group( WP_REST_Request $request ): WP_REST_Response {
+		try {
+			return $this->respond( $this->tasks->update_group( (int) $request['id'], $this->sanitize_payload( $request ) ) );
+		} catch ( Throwable $exception ) {
+			return $this->error_response( $exception->getMessage(), 400 );
+		}
+	}
+
+	public function delete_task_group( WP_REST_Request $request ): WP_REST_Response {
+		try {
+			return $this->respond( array( 'deleted' => $this->tasks->delete_group( (int) $request['id'] ) ) );
 		} catch ( Throwable $exception ) {
 			return $this->error_response( $exception->getMessage(), 400 );
 		}

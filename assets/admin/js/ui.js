@@ -307,7 +307,7 @@ function moduleHeaderActions(module) {
 function workspaceHeaderActions(project, actions) {
 	const list = [routeAction(__('Back to projects', 'coordina'), { page: 'coordina-projects' })];
 	if (actions && actions.canEditProject) {
-		list.push(buttonAction(__('Edit project', 'coordina'), { action: 'edit-project', id: project.id || '' }));
+		list.push(buttonAction(__('Edit project', 'coordina'), { action: 'open-project-details-edit', id: project.id || '' }));
 	}
 	if (actions && actions.canPostUpdate) {
 		list.push(buttonAction(__('Add update', 'coordina'), { action: 'open-discussion-create', objectType: 'project', objectId: project.id || '', objectLabel: project.title || __('Project workspace', 'coordina'), lockContext: '1' }));
@@ -421,15 +421,20 @@ function approvalSourceRoute(item) {
 
 function approvalDecisionForm(values) {
 	if (!values || !values.id) {
-		return `<section class="coordina-card coordina-card--notice"><p>${escapeHtml(__('Approvals are generated from linked work items. Create or update the parent project, task, request, or other record instead of creating an approval directly.', 'coordina'))}</p><div class="coordina-form-actions"><button class="button" type="button" data-action="close-modal">${escapeHtml(__('Close', 'coordina'))}</button></div></section>`;
+		return `<section class="coordina-card coordina-card--notice"><p>${escapeHtml(__('Approvals are generated from linked work items. Create or update the parent project, task, request, or other record instead of creating an approval directly.', 'coordina'))}</p><div class="coordina-form-actions"><button class="button" type="button" data-action="close-drawer">${escapeHtml(__('Close', 'coordina'))}</button></div></section>`;
 	}
 	if (values.can_edit === false) {
-		return `<section class="coordina-card coordina-card--notice"><p>${escapeHtml(__('You can review this approval, but only the assigned approver can record the decision.', 'coordina'))}</p><div class="coordina-form-actions"><button class="button" type="button" data-action="close-modal">${escapeHtml(__('Close', 'coordina'))}</button></div></section>`;
+		return `<section class="coordina-card coordina-card--notice"><p>${escapeHtml(__('You can review this approval, but only the assigned approver can record the decision.', 'coordina'))}</p><div class="coordina-form-actions"><button class="button" type="button" data-action="close-drawer">${escapeHtml(__('Close', 'coordina'))}</button></div></section>`;
 	}
-	const statusOptions = (state.shell.statuses.approvals || []).map((item) => `<option value="${item}" ${values.status === item ? 'selected' : ''}>${escapeHtml(nice(item))}</option>`).join('');
-	const route = approvalSourceRoute(values);
-	const sourceButton = route ? `<button class="button" type="button" data-action="open-route" data-page="${route.page || ''}" data-project-id="${route.project_id || ''}" data-project-tab="${route.project_tab || ''}" data-milestone-id="${route.milestone_id || ''}" data-risk-issue-id="${route.risk_issue_id || ''}">${escapeHtml(__('Open source item', 'coordina'))}</button>` : '';
-	return `<form class="coordina-form" data-action="save-form" data-module="approvals" data-id="${values.id}"><div class="coordina-card coordina-card--notice"><p>${escapeHtml(__('This approval was created from a linked work item. Use this queue to record the decision, not to change the approval linkage.', 'coordina'))}</p></div><div class="coordina-form-grid"><label><span>${escapeHtml(__('Decision', 'coordina'))}</span><select name="status">${statusOptions}</select></label><label><span>${escapeHtml(__('Rejection reason', 'coordina'))}</span><textarea name="rejection_reason">${escapeHtml(values.rejection_reason || '')}</textarea></label></div><div class="coordina-form-actions">${sourceButton}<button class="button button-primary" type="submit">${escapeHtml(__('Save decision', 'coordina'))}</button><button class="button" type="button" data-action="close-modal">${escapeHtml(__('Cancel', 'coordina'))}</button></div></form>`;
+	const currentStatus = String(values.status || 'pending');
+	const decisionNotes = {
+		pending: __('Leave this as pending if more information is still needed before a decision can be recorded.', 'coordina'),
+		approved: __('Choose approved when the linked work can move ahead without further decision changes.', 'coordina'),
+		rejected: __('Choose rejected when the work should not proceed in its current form. Explain what needs to change.', 'coordina'),
+		cancelled: __('Choose cancelled when the approval is no longer needed or the underlying work has been withdrawn.', 'coordina'),
+	};
+	const statusChoices = (state.shell.statuses.approvals || []).map((item) => `<label class="coordina-approval-choice ${currentStatus === item ? 'is-selected' : ''}"><input type="radio" name="status" value="${item}" ${currentStatus === item ? 'checked' : ''} /><span class="coordina-approval-choice__body"><strong>${escapeHtml(nice(item))}</strong><span>${escapeHtml(decisionNotes[item] || __('Record the outcome clearly so the requester knows what happens next.', 'coordina'))}</span></span></label>`).join('');
+	return `<form class="coordina-form coordina-approval-decision-form" data-action="save-form" data-module="approvals" data-id="${values.id}"><section class="coordina-card coordina-card--notice coordina-approval-decision-form__intro"><h4>${escapeHtml(__('Record a decision', 'coordina'))}</h4><p>${escapeHtml(__('Choose the outcome for this approval and add a short note if the requester or team needs context.', 'coordina'))}</p></section><div class="coordina-approval-decision-form__layout"><section class="coordina-approval-panel"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Decision', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Pick the outcome that best matches what should happen next.', 'coordina'))}</p></div></div><div class="coordina-approval-choice-grid">${statusChoices}</div></section><section class="coordina-approval-panel"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Decision note', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('Use this to explain the decision, especially when rejecting or cancelling.', 'coordina'))}</p></div></div><label class="coordina-approval-note-field"><span>${escapeHtml(__('Reason or note', 'coordina'))}</span><textarea name="rejection_reason" rows="6" placeholder="${escapeHtml(__('Example: Approved for this phase. If rejected, explain what needs to change before resubmission.', 'coordina'))}">${escapeHtml(values.rejection_reason || '')}</textarea></label><p class="coordina-approval-note-hint">${escapeHtml(__('Keep the note short, specific, and actionable so the next step is obvious to the requester.', 'coordina'))}</p></section></div><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save decision', 'coordina'))}</button><button class="button" type="button" data-action="close-drawer">${escapeHtml(__('Cancel', 'coordina'))}</button></div></form>`;
 }
 
 function collaborationContextTypes() {
@@ -619,6 +624,50 @@ function taskDetailForm(values) {
 	)}<div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save task', 'coordina'))}</button><button class="button" type="button" data-action="close-modal">${escapeHtml(__('Cancel', 'coordina'))}</button></div></form>`;
 }
 
+function projectDetailForm(values) {
+	const project = values || {};
+	const users = state.shell.users || [];
+	const statuses = state.shell.statuses.projects || [];
+	const priorities = state.shell.priorities || [];
+	const health = state.shell.health || [];
+	const wrapField = (label, control, hint, wide) => `<label class="${wide ? 'coordina-form-grid__wide' : ''}"><span>${escapeHtml(label)}</span>${control}${fieldHint(hint)}</label>`;
+	const section = (title, description, fields) => `<section class="coordina-form-section coordina-task-edit-section"><div class="coordina-section-header"><div><h4>${escapeHtml(title)}</h4><p class="coordina-section-note">${escapeHtml(description)}</p></div></div><div class="coordina-form-grid">${fields.filter(Boolean).join('')}</div></section>`;
+	const textValue = (name) => escapeHtml(project && typeof project[name] !== 'undefined' ? project[name] : '');
+	const dateValue = (name) => escapeHtml(dateTimeInputValue(project && typeof project[name] !== 'undefined' ? project[name] : ''));
+	const managerId = String(project.manager_user_id || '');
+	const sponsorId = String(project.sponsor_user_id || '');
+	const intro = `<section class="coordina-card coordina-card--notice"><p>${escapeHtml(__('Use this form for the core project record. Team membership, visibility, notifications, and workspace defaults stay in project Settings.', 'coordina'))}</p></section>`;
+
+	return `<form class="coordina-form coordina-task-detail-form" data-action="save-form" data-module="projects" data-id="${project.id || ''}">${intro}${section(
+		__('Summary', 'coordina'),
+		__('Start with the project name, the outcome it should deliver, and the basic internal reference if your team uses one.', 'coordina'),
+		[
+			wrapField(__('Project name', 'coordina'), `<input type="text" name="title" value="${textValue('title')}" required />`, __('Use the name people will recognize in workspaces, lists, and updates.', 'coordina'), false),
+			wrapField(__('Project code', 'coordina'), `<input type="text" name="code" value="${textValue('code')}" />`, __('Optional. Use this only when your team already tracks projects by a short internal code.', 'coordina'), false),
+			wrapField(__('Description', 'coordina'), `<textarea name="description">${textValue('description')}</textarea>`, __('Describe the goal, scope, or expected outcome so people understand what this project is trying to achieve.', 'coordina'), true),
+		]
+	)}${section(
+		__('Leadership And Delivery', 'coordina'),
+		__('Set the people responsible for steering the work and the current delivery signal the team should use.', 'coordina'),
+		[
+			wrapField(__('Status', 'coordina'), `<select name="status">${statuses.map((item) => `<option value="${item}" ${project.status === item ? 'selected' : ''}>${escapeHtml(nice(item))}</option>`).join('')}</select>`, __('Reflect the current delivery state, not the state you hope to reach next.', 'coordina'), false),
+			wrapField(__('Health', 'coordina'), `<select name="health">${health.map((item) => `<option value="${item}" ${String(project.health || 'neutral') === String(item) ? 'selected' : ''}>${escapeHtml(nice(item))}</option>`).join('')}</select>`, __('Use health to show whether the project is on track, at risk, or blocked.', 'coordina'), false),
+			wrapField(__('Priority', 'coordina'), `<select name="priority">${priorities.map((item) => `<option value="${item}" ${String(project.priority || 'normal') === String(item) ? 'selected' : ''}>${escapeHtml(nice(item))}</option>`).join('')}</select>`, __('Reserve higher priority for work that genuinely needs earlier attention.', 'coordina'), false),
+			wrapField(__('Project manager', 'coordina'), `<select name="manager_user_id"><option value="">${escapeHtml(__('Unassigned', 'coordina'))}</option>${users.map((user) => `<option value="${user.id}" ${managerId === String(user.id) ? 'selected' : ''}>${escapeHtml(user.label)}</option>`).join('')}</select>`, __('Choose the person accountable for coordinating and steering delivery.', 'coordina'), false),
+			wrapField(__('Project sponsor', 'coordina'), `<select name="sponsor_user_id"><option value="">${escapeHtml(__('Unassigned', 'coordina'))}</option>${users.map((user) => `<option value="${user.id}" ${sponsorId === String(user.id) ? 'selected' : ''}>${escapeHtml(user.label)}</option>`).join('')}</select>`, __('Choose the sponsor or executive owner who backs the project and should stay informed on major decisions.', 'coordina'), false),
+		]
+	)}${section(
+		__('Schedule And Close-out', 'coordina'),
+		__('Keep the key dates together and capture the final wrap-up details once the work finishes.', 'coordina'),
+		[
+			wrapField(__('Start date', 'coordina'), `<input type="datetime-local" name="start_date" value="${dateValue('start_date')}" />`, __('Use this when the project has a meaningful planned start date.', 'coordina'), false),
+			wrapField(__('Target end date', 'coordina'), `<input type="datetime-local" name="target_end_date" value="${dateValue('target_end_date')}" />`, __('Use the expected finish date for planning, reporting, and portfolio review.', 'coordina'), false),
+			wrapField(__('Actual end date', 'coordina'), `<input type="datetime-local" name="actual_end_date" value="${dateValue('actual_end_date')}" />`, __('Record when the project actually finished so planned and real timing stay visible.', 'coordina'), false),
+			wrapField(__('Close-out notes', 'coordina'), `<textarea name="closeout_notes">${textValue('closeout_notes')}</textarea>`, __('Capture the outcome, handover details, or final notes once the project wraps up.', 'coordina'), true),
+		]
+	)}<div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(project.id ? __('Save project', 'coordina') : __('Create project', 'coordina'))}</button><button class="button" type="button" data-action="close-modal">${escapeHtml(__('Cancel', 'coordina'))}</button></div></form>`;
+}
+
 function milestoneReadOnly(values) {
 	return `<dl class="coordina-key-value"><div><dt>${escapeHtml(__('Status', 'coordina'))}</dt><dd>${escapeHtml(nice(values.status || 'planned'))}</dd></div><div><dt>${escapeHtml(__('Owner', 'coordina'))}</dt><dd>${escapeHtml(values.owner_label || __('Unassigned', 'coordina'))}</dd></div><div><dt>${escapeHtml(__('Due date', 'coordina'))}</dt><dd>${escapeHtml(dateLabel(values.due_date))}</dd></div><div><dt>${escapeHtml(__('Completion', 'coordina'))}</dt><dd>${Number(values.completion_percent || 0)}%</dd></div><div><dt>${escapeHtml(__('Dependency', 'coordina'))}</dt><dd>${escapeHtml(isCheckedValue(values.dependency_flag) ? __('Yes', 'coordina') : __('No', 'coordina'))}</dd></div></dl>${values.notes ? `<p>${escapeHtml(values.notes)}</p>` : ''}`;
 }
@@ -721,7 +770,7 @@ function riskIssueDetailForm(values) {
 
 function isAdvancedField(module, name) {
 	const advancedByModule = {
-		projects: ['code', 'start_date', 'target_end_date'],
+		projects: ['code', 'start_date', 'target_end_date', 'actual_end_date', 'closeout_notes'],
 		tasks: ['task_group_id', 'start_date', 'blocked', 'blocked_reason', 'approval_required'],
 		requests: ['desired_due_date'],
 		'risks-issues': ['impact', 'likelihood'],
@@ -740,8 +789,11 @@ function fieldHelpText(moduleKey, name) {
 			health: __('Reflect whether the project is on track, at risk, or needs attention.', 'coordina'),
 			priority: __('Reserve higher priority for work that genuinely needs earlier attention.', 'coordina'),
 			manager_user_id: __('Choose the person accountable for steering this project.', 'coordina'),
+			sponsor_user_id: __('Choose the sponsor or executive owner who backs this project.', 'coordina'),
 			start_date: __('Set the planned start only when the project should begin on a specific date.', 'coordina'),
 			target_end_date: __('Use the expected finish date for planning and reporting.', 'coordina'),
+			actual_end_date: __('Record when the project actually finished so planned and real dates stay visible.', 'coordina'),
+			closeout_notes: __('Capture the close-out summary, outcome notes, or handover details once the work wraps up.', 'coordina'),
 		},
 		tasks: {
 			title: __('Use a short action-oriented task title people can scan quickly.', 'coordina'),
@@ -840,6 +892,9 @@ function formSectionCopy(module, values) {
 }
 
 function formHtml(module, values) {
+	if (module.key === 'projects') {
+		return projectDetailForm(values || {});
+	}
 	if (module.key === 'tasks' && values && values.id && values.can_edit === false) {
 		return taskReadOnly(values);
 	}
@@ -875,7 +930,7 @@ function formHtml(module, values) {
 		const value = isDateKey(name) ? dateTimeInputValue(rawValue) : rawValue;
 		const help = fieldHelpText(module.key, name);
 		const withHint = (markup) => help ? markup.replace(/<\/label>$/, `${fieldHint(help)}</label>`) : markup;
-		if (['description', 'business_reason', 'mitigation_plan', 'rejection_reason', 'notes'].includes(name)) {
+		if (['description', 'business_reason', 'mitigation_plan', 'rejection_reason', 'notes', 'closeout_notes'].includes(name)) {
 			return withHint(`<label><span>${escapeHtml(nice(name))}</span><textarea name="${name}">${escapeHtml(value)}</textarea></label>`);
 		}
 		if (name === 'checklist') {
@@ -921,7 +976,7 @@ function formHtml(module, values) {
 		if (name === 'likelihood') {
 			return withHint(`<label><span>${escapeHtml(__('Likelihood', 'coordina'))}</span><select name="likelihood">${(state.shell.likelihoods || []).map((item) => `<option value="${item}" ${String(value || 'medium') === String(item) ? 'selected' : ''}>${escapeHtml(nice(item))}</option>`).join('')}</select></label>`);
 		}
-		if (['manager_user_id', 'assignee_user_id', 'triage_owner_user_id', 'owner_user_id', 'approver_user_id'].includes(name)) {
+		if (['manager_user_id', 'sponsor_user_id', 'assignee_user_id', 'triage_owner_user_id', 'owner_user_id', 'approver_user_id'].includes(name)) {
 			return withHint(`<label><span>${escapeHtml(nice(name.replace(/_user_id/, '')))}</span><select name="${name}"><option value="">${escapeHtml(__('Unassigned', 'coordina'))}</option>${users.map((user) => `<option value="${user.id}" ${String(value) === String(user.id) ? 'selected' : ''}>${escapeHtml(user.label)}</option>`).join('')}</select></label>`);
 		}
 		if (['blocked', 'approval_required', 'dependency_flag'].includes(name)) {

@@ -341,6 +341,11 @@ body.admin-color-midnight .coordina-admin {
 	gap: 16px;
 }
 
+.coordina-card > .coordina-section-header,
+.coordina-drawer-section > .coordina-section-header {
+	margin-bottom: 14px;
+}
+
 .coordina-shell__header {
 	display: grid;
 	gap: 18px;

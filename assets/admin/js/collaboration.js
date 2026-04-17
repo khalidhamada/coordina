@@ -42,17 +42,32 @@ function collaborationContextButton(item, tab) {
 }
 
 function collaborationMeta(item, tab, authorLabel) {
-	const context = collaborationContextButton(item, tab);
-	const project = item && item.object_type === 'project' ? '' : collaborationProjectButton(item, tab);
-	return `<div class="coordina-work-meta"><span class="coordina-status-badge">${escapeHtml(nice(item.object_type || 'context'))}</span>${context}${project}<span>${escapeHtml(authorLabel)}</span><span>${escapeHtml(dateTimeLabel(item.created_at))}</span></div>`;
+	const options = arguments.length > 3 && arguments[3] ? arguments[3] : {};
+	const chips = [];
+	if (options.showObjectType !== false) {
+		chips.push(`<span class="coordina-status-badge">${escapeHtml(nice(item.object_type || 'context'))}</span>`);
+	}
+	if (options.showContextLink !== false) {
+		chips.push(collaborationContextButton(item, tab));
+	}
+	if (options.showProjectLabel !== false && item && item.object_type !== 'project') {
+		chips.push(collaborationProjectButton(item, tab));
+	}
+	if (options.showAuthor !== false) {
+		chips.push(`<span>${escapeHtml(authorLabel)}</span>`);
+	}
+	chips.push(`<span>${escapeHtml(dateTimeLabel(item.created_at))}</span>`);
+	return `<div class="coordina-work-meta">${chips.filter(Boolean).join('')}</div>`;
 }
 
-function fileList(items, emptyMessage) {
-	return items.length ? `<ul class="coordina-work-list">${items.map((item) => `<li><a class="coordina-link-button" href="${escapeHtml(item.attachment_url || '#')}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.file_name || item.attachment_title || __('File', 'coordina'))}</a>${collaborationMeta(item, 'files', item.created_by_label || __('Unknown uploader', 'coordina'))}${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}</li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+function fileList(items, emptyMessage, options) {
+	const metaOptions = Object.assign({ showAuthor: true }, options && options.metaOptions ? options.metaOptions : {});
+	return items.length ? `<ul class="coordina-work-list">${items.map((item) => `<li><a class="coordina-link-button" href="${escapeHtml(item.attachment_url || '#')}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.file_name || item.attachment_title || __('File', 'coordina'))}</a>${collaborationMeta(item, 'files', item.created_by_label || __('Unknown uploader', 'coordina'), metaOptions)}${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}</li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
 }
 
-function discussionTimeline(items, emptyMessage) {
-	return items.length ? `<ul class="coordina-timeline">${items.map((item) => `<li><strong>${escapeHtml(item.created_by_label || __('System', 'coordina'))}</strong><p>${escapeHtml(item.body || item.excerpt || '')}</p>${collaborationMeta(item, 'discussion', item.created_by_label || __('System', 'coordina'))}</li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+function discussionTimeline(items, emptyMessage, options) {
+	const metaOptions = Object.assign({ showAuthor: false }, options && options.metaOptions ? options.metaOptions : {});
+	return items.length ? `<ul class="coordina-timeline">${items.map((item) => `<li><strong>${escapeHtml(item.created_by_label || __('System', 'coordina'))}</strong><p>${escapeHtml(item.body || item.excerpt || '')}</p>${collaborationMeta(item, 'discussion', item.created_by_label || __('System', 'coordina'), metaOptions)}</li>`).join('')}</ul>` : `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
 }
 
 function rankingChart(series, emptyMessage) {
@@ -169,6 +184,10 @@ function fileTypeSeries(items) {
 	return seriesFromCounts(items, (item) => String(item.object_type || 'project'), (key) => nice(key), 6);
 }
 
+function childContextItems(items) {
+	return (items || []).filter((item) => String(item.object_type || '').toLowerCase() !== 'project');
+}
+
 function collaborationActionButtons(seed, permissions) {
 	const actions = permissions || (state.workspace && state.workspace.actions ? state.workspace.actions : {});
 	const canPostUpdate = !!(actions && actions.canPostUpdate);
@@ -207,12 +226,11 @@ app.workspaceTabBody = function (tab, project, overview, taskSummary) {
 	}
 	if (tab === 'discussion') {
 		const discussions = state.workspace && state.workspace.discussionCollection ? state.workspace.discussionCollection.items || [] : [];
-		const summary = state.workspace && state.workspace.discussionSummary ? state.workspace.discussionSummary : {};
 		const workspaceActions = state.workspace && state.workspace.actions ? state.workspace.actions : {};
-		const discussionActions = collaborationActionButtons({ object_type: 'project', object_id: project.id || '', object_label: project.title || __('Project workspace', 'coordina') }, { canPostUpdate: !!workspaceActions.canPostUpdate, canAttachFile: false });
+		const discussionActions = collaborationActionButtons({ object_type: 'project', object_id: project.id || '', object_label: project.title || __('Project workspace', 'coordina') }, { canPostUpdate: false, canAttachFile: false });
 		const authorSeries = updateUserSeries(discussions);
 		const datedSeries = updateDateSeries(discussions);
-		return `<div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project updates', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recent updates from this project and its related work.', 'coordina'))}</p></div>${discussionActions}</div>${discussionTimeline(discussions, __('No project updates yet. Add a quick update to keep the team aligned.', 'coordina'))}</section><div class="coordina-project-side-stack"><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Updates by person', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See who is contributing most often to the current project narrative.', 'coordina'))}</p></div></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(summary.total || 0)}</strong>${escapeHtml(__('Updates logged', 'coordina'))}</span></div>${rankingChart(authorSeries, __('No update activity to chart yet.', 'coordina'))}</section><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Updates over time', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(`${__('Grouped by', 'coordina')} ${nice(datedSeries.mode || 'day')}`)}</p></div></div>${datedSeries.series.length ? columnsChart(datedSeries.series) : `<p class="coordina-empty-inline">${escapeHtml(__('No timeline data to chart yet.', 'coordina'))}</p>`}</section></div></div>`;
+		return `<div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Project updates', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Updates from this project and its related work appear here together.', 'coordina'))}</p></div>${discussionActions}</div>${discussionTimeline(discussions, __('No updates have been posted for this project yet.', 'coordina'), { metaOptions: { showProjectLabel: false } })}</section><div class="coordina-project-side-stack"><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Updates by person', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See who is contributing most often across the project and its active work items.', 'coordina'))}</p></div></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${Number(discussions.length || 0)}</strong>${escapeHtml(__('Updates logged', 'coordina'))}</span></div>${rankingChart(authorSeries, __('No update activity to chart yet.', 'coordina'))}</section><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Updates over time', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(`${__('Grouped by', 'coordina')} ${nice(datedSeries.mode || 'day')}`)}</p></div></div>${datedSeries.series.length ? columnsChart(datedSeries.series) : `<p class="coordina-empty-inline">${escapeHtml(__('No timeline data to chart yet.', 'coordina'))}</p>`}</section></div></div>`;
 	}
 	return baseWorkspaceTabBody(tab, project, overview, taskSummary);
 };
@@ -223,6 +241,12 @@ Object.assign(app, {
 	collaborationMeta,
 	fileList,
 	discussionTimeline,
+	rankingChart,
+	columnsChart,
+	updateUserSeries,
+	updateDateSeries,
+	fileTypeSeries,
+	childContextItems,
 	collaborationActionButtons,
 	collaborationPage,
 });

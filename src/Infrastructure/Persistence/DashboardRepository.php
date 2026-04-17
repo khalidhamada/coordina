@@ -30,6 +30,7 @@ final class DashboardRepository extends AbstractRepository {
 				'overdueTasks'     => $this->get_overdue_tasks( $scope, $user_id ),
 				'pendingApprovals' => $this->get_pending_approvals( $scope, $user_id ),
 				'recentActivity'   => $this->get_recent_activity( $scope, $user_id, $activity_page ),
+				'activitySummary'  => $this->get_activity_summary( $scope, $user_id ),
 				'upcomingDeadlines'=> $this->get_upcoming_deadlines( $scope, $user_id ),
 			),
 		);
@@ -75,7 +76,7 @@ final class DashboardRepository extends AbstractRepository {
 			return 'accessible';
 		}
 
-		return 'personal';
+		return 'accessible';
 	}
 
 	/**
@@ -177,6 +178,19 @@ final class DashboardRepository extends AbstractRepository {
 	}
 
 	/**
+	 * Get dashboard activity summary across the full visible period.
+	 *
+	 * @param string $scope Scope label.
+	 * @param int    $user_id User id.
+	 * @return array<string, mixed>
+	 */
+	private function get_activity_summary( string $scope, int $user_id ): array {
+		unset( $scope, $user_id );
+
+		return ( new ActivityRepository() )->get_summary();
+	}
+
+	/**
 	 * Resolve the default dashboard activity page size.
 	 */
 	private function default_activity_per_page(): int {
@@ -275,7 +289,7 @@ final class DashboardRepository extends AbstractRepository {
 		}
 
 		if ( 'personal' === $scope ) {
-			return array( $this->wpdb->prepare( 'id IN (SELECT DISTINCT project_id FROM ' . $this->table( 'tasks' ) . ' WHERE project_id > 0 AND (assignee_user_id = %d OR reporter_user_id = %d))', $user_id, $user_id ), array() );
+			return $this->access->project_access_where( 'id' );
 		}
 
 		return array( '1=0', array() );

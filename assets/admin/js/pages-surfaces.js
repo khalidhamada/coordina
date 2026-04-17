@@ -144,7 +144,7 @@ function myWorkTasksFilterBar(filters) {
 		{ value: 'priority', label: __('Priority', 'coordina') },
 		{ value: 'title', label: __('Title', 'coordina') },
 	];
-	return `<div class="coordina-filter-bar coordina-card coordina-filter-bar--tasks coordina-my-work-task-filters"><input type="search" name="my-work-task-search" value="${escapeHtml(filters.search || '')}" placeholder="${escapeHtml(__('Search your tasks', 'coordina'))}" /><select name="my-work-task-status"><option value="">${escapeHtml(__('All statuses', 'coordina'))}</option>${taskStatuses.map((status) => `<option value="${status}" ${String(filters.status || '') === String(status) ? 'selected' : ''}>${escapeHtml(nice(status))}</option>`).join('')}</select><select name="my-work-task-project-mode"><option value="all" ${filters.project_mode === 'all' ? 'selected' : ''}>${escapeHtml(__('All task types', 'coordina'))}</option><option value="project" ${filters.project_mode === 'project' ? 'selected' : ''}>${escapeHtml(__('Project-linked', 'coordina'))}</option><option value="standalone" ${filters.project_mode === 'standalone' ? 'selected' : ''}>${escapeHtml(__('Standalone', 'coordina'))}</option></select><select name="my-work-task-project"><option value="">${escapeHtml(__('All projects', 'coordina'))}</option>${projectOptions}</select><select name="my-work-task-orderby">${orderOptions.map((option) => `<option value="${option.value}" ${String(filters.orderby || 'updated_at') === option.value ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select><select name="my-work-task-order"><option value="desc" ${String(filters.order || 'desc') === 'desc' ? 'selected' : ''}>${escapeHtml(__('Newest first', 'coordina'))}</option><option value="asc" ${String(filters.order || 'desc') === 'asc' ? 'selected' : ''}>${escapeHtml(__('Oldest first', 'coordina'))}</option></select><button class="button" data-action="apply-my-work-task-filters">${escapeHtml(__('Apply', 'coordina'))}</button></div>`;
+	return `<div class="coordina-filter-bar coordina-filter-bar--tasks coordina-my-work-task-filters"><input type="search" name="my-work-task-search" value="${escapeHtml(filters.search || '')}" placeholder="${escapeHtml(__('Search your tasks', 'coordina'))}" /><select name="my-work-task-status"><option value="">${escapeHtml(__('All statuses', 'coordina'))}</option>${taskStatuses.map((status) => `<option value="${status}" ${String(filters.status || '') === String(status) ? 'selected' : ''}>${escapeHtml(nice(status))}</option>`).join('')}</select><select name="my-work-task-project-mode"><option value="all" ${filters.project_mode === 'all' ? 'selected' : ''}>${escapeHtml(__('All task types', 'coordina'))}</option><option value="project" ${filters.project_mode === 'project' ? 'selected' : ''}>${escapeHtml(__('Project-linked', 'coordina'))}</option><option value="standalone" ${filters.project_mode === 'standalone' ? 'selected' : ''}>${escapeHtml(__('Standalone', 'coordina'))}</option></select><select name="my-work-task-project"><option value="">${escapeHtml(__('All projects', 'coordina'))}</option>${projectOptions}</select><select class="coordina-my-work-task-filters__orderby" name="my-work-task-orderby">${orderOptions.map((option) => `<option value="${option.value}" ${String(filters.orderby || 'updated_at') === option.value ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select><select class="coordina-my-work-task-filters__order" name="my-work-task-order"><option value="desc" ${String(filters.order || 'desc') === 'desc' ? 'selected' : ''}>${escapeHtml(__('Newest first', 'coordina'))}</option><option value="asc" ${String(filters.order || 'desc') === 'asc' ? 'selected' : ''}>${escapeHtml(__('Oldest first', 'coordina'))}</option></select><button class="button" data-action="apply-my-work-task-filters">${escapeHtml(__('Apply', 'coordina'))}</button></div>`;
 }
 
 function myWorkTaskCard(item) {
@@ -177,12 +177,15 @@ function myWorkTasksPager(collection) {
 }
 
 function myWorkBoardLaneKey(item) {
-	const status = String(item.status || 'new');
-	if (!!item.blocked || status === 'blocked') {
-		return 'blocked';
+	const status = String(item.status || '').trim();
+	if (!status) {
+		return 'new';
 	}
-	if (status === 'not-started' || status === 'new') {
-		return 'not-started';
+	if (status === 'not-started') {
+		return 'new';
+	}
+	if (status === 'completed') {
+		return 'done';
 	}
 	if (status === 'todo') {
 		return 'to-do';
@@ -191,26 +194,20 @@ function myWorkBoardLaneKey(item) {
 }
 
 function myWorkBoard(items) {
-	const baseLanes = [
-		{ key: 'not-started', label: __('Not started', 'coordina') },
-		{ key: 'to-do', label: __('To do', 'coordina') },
-		{ key: 'in-progress', label: __('In progress', 'coordina') },
-		{ key: 'in-review', label: __('In review', 'coordina') },
-		{ key: 'waiting', label: __('Waiting', 'coordina') },
-		{ key: 'blocked', label: __('Blocked', 'coordina') },
-	];
-	const extraKeys = Array.from(new Set((items || []).map((item) => myWorkBoardLaneKey(item)).filter((key) => !baseLanes.some((lane) => lane.key === key))));
-	const lanes = baseLanes.concat(extraKeys.map((key) => ({ key, label: nice(key) })));
+	const shell = state.shell || {};
+	const configuredStatuses = Array.isArray(shell.statuses && shell.statuses.tasks) ? shell.statuses.tasks.map((status) => myWorkBoardLaneKey({ status })) : [];
+	const extraKeys = Array.from(new Set((items || []).map((item) => myWorkBoardLaneKey(item)).filter((key) => key && !configuredStatuses.includes(key))));
+	const lanes = Array.from(new Set(configuredStatuses.concat(extraKeys).filter(Boolean))).map((key) => ({ key, label: nice(key) }));
 	return `<div class="coordina-my-work-board">${lanes.map((lane) => {
 		const laneItems = (items || []).filter((item) => myWorkBoardLaneKey(item) === lane.key);
 		const laneNote = lane.key === 'blocked'
 			? __('Items that need a blocker cleared before they can move.', 'coordina')
 			: lane.key === 'waiting'
 				? __('Items paused until someone else responds or finishes their part.', 'coordina')
-				: lane.key === 'not-started'
+				: lane.key === 'new'
 					? __('Work that has not been picked up yet.', 'coordina')
 					: __('Work currently sitting in this stage.', 'coordina');
-		return `<section class="coordina-card coordina-my-work-board-lane coordina-my-work-board-lane--${escapeHtml(lane.key)}"><div class="coordina-section-header"><div><h4>${escapeHtml(lane.label)}</h4><p class="coordina-section-note">${escapeHtml(laneNote)}</p></div><span class="coordina-summary-chip"><strong>${laneItems.length}</strong>${escapeHtml(__('Items', 'coordina'))}</span></div>${laneItems.length ? `<div class="coordina-my-work-board-lane__stack">${laneItems.map((item) => myWorkBoardCard(item)).join('')}</div>` : `<p class="coordina-empty-inline">${escapeHtml(__('Nothing is in this lane right now.', 'coordina'))}</p>`}</section>`;
+		return `<section class="coordina-my-work-section coordina-my-work-board-lane coordina-my-work-board-lane--${escapeHtml(lane.key)}"><div class="coordina-section-header"><div><h4>${escapeHtml(lane.label)}</h4><p class="coordina-section-note">${escapeHtml(laneNote)}</p></div><span class="coordina-summary-chip"><strong>${laneItems.length}</strong>${escapeHtml(__('Items', 'coordina'))}</span></div>${laneItems.length ? `<div class="coordina-my-work-board-lane__stack">${laneItems.map((item) => myWorkBoardCard(item)).join('')}</div>` : `<p class="coordina-empty-inline">${escapeHtml(__('Nothing is in this lane right now.', 'coordina'))}</p>`}</section>`;
 	}).join('')}</div>`;
 }
 
@@ -242,7 +239,7 @@ function myWorkMiniCalendar(items) {
 			: key;
 		days.push(`<button class="coordina-my-work-mini-calendar__day tone-${escapeHtml(tone)} ${dayItems.length ? 'has-items' : ''} ${current.getMonth() === today.getMonth() ? '' : 'is-outside'} ${key === todayKey() ? 'is-today' : ''}" type="button" data-action="open-route" data-page="coordina-calendar" title="${escapeHtml(title)}"><span>${escapeHtml(current.getDate())}</span>${dayItems.length ? `<strong class="coordina-my-work-mini-calendar__count">${dayItems.length}</strong>` : ''}</button>`);
 	}
-	return `<section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('This month', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('A quick scan of your dated work this month. Hover a day to preview its tasks.', 'coordina'))}</p></div>${canAccessPage('coordina-calendar') ? `<button class="button button-small" data-action="open-route" data-page="coordina-calendar">${escapeHtml(__('Open calendar', 'coordina'))}</button>` : ''}</div><div class="coordina-my-work-mini-calendar"><div class="coordina-my-work-mini-calendar__weekdays">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => `<span>${escapeHtml(__(day, 'coordina'))}</span>`).join('')}</div><div class="coordina-my-work-mini-calendar__grid">${days.join('')}</div></div></section>`;
+	return `<section class="coordina-my-work-section coordina-my-work-section--calendar"><div class="coordina-section-header"><div><h3>${escapeHtml(__('This month', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('A quick scan of your dated work this month. Hover a day to preview its tasks.', 'coordina'))}</p></div>${canAccessPage('coordina-calendar') ? `<button class="button button-small" data-action="open-route" data-page="coordina-calendar">${escapeHtml(__('Open calendar', 'coordina'))}</button>` : ''}</div><div class="coordina-my-work-mini-calendar"><div class="coordina-my-work-mini-calendar__weekdays">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => `<span>${escapeHtml(__(day, 'coordina'))}</span>`).join('')}</div><div class="coordina-my-work-mini-calendar__grid">${days.join('')}</div></div></section>`;
 }
 
 function myWorkUpcomingList(items) {
@@ -263,15 +260,6 @@ function myWorkPage() {
 	const summary = data.summary || {};
 	const approvals = Array.isArray(data.pendingApprovals) ? data.pendingApprovals.slice(0, 5) : [];
 	const notificationItems = state.notifications && Array.isArray(state.notifications.items) ? state.notifications.items : [];
-	const today = todayKey();
-	const nextWeek = shiftDate(today, 'week', 1);
-	const upcomingItems = items
-		.filter((item) => {
-			const dueKey = String(item.due_date || '').slice(0, 10);
-			return dueKey && dueKey >= today && dueKey < nextWeek;
-		})
-		.sort((left, right) => String(left.due_date || '').localeCompare(String(right.due_date || '')))
-		.slice(0, 6);
 	const unreadNotifications = notificationItems.filter((item) => !item.is_read).length;
 	const actions = [
 		canAccessPage('coordina-calendar') ? `<button class="button" data-action="open-route" data-page="coordina-calendar">${escapeHtml(__('Calendar', 'coordina'))}</button>` : '',
@@ -290,47 +278,220 @@ function myWorkPage() {
 		{ label: __('Waiting', 'coordina'), value: Number(summary.waiting || 0), tone: Number(summary.waiting || 0) > 0 ? 'warning' : 'neutral' },
 		{ label: __('Approvals', 'coordina'), value: Number(summary.pendingApprovals || 0), tone: Number(summary.pendingApprovals || 0) > 0 ? 'accent' : 'neutral' },
 		{ label: __('Unread', 'coordina'), value: unreadNotifications, tone: unreadNotifications > 0 ? 'accent' : 'neutral' },
-	].map((item) => `<article class="coordina-my-work-signal coordina-my-work-signal--${escapeHtml(item.tone)}"><span class="coordina-my-work-signal__label">${escapeHtml(item.label)}</span><strong class="coordina-my-work-signal__value">${escapeHtml(item.value)}</strong></article>`).join('');
+	].map((item) => `<article class="coordina-metric-card coordina-my-work-signal-card ${item.tone !== 'neutral' ? `coordina-metric-card--${escapeHtml(item.tone)}` : ''}"><span class="coordina-metric-card__label">${escapeHtml(item.label)}</span><strong class="coordina-metric-card__value">${escapeHtml(item.value)}</strong></article>`).join('');
 	const focusGroups = [
 		{ title: __('Needs attention now', 'coordina'), note: __('Handle overdue and blocked work first.', 'coordina'), items: focusQueue.attention || [], tone: 'danger' },
 		{ title: __('Do today', 'coordina'), note: __('These items should be finished or updated today.', 'coordina'), items: focusQueue.today || [], tone: 'warning' },
 		{ title: __('Coming next', 'coordina'), note: __('These are ready when today\'s urgent work is under control.', 'coordina'), items: focusQueue.upNext || [], tone: 'neutral' },
-	].filter((group) => group.items.length).map((group) => `<section class="coordina-my-work-focus-group coordina-my-work-focus-group--${escapeHtml(group.tone)}"><div class="coordina-section-header"><div><h4>${escapeHtml(group.title)}</h4><p class="coordina-section-note">${escapeHtml(group.note)}</p></div><span class="coordina-summary-chip"><strong>${group.items.length}</strong>${escapeHtml(__('Items', 'coordina'))}</span></div>${myWorkTaskList(group.items, __('Nothing is here right now.', 'coordina'), { compact: group.tone === 'neutral', showActions: group.tone !== 'neutral' })}</section>`).join('');
-	const focusBody = focusGroups || `<section class="coordina-card coordina-card--notice"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Clear runway', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('You have no urgent items right now. Check waiting work, approvals, or recent updates next.', 'coordina'))}</p></div></div></section>`;
+	].filter((group) => group.items.length).map((group) => `<section class="coordina-my-work-section coordina-my-work-focus-group coordina-my-work-focus-group--${escapeHtml(group.tone)}"><div class="coordina-section-header"><div><h4>${escapeHtml(group.title)}</h4><p class="coordina-section-note">${escapeHtml(group.note)}</p></div><span class="coordina-summary-chip"><strong>${group.items.length}</strong>${escapeHtml(__('Items', 'coordina'))}</span></div>${myWorkTaskList(group.items, __('Nothing is here right now.', 'coordina'), { compact: group.tone === 'neutral', showActions: group.tone !== 'neutral' })}</section>`).join('');
+	const focusBody = focusGroups || `<section class="coordina-my-work-section coordina-card--notice"><div class="coordina-section-header"><div><h4>${escapeHtml(__('Clear runway', 'coordina'))}</h4><p class="coordina-section-note">${escapeHtml(__('You have no urgent items right now. Check waiting work, approvals, or recent updates next.', 'coordina'))}</p></div></div></section>`;
 	const primaryView = view === 'board'
-		? `<section class="coordina-card coordina-card--wide coordina-my-work-focus"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Your board', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Scan your assigned work by status and move it forward without leaving My Work.', 'coordina'))}</p></div><span class="coordina-summary-chip"><strong>${items.length}</strong>${escapeHtml(__('Open items', 'coordina'))}</span></div>${myWorkBoard(items)}</section>`
+		? `<section class="coordina-my-work-panel coordina-my-work-focus"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Your board', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Scan your assigned work by status and move it forward without leaving My Work.', 'coordina'))}</p></div><span class="coordina-summary-chip"><strong>${items.length}</strong>${escapeHtml(__('Open items', 'coordina'))}</span></div>${myWorkBoard(items)}</section>`
 		: view === 'tasks'
-			? `<section class="coordina-card coordina-card--wide coordina-my-work-focus"><div class="coordina-section-header"><div><h3>${escapeHtml(__('All your tasks', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Filter, sort, and page through your assigned tasks across project and standalone work.', 'coordina'))}</p></div><span class="coordina-summary-chip"><strong>${Number(taskCollection.total || 0)}</strong>${escapeHtml(__('Matching tasks', 'coordina'))}</span></div>${myWorkTasksFilterBar(taskFilters)}${myWorkTasksGrid(taskCollection)}${myWorkTasksPager(taskCollection)}</section>`
-		: `<section class="coordina-card coordina-card--wide coordina-my-work-focus"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Start here', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Check this list first and work from top to bottom.', 'coordina'))}</p></div></div><div class="coordina-my-work-signal-strip">${signals}</div><div class="coordina-my-work-focus-groups">${focusBody}</div></section>`;
+			? `<section class="coordina-my-work-panel coordina-my-work-focus"><div class="coordina-section-header"><div><h3>${escapeHtml(__('All your tasks', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Filter, sort, and page through your assigned tasks across project and standalone work.', 'coordina'))}</p></div><span class="coordina-summary-chip"><strong>${Number(taskCollection.total || 0)}</strong>${escapeHtml(__('Matching tasks', 'coordina'))}</span></div>${myWorkTasksFilterBar(taskFilters)}${myWorkTasksGrid(taskCollection)}${myWorkTasksPager(taskCollection)}</section>`
+		: `<section class="coordina-my-work-panel coordina-my-work-focus"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Start here', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Check this list first and work from top to bottom.', 'coordina'))}</p></div></div><div class="coordina-my-work-signal-strip">${signals}</div><div class="coordina-my-work-focus-groups">${focusBody}</div></section>`;
 	const waitingPanel = myWorkTaskList(sections.waiting || [], __('Nothing is waiting right now.', 'coordina'), { compact: true, showActions: false, fallbackReason: 'waiting' });
 	const newWorkPanel = myWorkTaskList(sections.assignedRecently || [], __('Nothing new was assigned recently.', 'coordina'), { compact: true, showActions: false, fallbackReason: 'assigned-recently' });
-	const upcomingPanel = myWorkUpcomingList(upcomingItems);
 	const secondarySections = view === 'queue'
-		? `<section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Decisions waiting on you', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Review approvals here and record a decision when you are ready.', 'coordina'))}</p></div>${canAccessPage('coordina-approvals') ? `<button class="button button-small" data-action="open-route" data-page="coordina-approvals">${escapeHtml(__('Open queue', 'coordina'))}</button>` : ''}</div>${myWorkApprovalList(approvals)}</section><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('New on your plate', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recently assigned items you may want to review before they join the main flow.', 'coordina'))}</p></div></div>${newWorkPanel}</section>`
+		? `<section class="coordina-my-work-section coordina-my-work-section--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Decisions waiting on you', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Review approvals here and record a decision when you are ready.', 'coordina'))}</p></div>${canAccessPage('coordina-approvals') ? `<button class="button button-small" data-action="open-route" data-page="coordina-approvals">${escapeHtml(__('Open queue', 'coordina'))}</button>` : ''}</div>${myWorkApprovalList(approvals)}</section><section class="coordina-my-work-section coordina-my-work-section--wide"><div class="coordina-section-header"><div><h3>${escapeHtml(__('New on your plate', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recently assigned items you may want to review before they join the main flow.', 'coordina'))}</p></div></div>${newWorkPanel}</section>`
 		: '';
 	const sideColumn = view === 'queue'
-		? `<aside class="coordina-my-work-side">${myWorkMiniCalendar(items)}<section class="coordina-card coordina-card--notice"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Coming up', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Due dates coming in the next week. Open Calendar when you want the fuller schedule view.', 'coordina'))}</p></div>${canAccessPage('coordina-calendar') ? `<button class="button button-small" data-action="open-route" data-page="coordina-calendar">${escapeHtml(__('Open calendar', 'coordina'))}</button>` : ''}</div>${upcomingPanel}</section><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Waiting on others', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Items paused until someone else replies or finishes their part.', 'coordina'))}</p></div></div>${waitingPanel}</section><section class="coordina-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Recent updates', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recent notifications and updates for work you follow.', 'coordina'))}</p></div><button class="button button-small" data-action="open-notifications">${escapeHtml(__('Manage', 'coordina'))}</button></div>${myWorkNotificationSummary(notificationItems)}</section></aside>`
+		? `<aside class="coordina-my-work-side">${myWorkMiniCalendar(items)}<section class="coordina-my-work-section"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Waiting on others', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Items paused until someone else replies or finishes their part.', 'coordina'))}</p></div></div>${waitingPanel}</section><section class="coordina-my-work-section"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Recent updates', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Recent notifications and updates for work you follow.', 'coordina'))}</p></div><button class="button button-small" data-action="open-notifications">${escapeHtml(__('Manage', 'coordina'))}</button></div>${myWorkNotificationSummary(notificationItems)}</section></aside>`
 		: '';
 	return `<section class="coordina-page coordina-page--my-work">${pageHeading('coordina-my-work', actions, { title: __('My Work', 'coordina'), description: __('See what needs your attention today, switch to a board when you want flow, and hand off to Calendar for date planning.', 'coordina') })}${viewTabs}<div class="coordina-my-work-layout ${view !== 'queue' ? 'coordina-my-work-layout--board' : ''}"><div class="coordina-my-work-main">${primaryView}${secondarySections}</div>${sideColumn}</div></section>`;
+}
+
+function dashboardMetricCards(kpis) {
+	const cards = [
+		{ label: __('Total projects', 'coordina'), value: Number(kpis.totalProjects || 0), tone: 'accent' },
+		{ label: __('Active projects', 'coordina'), value: Number(kpis.activeProjects || 0), tone: 'accent' },
+		{ label: __('At risk', 'coordina'), value: Number(kpis.atRiskProjects || 0), tone: Number(kpis.atRiskProjects || 0) > 0 ? 'warning' : 'accent' },
+		{ label: __('Blocked', 'coordina'), value: Number(kpis.blockedProjects || 0), tone: Number(kpis.blockedProjects || 0) > 0 ? 'danger' : 'accent' },
+		{ label: __('Overdue tasks', 'coordina'), value: Number(kpis.overdueTasks || 0), tone: Number(kpis.overdueTasks || 0) > 0 ? 'warning' : 'accent' },
+		{ label: __('Pending approvals', 'coordina'), value: Number(kpis.pendingApprovals || 0), tone: Number(kpis.pendingApprovals || 0) > 0 ? 'accent' : 'neutral' },
+	];
+	return cards.map((item) => `<article class="coordina-metric-card ${item.tone !== 'neutral' ? `coordina-metric-card--${escapeHtml(item.tone)}` : ''}"><span class="coordina-metric-card__label">${escapeHtml(item.label)}</span><strong class="coordina-metric-card__value">${escapeHtml(item.value)}</strong></article>`).join('');
+}
+
+function dashboardBarChart(series, emptyMessage) {
+	const rows = (series || []).filter((item) => Number(item.value || 0) > 0 || item.showZero);
+	if (!rows.length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+	}
+	const max = Math.max(...rows.map((item) => Number(item.value || 0)), 1);
+	return `<div class="coordina-dashboard-bar-chart">${rows.map((item) => {
+		const width = Math.max(4, Math.round((Number(item.value || 0) / max) * 100));
+		return `<div class="coordina-dashboard-bar-chart__row"><div class="coordina-dashboard-bar-chart__head"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div><div class="coordina-dashboard-bar-chart__track"><span class="tone-${escapeHtml(item.tone || 'accent')}" style="width:${width}%"></span></div>${item.note ? `<p class="coordina-dashboard-bar-chart__note">${escapeHtml(item.note)}</p>` : ''}</div>`;
+	}).join('')}</div>`;
+}
+
+function dashboardColumnChart(series, emptyMessage) {
+	const columns = (series || []).filter((item) => Number(item.value || 0) > 0);
+	if (!columns.length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(emptyMessage)}</p>`;
+	}
+	const max = Math.max(...columns.map((item) => Number(item.value || 0)), 1);
+	return `<div class="coordina-dashboard-column-chart">${columns.map((item) => {
+		const height = Math.max(12, Math.round((Number(item.value || 0) / max) * 100));
+		return `<div class="coordina-dashboard-column-chart__item"><div class="coordina-dashboard-column-chart__value">${escapeHtml(item.value)}</div><div class="coordina-dashboard-column-chart__bar"><span class="tone-${escapeHtml(item.tone || 'accent')}" style="height:${height}%"></span></div><div class="coordina-dashboard-column-chart__label">${escapeHtml(item.label)}</div></div>`;
+	}).join('')}</div>`;
+}
+
+function dashboardActivityDateKey(value) {
+	const text = String(value || '').trim();
+	if (!text) {
+		return '__unknown';
+	}
+	const datePart = text.split('T')[0];
+	if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+		return datePart;
+	}
+	const parsed = new Date(text);
+	if (!Number.isNaN(parsed.getTime())) {
+		return parsed.toISOString().slice(0, 10);
+	}
+	return '__unknown';
+}
+
+function dashboardActivityDateLabel(key) {
+	if (key === '__unknown') {
+		return __('Unknown date', 'coordina');
+	}
+	return dateLabel(key);
+}
+
+function dashboardActivityDateTile(key) {
+	if (key === '__unknown') {
+		return `<div class="coordina-activity-date-card"><strong>--</strong><span>${escapeHtml(__('Unknown', 'coordina'))}</span></div>`;
+	}
+	const parsed = new Date(`${key}T00:00:00`);
+	if (Number.isNaN(parsed.getTime())) {
+		return `<div class="coordina-activity-date-card"><strong>--</strong><span>${escapeHtml(__('Unknown', 'coordina'))}</span></div>`;
+	}
+	const day = `${parsed.getDate()}`.padStart(2, '0');
+	const month = new Intl.DateTimeFormat(document.documentElement.lang || undefined, { month: 'long' }).format(parsed);
+	return `<div class="coordina-activity-date-card"><strong>${escapeHtml(day)}</strong><span>${escapeHtml(month)}</span></div>`;
+}
+
+
+function dashboardActivityByUser(items) {
+	const rows = Array.isArray(items) && items.some((item) => item && Object.prototype.hasOwnProperty.call(item, 'count'))
+		? items.map((item) => ({
+			label: String((item && item.label) || __('System', 'coordina')).trim() || __('System', 'coordina'),
+			count: Number((item && item.count) || 0),
+		})).sort((left, right) => Number(right.count || 0) - Number(left.count || 0)).slice(0, 6)
+		: Object.values((items || []).reduce((result, item) => {
+			const key = String(item.actorLabel || __('System', 'coordina')).trim() || __('System', 'coordina');
+			if (!result[key]) {
+				result[key] = { label: key, count: 0 };
+			}
+			result[key].count += 1;
+			return result;
+		}, {})).sort((left, right) => Number(right.count || 0) - Number(left.count || 0)).slice(0, 6);
+	if (!rows.length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(__('No people activity yet.', 'coordina'))}</p>`;
+	}
+	const max = Math.max(1, ...rows.map((item) => Number(item.count || 0)));
+	return `<div class="coordina-activity-chart coordina-activity-chart--ranking">${rows.map((item) => `<div class="coordina-activity-chart__row"><div class="coordina-activity-chart__row-head"><span>${escapeHtml(item.label || '')}</span><strong>${Number(item.count || 0)}</strong></div><span class="coordina-activity-chart__row-bar"><span style="width:${Math.max(10, Math.round((Number(item.count || 0) / max) * 100))}%"></span></span></div>`).join('')}</div>`;
+}
+
+function dashboardGroupedActivityTimeline(collection, emptyMessage) {
+	const items = collection && Array.isArray(collection.items) ? collection.items : [];
+	if (!items.length) {
+		return activityList([], emptyMessage, { showContextLink: true, showProjectLabel: true, linkLabelMode: 'type' });
+	}
+	const groups = items.reduce((carry, item) => {
+		const key = dashboardActivityDateKey(item.createdAt);
+		if (!carry[key]) {
+			carry[key] = [];
+		}
+		carry[key].push(item);
+		return carry;
+	}, {});
+	const groupKeys = Object.keys(groups).sort((a, b) => {
+		if (a === '__unknown') {
+			return 1;
+		}
+		if (b === '__unknown') {
+			return -1;
+		}
+		return b.localeCompare(a);
+	});
+	return `<div class="coordina-activity-groups">${groupKeys.map((key) => `<section class="coordina-activity-group coordina-activity-group--dated">${dashboardActivityDateTile(key)}<div class="coordina-activity-group__content"><div class="coordina-section-header coordina-section-header--activity-group"><div><h4>${escapeHtml(dashboardActivityDateLabel(key))}</h4></div></div>${activityList(groups[key], __('No activity recorded for this date.', 'coordina'), { showContextLink: true, showProjectLabel: true, linkLabelMode: 'type', timestampMode: 'time', listClass: 'coordina-timeline--activity-group' })}</div></section>`).join('')}</div>`;
+}
+
+function dashboardWatchlistTable(widgets) {
+	const items = [];
+	(widgets.atRiskProjects || []).forEach((item) => {
+		items.push({
+			weight: item.health === 'blocked' || item.status === 'blocked' ? 100 : 85,
+			signal: item.health === 'blocked' || item.status === 'blocked' ? __('Blocked project', 'coordina') : __('At-risk project', 'coordina'),
+			context: __('Project', 'coordina'),
+			owner: item.managerLabel || __('No manager', 'coordina'),
+			when: item.targetEndDate,
+			status: nice(item.health || item.status || 'active'),
+			link: `<button class="coordina-link-button" data-action="open-route" data-page="coordina-projects" data-project-id="${item.id}" data-project-tab="overview">${escapeHtml(item.title)}</button>`,
+		});
+	});
+	(widgets.overdueTasks || []).forEach((item) => {
+		items.push({
+			weight: 70,
+			signal: __('Overdue task', 'coordina'),
+			context: item.projectId > 0 ? (item.projectLabel || __('Project task', 'coordina')) : __('Standalone task', 'coordina'),
+			owner: item.assigneeLabel || __('Unassigned', 'coordina'),
+			when: item.dueDate,
+			status: nice(item.status || 'new'),
+			link: openTaskButton(item.id, item.title, item.projectId || 0, (item.projectId || 0) > 0 ? 'work' : ''),
+		});
+	});
+	(widgets.pendingApprovals || []).forEach((item) => {
+		items.push({
+			weight: 60,
+			signal: __('Decision required', 'coordina'),
+			context: item.projectLabel || nice(item.objectType || 'approval'),
+			owner: item.ownerLabel || __('Unknown owner', 'coordina'),
+			when: item.submittedAt,
+			status: nice(item.status || 'pending'),
+			link: `<button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.objectLabel || nice(item.objectType || 'approval'))}</button>`,
+		});
+	});
+	const rows = items.sort((left, right) => Number(right.weight || 0) - Number(left.weight || 0)).slice(0, 8);
+	if (!rows.length) {
+		return `<p class="coordina-empty-inline">${escapeHtml(__('No urgent watchlist items are visible in this scope right now.', 'coordina'))}</p>`;
+	}
+	return `<div class="coordina-table-wrap"><table class="coordina-table coordina-dashboard-table"><thead><tr><th>${escapeHtml(__('Signal', 'coordina'))}</th><th>${escapeHtml(__('Item', 'coordina'))}</th><th>${escapeHtml(__('Context', 'coordina'))}</th><th>${escapeHtml(__('Owner', 'coordina'))}</th><th>${escapeHtml(__('When', 'coordina'))}</th><th>${escapeHtml(__('Status', 'coordina'))}</th></tr></thead><tbody>${rows.map((item) => `<tr><td><span class="coordina-dashboard-table__signal">${escapeHtml(item.signal)}</span></td><td>${item.link}</td><td>${escapeHtml(item.context)}</td><td>${escapeHtml(item.owner)}</td><td>${escapeHtml(dateLabel(item.when))}</td><td>${escapeHtml(item.status)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 function dashboardPage() {
 	const data = state.dashboard || { kpis: {}, widgets: {}, roleMode: 'team', scope: 'personal' };
 	const kpis = data.kpis || {};
 	const widgets = data.widgets || {};
-	const roleLabel = data.roleMode === 'executive' ? __('Executive overview', 'coordina') : data.roleMode === 'manager' ? __('Manager overview', 'coordina') : data.roleMode === 'admin' ? __('Admin overview', 'coordina') : __('Personal overview', 'coordina');
 	const actions = [
 		canAccessPage('coordina-projects') ? `<button class="button" data-action="open-route" data-page="coordina-projects">${escapeHtml(__('View projects', 'coordina'))}</button>` : '',
+		canAccessPage('coordina-workload') ? `<button class="button" data-action="open-route" data-page="coordina-workload">${escapeHtml(__('Workload', 'coordina'))}</button>` : '',
 		`<button class="button button-primary" data-action="open-route" data-page="coordina-my-work">${escapeHtml(__('Go to My Work', 'coordina'))}</button>`,
 	].filter(Boolean).join('');
-	const alertCards = [{ label: __('At risk', 'coordina'), value: Number(kpis.atRiskProjects || 0), tone: Number(kpis.atRiskProjects || 0) > 0 ? 'danger' : 'neutral' }, { label: __('Overdue tasks', 'coordina'), value: Number(kpis.overdueTasks || 0), tone: Number(kpis.overdueTasks || 0) > 0 ? 'warning' : 'neutral' }, { label: __('Pending approvals', 'coordina'), value: Number(kpis.pendingApprovals || 0), tone: Number(kpis.pendingApprovals || 0) > 0 ? 'accent' : 'neutral' }].map((item) => `<article class="coordina-card coordina-metric-card coordina-metric-card--${escapeHtml(item.tone)}"><span class="coordina-metric-card__label">${escapeHtml(item.label)}</span><strong class="coordina-metric-card__value">${escapeHtml(item.value)}</strong></article>`).join('');
+	const metricCards = dashboardMetricCards(kpis);
+	const overviewSeries = [
+		{ label: __('Total projects', 'coordina'), value: Number(kpis.totalProjects || 0), tone: 'accent', showZero: true },
+		{ label: __('Active projects', 'coordina'), value: Number(kpis.activeProjects || 0), tone: 'accent', showZero: true },
+		{ label: __('At risk', 'coordina'), value: Number(kpis.atRiskProjects || 0), tone: 'warning', showZero: true },
+		{ label: __('Blocked', 'coordina'), value: Number(kpis.blockedProjects || 0), tone: 'danger', showZero: true },
+	];
+	const pressureSeries = [
+		{ label: __('Overdue tasks', 'coordina'), value: Number(kpis.overdueTasks || 0), tone: 'warning', showZero: true },
+		{ label: __('Pending approvals', 'coordina'), value: Number(kpis.pendingApprovals || 0), tone: 'accent', showZero: true },
+		{ label: __('Projects needing review', 'coordina'), value: Array.isArray(widgets.atRiskProjects) ? widgets.atRiskProjects.length : 0, tone: 'danger', showZero: true },
+		{ label: __('Active approvals and risks', 'coordina'), value: Number(kpis.pendingApprovals || 0) + Number(kpis.atRiskProjects || 0), tone: 'accent', showZero: true },
+	];
 	const atRisk = dashboardList(widgets.atRiskProjects || [], __('No at-risk or blocked projects right now.', 'coordina'), (item) => `<li><button class="coordina-link-button" data-action="open-route" data-page="coordina-projects" data-project-id="${item.id}" data-project-tab="overview">${escapeHtml(item.title)}</button><div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span class="coordina-status-badge status-${escapeHtml(item.health)}">${escapeHtml(nice(item.health))}</span><span>${escapeHtml(dateLabel(item.targetEndDate))}</span></div></li>`);
 	const overdue = dashboardList(widgets.overdueTasks || [], __('No overdue tasks in this scope.', 'coordina'), (item) => `<li>${openTaskButton(item.id, item.title, item.projectId || item.project_id || 0, (item.projectId || item.project_id || 0) > 0 ? 'work' : '')}<div class="coordina-work-meta"><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span>${openProjectButton(item.projectId || item.project_id || 0, item.projectLabel, 'work')}<span>${escapeHtml(dateLabel(item.dueDate))}</span></div></li>`);
 	const approvals = dashboardList(widgets.pendingApprovals || [], __('No pending approvals in this scope.', 'coordina'), (item) => `<li><button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.id}">${escapeHtml(item.objectLabel || nice(item.objectType))}</button><div class="coordina-work-meta">${openProjectButton(item.projectId || item.project_id || 0, item.projectLabel, 'approvals')}<span>${escapeHtml(item.ownerLabel || __('Unknown owner', 'coordina'))}</span><span>${escapeHtml(dateLabel(item.submittedAt))}</span></div></li>`);
 	const recentActivity = widgets.recentActivity || { items: [] };
-	const activity = `${activityList(recentActivity.items || recentActivity || [], __('No recent activity has been logged yet.', 'coordina'), { showContextLink: true, showProjectLabel: true, linkLabelMode: 'type' })}${activityPager(recentActivity, 'dashboard')}`;
-	const deadlines = dashboardList(widgets.upcomingDeadlines || [], __('No upcoming deadlines found.', 'coordina'), (item) => `<li><button class="coordina-link-button" data-action="open-route" data-page="${item.route && item.route.page ? item.route.page : 'coordina-task'}" data-project-id="${item.route && item.route.project_id ? item.route.project_id : ''}" data-project-tab="${item.route && item.route.project_tab ? item.route.project_tab : ''}" data-task-id="${item.route && item.route.task_id ? item.route.task_id : ''}" data-milestone-id="${item.route && item.route.milestone_id ? item.route.milestone_id : ''}" data-risk-issue-id="${item.route && item.route.risk_issue_id ? item.route.risk_issue_id : ''}">${escapeHtml(item.title)}</button><div class="coordina-work-meta"><span>${escapeHtml(item.label)}</span><span class="coordina-status-badge status-${escapeHtml(item.status)}">${escapeHtml(nice(item.status))}</span><span>${escapeHtml(dateLabel(item.date))}</span></div></li>`);
-	return `<section class="coordina-page">${pageHeading('coordina-dashboard', actions, { title: __('Dashboard', 'coordina'), description: `${roleLabel}. ${__('Use this screen to review what needs attention across your work.', 'coordina')}` })}<div class="coordina-summary-grid coordina-summary-grid--workspace">${alertCards}</div><div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><h3>${escapeHtml(__('Projects needing attention now', 'coordina'))}</h3>${routeButton(__('Projects', 'coordina'), { page: 'coordina-projects' })}</div>${atRisk}</section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Upcoming deadlines', 'coordina'))}</h3></div>${deadlines}</section></div><div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><h3>${escapeHtml(__('Overdue tasks', 'coordina'))}</h3>${routeButton(__('My Work', 'coordina'), { page: 'coordina-my-work' })}</div>${overdue}</section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Pending approvals', 'coordina'))}</h3>${routeButton(__('Approvals', 'coordina'), { page: 'coordina-approvals' })}</div>${approvals}</section></div><div class="coordina-columns"><section class="coordina-card coordina-card--wide"><div class="coordina-section-header"><h3>${escapeHtml(__('Recent activity', 'coordina'))}</h3></div>${activity}</section><section class="coordina-card"><div class="coordina-section-header"><h3>${escapeHtml(__('Scope', 'coordina'))}</h3></div><div class="coordina-summary-row coordina-summary-row--subtle"><span class="coordina-summary-chip"><strong>${escapeHtml(data.scope || '')}</strong>${escapeHtml(__('Data scope', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${escapeHtml(data.roleMode || '')}</strong>${escapeHtml(__('Role mode', 'coordina'))}</span><span class="coordina-summary-chip"><strong>${Number(kpis.activeProjects || 0)}</strong>${escapeHtml(__('Active projects', 'coordina'))}</span></div><p class="coordina-empty-inline">${escapeHtml(__('Use Dashboard to monitor progress. Go to My Work when you are ready to act.', 'coordina'))}</p></section></div></section>`;
+	const activityTimeline = `${dashboardGroupedActivityTimeline(recentActivity, __('No recent activity has been logged yet.', 'coordina'))}${activityPager(recentActivity, 'dashboard')}`;
+	const activitySummary = widgets.activitySummary && widgets.activitySummary.charts ? widgets.activitySummary.charts : {};
+	const activityByUser = dashboardActivityByUser(activitySummary.actors || []);
+	return `<section class="coordina-page coordina-dashboard">${pageHeading('coordina-dashboard', actions, { title: __('Dashboard', 'coordina'), description: __('Review portfolio signals, current movement, and the queues that need attention before routing into execution.', 'coordina') })}<div class="coordina-summary-grid coordina-dashboard-metrics">${metricCards}</div><div class="coordina-dashboard-grid coordina-dashboard-grid--three"><section class="coordina-card coordina-dashboard-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Portfolio profile', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('See how much of the visible portfolio is active, at risk, or blocked.', 'coordina'))}</p></div></div>${dashboardBarChart(overviewSeries, __('No portfolio counts are visible in this scope.', 'coordina'))}</section><section class="coordina-card coordina-dashboard-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Execution pressure', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Track the signals that most often slow progress down.', 'coordina'))}</p></div></div>${dashboardBarChart(pressureSeries, __('No active pressure signals are visible right now.', 'coordina'))}</section><section class="coordina-card coordina-dashboard-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Activity by user', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('This chart uses the full visible activity period, not only the current activity page.', 'coordina'))}</p></div></div>${activityByUser}</section></div><div class="coordina-dashboard-grid coordina-dashboard-grid--split"><div class="coordina-dashboard-stack"><section class="coordina-card coordina-card--wide coordina-dashboard-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Priority watchlist', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('A mixed table of the most important projects, tasks, and approvals that deserve attention next.', 'coordina'))}</p></div></div>${dashboardWatchlistTable(widgets)}</section><section class="coordina-card coordina-dashboard-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Recent activity', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Use the same grouped activity view as project workspaces to understand current movement and context.', 'coordina'))}</p></div></div>${activityTimeline}</section></div><div class="coordina-dashboard-stack"><section class="coordina-card coordina-dashboard-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Projects needing review', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('The projects most likely to need follow-up or escalation.', 'coordina'))}</p></div>${routeButton(__('Projects', 'coordina'), { page: 'coordina-projects' })}</div>${atRisk}</section><section class="coordina-card coordina-dashboard-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Pending approvals', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Keep decisions moving so work does not wait on review longer than necessary.', 'coordina'))}</p></div>${canAccessPage('coordina-approvals') ? `<button class="button button-small" data-action="open-route" data-page="coordina-approvals">${escapeHtml(__('Approvals', 'coordina'))}</button>` : ''}</div>${approvals}</section><section class="coordina-card coordina-dashboard-card"><div class="coordina-section-header"><div><h3>${escapeHtml(__('Overdue tasks', 'coordina'))}</h3><p class="coordina-section-note">${escapeHtml(__('Reset stale due plans and unblock the oldest commitments first.', 'coordina'))}</p></div>${routeButton(__('My Work', 'coordina'), { page: 'coordina-my-work' })}</div>${overdue}</section></div></div></section>`;
 }
 
 function calendarItem(item) {

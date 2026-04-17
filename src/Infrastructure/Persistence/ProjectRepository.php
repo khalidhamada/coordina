@@ -156,6 +156,7 @@ final class ProjectRepository extends AbstractRepository {
 			'health'          => sanitize_key( (string) ( $data['health'] ?? 'neutral' ) ),
 			'priority'        => sanitize_key( (string) ( $data['priority'] ?? 'normal' ) ),
 			'manager_user_id' => (int) ( $data['manager_user_id'] ?? 0 ),
+			'sponsor_user_id' => (int) ( $data['sponsor_user_id'] ?? 0 ),
 			'visibility'      => $this->sanitize_choice( (string) ( $data['visibility'] ?? 'team' ), array( 'team', 'private', 'public' ), 'team' ),
 			'notification_policy' => $this->sanitize_choice( (string) ( $data['notification_policy'] ?? 'default' ), array( 'default', 'important-only', 'all-updates', 'muted' ), 'default' ),
 			'task_group_label' => $this->sanitize_choice( (string) ( $data['task_group_label'] ?? '' ), array( '', 'stage', 'phase', 'bucket' ), '' ),
@@ -197,15 +198,18 @@ final class ProjectRepository extends AbstractRepository {
 		$actual_end_date = $this->normalize_actual_end_date( $status, isset( $data['actual_end_date'] ) ? (string) $data['actual_end_date'] : (string) ( $current['actual_end_date'] ?? '' ) );
 		$archived_at     = 'archived' === $status ? ( (string) ( $current['archived_at'] ?? '' ) ?: $this->now() ) : null;
 		$clean           = array(
+			'code'            => sanitize_text_field( (string) ( $data['code'] ?? ( $current['code'] ?? '' ) ) ),
 			'title'           => sanitize_text_field( (string) ( $data['title'] ?? '' ) ),
 			'description'     => isset( $data['description'] ) ? wp_kses_post( (string) $data['description'] ) : '',
 			'status'          => $status,
 			'health'          => sanitize_key( (string) ( $data['health'] ?? 'neutral' ) ),
 			'priority'        => sanitize_key( (string) ( $data['priority'] ?? 'normal' ) ),
 			'manager_user_id' => (int) ( $data['manager_user_id'] ?? 0 ),
+			'sponsor_user_id' => (int) ( $data['sponsor_user_id'] ?? ( $current['sponsor_user_id'] ?? 0 ) ),
 			'start_date'      => $this->normalize_datetime( isset( $data['start_date'] ) ? (string) $data['start_date'] : null ),
 			'target_end_date' => $this->normalize_datetime( isset( $data['target_end_date'] ) ? (string) $data['target_end_date'] : null ),
 			'actual_end_date' => $actual_end_date,
+			'closeout_notes'  => isset( $data['closeout_notes'] ) ? wp_kses_post( (string) $data['closeout_notes'] ) : (string) ( $current['closeout_notes'] ?? '' ),
 			'archived_at'     => $archived_at,
 			'updated_at'      => $this->now(),
 		);
@@ -241,6 +245,8 @@ final class ProjectRepository extends AbstractRepository {
 				'priority'            => (string) ( $project['priority'] ?? 'normal' ),
 				'manager_user_id'     => (int) ( $project['manager_user_id'] ?? 0 ),
 				'manager_label'       => (string) ( $project['manager_label'] ?? '' ),
+				'sponsor_user_id'     => (int) ( $project['sponsor_user_id'] ?? 0 ),
+				'sponsor_label'       => (string) ( $project['sponsor_label'] ?? '' ),
 				'visibility'          => (string) ( $project['visibility'] ?? 'team' ),
 				'notification_policy' => (string) ( $project['notification_policy'] ?? 'default' ),
 				'task_group_label'    => (string) ( $project['task_group_label'] ?? '' ),
@@ -279,6 +285,7 @@ final class ProjectRepository extends AbstractRepository {
 			'health'              => $this->sanitize_choice( (string) ( $data['health'] ?? $current['health'] ?? 'neutral' ), array( 'neutral', 'good', 'at-risk', 'blocked' ), 'neutral' ),
 			'priority'            => $this->sanitize_choice( (string) ( $data['priority'] ?? $current['priority'] ?? 'normal' ), array( 'low', 'normal', 'high', 'urgent' ), 'normal' ),
 			'manager_user_id'     => (int) ( $data['manager_user_id'] ?? $current['manager_user_id'] ?? 0 ),
+			'sponsor_user_id'     => (int) ( $data['sponsor_user_id'] ?? $current['sponsor_user_id'] ?? 0 ),
 			'visibility'          => $this->sanitize_choice( (string) ( $data['visibility'] ?? $current['visibility'] ?? 'team' ), array( 'team', 'private', 'public' ), 'team' ),
 			'notification_policy' => $this->sanitize_choice( (string) ( $data['notification_policy'] ?? $current['notification_policy'] ?? 'default' ), array( 'default', 'important-only', 'all-updates', 'muted' ), 'default' ),
 			'task_group_label'    => $this->sanitize_choice( (string) ( $data['task_group_label'] ?? $current['task_group_label'] ?? '' ), array( '', 'stage', 'phase', 'bucket' ), '' ),
@@ -405,6 +412,7 @@ final class ProjectRepository extends AbstractRepository {
 		}
 
 		$item['manager_label'] = $item['manager_user_id'] ? ( get_userdata( (int) $item['manager_user_id'] )->display_name ?? '' ) : '';
+		$item['sponsor_label'] = $item['sponsor_user_id'] ? ( get_userdata( (int) $item['sponsor_user_id'] )->display_name ?? '' ) : '';
 		$item['visibility'] = $item['visibility'] ?? 'team';
 		$item['notification_policy'] = $item['notification_policy'] ?? 'default';
 		$item['task_group_label'] = $item['task_group_label'] ?? '';

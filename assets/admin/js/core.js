@@ -47,6 +47,7 @@ const state = {
 	milestoneActivityPage: 1,
 	riskIssueActivityPage: 1,
 	dashboardActivityPage: 1,
+	projectDetailEditing: false,
 	taskDetail: null,
 	taskDetailEditing: false,
 	milestoneDetail: null,
@@ -59,7 +60,7 @@ const state = {
 
 const modules = {
 	'coordina-projects': {
-		key: 'projects', endpoint: 'projects', title: __('Projects', 'coordina'), singular: __('project', 'coordina'), statuses: 'projects', bulk: ['draft', 'planned', 'active', 'on-hold', 'completed', 'archived'], columns: ['title', 'status', 'health', 'priority', 'manager_label', 'target_end_date'], fields: ['title', 'code', 'description', 'status', 'health', 'priority', 'manager_user_id', 'start_date', 'target_end_date'],
+		key: 'projects', endpoint: 'projects', title: __('Projects', 'coordina'), singular: __('project', 'coordina'), statuses: 'projects', bulk: ['draft', 'planned', 'active', 'on-hold', 'completed', 'archived'], columns: ['title', 'status', 'health', 'priority', 'manager_label', 'target_end_date'], fields: ['title', 'code', 'description', 'status', 'health', 'priority', 'manager_user_id', 'sponsor_user_id', 'start_date', 'target_end_date', 'actual_end_date', 'closeout_notes'],
 	},
 	'coordina-tasks': {
 		key: 'tasks', endpoint: 'tasks', title: __('Tasks', 'coordina'), singular: __('task', 'coordina'), statuses: 'tasks', bulk: ['new', 'to-do', 'in-progress', 'waiting', 'blocked', 'in-review', 'done'], columns: ['title', 'project_label', 'task_group_label', 'status', 'priority', 'assignee_label', 'due_date', 'checklist_summary', 'approval_state', 'blocked'], fields: ['title', 'project_id', 'task_group_id', 'description', 'checklist', 'status', 'priority', 'assignee_user_id', 'start_date', 'due_date', 'completion_percent', 'actual_finish_date', 'blocked', 'blocked_reason', 'approval_required'], contextFilters: true,

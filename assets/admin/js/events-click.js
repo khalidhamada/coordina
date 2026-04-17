@@ -31,7 +31,7 @@ function readAppearanceTheme(root, state) {
 }
 
 app.handleAdminClickAction = async function (button) {
-	const { root, state, modules, currentModule, openCreate, openRecord, openProjectWorkspace, openTaskPage, openMilestonePage, openRiskIssuePage, openRoute, editProject, backToProjects, render, saveStoredFilters, todayKey, loadCalendar, loadWorkload, weekStartKey, loadCollection, saveFilters, api, notify, loadNotifications, openNotifications, loadMyWork, loadMyWorkTasks, defaultMyWorkTaskFilters, hasTaskPage, loadTaskDetail, loadViews, loadCollaboration, __, escapeHtml, nice, checklistForm, checklistItemForm, refreshChecklistViews, deletePrompt, refreshAfterDelete, syncChecklistEditor, checklistEditorRowHtml, updateChecklistRemoveButtons } = app;
+	const { root, state, modules, currentModule, openCreate, openRecord, openProjectWorkspace, openTaskPage, openMilestonePage, openRiskIssuePage, openRoute, editProject, backToProjects, render, saveStoredFilters, todayKey, loadCalendar, loadWorkload, weekStartKey, loadCollection, saveFilters, api, notify, loadNotifications, openNotifications, loadMyWork, loadMyWorkTasks, defaultMyWorkTaskFilters, hasProjectWorkspace, loadWorkspace, hasTaskPage, loadTaskDetail, loadViews, loadCollaboration, __, escapeHtml, nice, checklistForm, checklistItemForm, refreshChecklistViews, deletePrompt, refreshAfterDelete, syncChecklistEditor, checklistEditorRowHtml, updateChecklistRemoveButtons } = app;
 
 	if (button.dataset.action === 'open-create') { await openCreate(); }
 	if (button.dataset.action === 'open-task-create') { await openCreate('tasks'); }
@@ -39,6 +39,20 @@ app.handleAdminClickAction = async function (button) {
 	if (button.dataset.action === 'open-task-group-create') {
 		const label = nice((state.workspace && state.workspace.taskGroupLabel) || state.shell.taskGroupLabel || 'stage');
 		state.modal = { title: `${__('Add', 'coordina')} ${label}`, body: `<form class="coordina-form" data-action="task-group-form" data-project-id="${state.projectContext.id || ''}"><label><span>${escapeHtml(label)} ${escapeHtml(__('name', 'coordina'))}</span><input type="text" name="title" required /></label><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save', 'coordina'))}</button><button class="button" type="button" data-action="close-modal">${escapeHtml(__('Cancel', 'coordina'))}</button></div></form>` };
+		render();
+	}
+	if (button.dataset.action === 'open-task-group-edit') {
+		const label = nice((state.workspace && state.workspace.taskGroupLabel) || state.shell.taskGroupLabel || 'stage');
+		state.modal = { title: `${__('Edit', 'coordina')} ${label}`, body: `<form class="coordina-form" data-action="task-group-form" data-project-id="${state.projectContext.id || ''}" data-id="${button.dataset.id || ''}"><label><span>${escapeHtml(label)} ${escapeHtml(__('name', 'coordina'))}</span><input type="text" name="title" value="${escapeHtml(button.dataset.title || '')}" required /></label><div class="coordina-form-actions"><button class="button button-primary" type="submit">${escapeHtml(__('Save', 'coordina'))}</button><button class="button" type="button" data-action="close-modal">${escapeHtml(__('Cancel', 'coordina'))}</button></div></form>` };
+		render();
+	}
+	if (button.dataset.action === 'delete-task-group') {
+		if (!confirm(button.dataset.title ? `${__('Delete', 'coordina')} "${button.dataset.title}"?` : __('Delete this task group?', 'coordina'))) {
+			return;
+		}
+		await api(`/task-groups/${button.dataset.id}`, { method: 'DELETE' });
+		await loadWorkspace();
+		notify('success', __('Task group deleted.', 'coordina'));
 		render();
 	}
 	if (button.dataset.action === 'open-project-milestone-create') { await openCreate('milestones', { project_id: state.projectContext.id, status: 'planned', completion_percent: 0 }); }
@@ -78,7 +92,20 @@ app.handleAdminClickAction = async function (button) {
 	if (button.dataset.action === 'open-project') { openProjectWorkspace(button.dataset.id, 'overview'); }
 	if (button.dataset.action === 'open-route') { openRoute({ page: button.dataset.page, project_id: button.dataset.projectId, project_tab: button.dataset.projectTab, task_id: button.dataset.taskId, milestone_id: button.dataset.milestoneId, risk_issue_id: button.dataset.riskIssueId }); }
 	if (button.dataset.action === 'edit-project') { await editProject(button.dataset.id); }
+	if (button.dataset.action === 'open-project-details-edit') {
+		const projectId = Number(button.dataset.id || state.projectContext.id || 0);
+		state.projectDetailEditing = true;
+		if (hasProjectWorkspace() && projectId > 0 && projectId === Number(state.projectContext.id || 0)) {
+			state.projectContext.tab = 'details';
+			await loadWorkspace();
+			render();
+		} else {
+			openProjectWorkspace(projectId, 'details');
+		}
+	}
 	if (button.dataset.action === 'back-to-projects') { backToProjects(); }
+	if (button.dataset.action === 'toggle-project-edit') { state.projectDetailEditing = !state.projectDetailEditing; render(); }
+	if (button.dataset.action === 'cancel-project-edit') { state.projectDetailEditing = false; render(); }
 	if (button.dataset.action === 'toggle-task-edit') { state.taskDetailEditing = !state.taskDetailEditing; render(); }
 	if (button.dataset.action === 'cancel-task-edit') { state.taskDetailEditing = false; render(); }
 	if (button.dataset.action === 'toggle-milestone-edit') { state.milestoneDetailEditing = !state.milestoneDetailEditing; render(); }

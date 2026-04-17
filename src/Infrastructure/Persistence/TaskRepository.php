@@ -160,6 +160,90 @@ final class TaskRepository extends AbstractRepository {
 	}
 
 	/**
+	 * Update a project task group.
+	 *
+	 * @param int                  $id Group id.
+	 * @param array<string, mixed> $data Group payload.
+	 * @return array<string, mixed>
+	 */
+	public function update_group( int $id, array $data ): array {
+		$current = $this->find_group( $id );
+
+		if ( empty( $current ) ) {
+			throw new RuntimeException( __( 'Task group could not be found.', 'coordina' ) );
+		}
+
+		$project_id = (int) ( $current['project_id'] ?? 0 );
+
+		if ( $project_id <= 0 || ! $this->access->can_edit_project( $project_id ) ) {
+			throw new RuntimeException( __( 'You are not allowed to update this task group.', 'coordina' ) );
+		}
+
+		$title = sanitize_text_field( (string) ( $data['title'] ?? $current['title'] ?? '' ) );
+
+		if ( '' === $title ) {
+			throw new RuntimeException( __( 'Task group title is required.', 'coordina' ) );
+		}
+
+		$clean = array(
+			'title'      => $title,
+			'sort_order' => isset( $data['sort_order'] ) ? (int) $data['sort_order'] : (int) ( $current['sort_order'] ?? 0 ),
+			'updated_at' => $this->now(),
+		);
+
+		$result = $this->wpdb->update( $this->table( 'task_groups' ), $clean, array( 'id' => $id ) );
+
+		if ( false === $result ) {
+			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Task group could not be updated.', 'coordina' ) );
+		}
+
+		if ( $title !== (string) ( $current['title'] ?? '' ) ) {
+			$this->log_activity( 'project', $project_id, 'task-group-updated', sprintf( __( 'Updated task group "%s".', 'coordina' ), $title ) );
+		}
+
+		return $this->find_group( $id );
+	}
+
+	/**
+	 * Delete a project task group.
+	 *
+	 * @param int $id Group id.
+	 * @return bool
+	 */
+	public function delete_group( int $id ): bool {
+		$current = $this->find_group( $id );
+
+		if ( empty( $current ) ) {
+			throw new RuntimeException( __( 'Task group could not be found.', 'coordina' ) );
+		}
+
+		$project_id = (int) ( $current['project_id'] ?? 0 );
+
+		if ( $project_id <= 0 || ! $this->access->can_edit_project( $project_id ) ) {
+			throw new RuntimeException( __( 'You are not allowed to delete this task group.', 'coordina' ) );
+		}
+
+		$this->wpdb->update(
+			$this->table( 'tasks' ),
+			array(
+				'task_group_id' => 0,
+				'updated_at'    => $this->now(),
+			),
+			array( 'task_group_id' => $id )
+		);
+
+		$result = $this->wpdb->delete( $this->table( 'task_groups' ), array( 'id' => $id ) );
+
+		if ( false === $result ) {
+			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Task group could not be deleted.', 'coordina' ) );
+		}
+
+		$this->log_activity( 'project', $project_id, 'task-group-deleted', sprintf( __( 'Deleted task group "%s".', 'coordina' ), (string) ( $current['title'] ?? '' ) ) );
+
+		return true;
+	}
+
+	/**
 	 * Get project task summary.
 	 *
 	 * @param int $project_id Project id.

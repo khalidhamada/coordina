@@ -66,7 +66,13 @@
 }
 .coordina-project-overview-list { gap: 10px; }
 .coordina-project-overview-list li { padding: 12px; }
-.coordina-project-side-stack { display: grid; gap: 16px; min-width: 0; }
+.coordina-project-overview-flat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; align-items: start; }
+.coordina-project-overview-core { display: grid; gap: 18px; }
+.coordina-project-overview-core__layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
+.coordina-project-overview-core__main,
+.coordina-project-overview-core__side { display: grid; gap: 14px; }
+.coordina-project-overview-core__summary { margin: 0; padding: 12px 14px; border: 1px solid var(--coordina-border); border-radius: 10px; background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%); color: var(--coordina-text); }
+.coordina-project-side-stack { display: grid; gap: 16px; min-width: 0; align-content: start; align-items: start; }
 .coordina-project-item-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 .coordina-project-item-card {
 	display: grid;
@@ -117,12 +123,46 @@
 .coordina-task-page__overview { gap: 14px; }
 .coordina-task-page__overview-stack { display: grid; gap: 14px; }
 .coordina-task-page__overview-section { display: grid; gap: 10px; }
+.coordina-project-detail-stack { display: grid; gap: 16px; }
+.coordina-project-detail-page .coordina-task-page__side { align-content: start; }
+.coordina-project-detail-card { gap: 14px; }
 .coordina-task-page__overview-section h4 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--coordina-text-muted); }
 .coordina-task-page__lead { margin: 0; font-size: 20px; line-height: 1.2; color: var(--coordina-text); }
 .coordina-task-page__description { margin: 0; font-size: 14px; line-height: 1.65; color: var(--coordina-text); }
 .coordina-key-value--task-overview { gap: 10px; }
 .coordina-key-value--task-overview div { align-items: flex-start; }
 .coordina-task-page__quick-edit { padding: 14px; border: 1px solid var(--coordina-border); border-radius: 10px; background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%); }
+.coordina-collapsible-card {
+	display: grid;
+	gap: 0;
+}
+.coordina-collapsible-card__summary {
+	list-style: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	cursor: pointer;
+}
+.coordina-collapsible-card__summary::-webkit-details-marker { display: none; }
+.coordina-collapsible-card__summary h3 { margin: 0; }
+.coordina-collapsible-card__chevron {
+	width: 10px;
+	height: 10px;
+	border-right: 2px solid var(--coordina-text-muted);
+	border-bottom: 2px solid var(--coordina-text-muted);
+	transform: rotate(45deg);
+	transition: transform 160ms cubic-bezier(0.4, 0, 0.2, 1);
+	flex: 0 0 auto;
+}
+.coordina-collapsible-card[open] .coordina-collapsible-card__chevron {
+	transform: rotate(225deg);
+}
+.coordina-collapsible-card__body {
+	display: grid;
+	gap: 12px;
+	padding-top: 14px;
+}
 .coordina-task-checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .coordina-task-checklist li { padding: 0; }
 .coordina-task-checklist-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--coordina-border); border-radius: 10px; background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%); transition: all 140ms cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px rgba(19, 26, 35, 0.02); }
@@ -148,6 +188,13 @@
 .coordina-progress__track { display: block; height: 8px; border-radius: 999px; overflow: hidden; background: var(--coordina-border); }
 .coordina-progress__fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--coordina-primary) 0%, var(--coordina-accent) 100%); }
 .coordina-progress__value { font-size: 12px; font-weight: 700; color: var(--coordina-text); }
+.coordina-overview-chart { display: grid; gap: 12px; }
+.coordina-overview-chart__row { display: grid; gap: 6px; }
+.coordina-overview-chart__row-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; }
+.coordina-overview-chart__row-head span { color: var(--coordina-text); }
+.coordina-overview-chart__row-head strong { color: var(--coordina-text-muted); }
+.coordina-overview-chart__row-bar { display: block; height: 8px; border-radius: 999px; overflow: hidden; background: var(--coordina-border); }
+.coordina-overview-chart__row-bar > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--coordina-primary) 0%, var(--coordina-accent) 100%); }
 .coordina-metric-card { 
 	position: relative; 
 	overflow: hidden; 
@@ -155,6 +202,8 @@
 	justify-content: space-between; 
 	border-radius: 12px; 
 	padding: 18px; 
+	--coordina-metric-accent: rgba(36, 72, 98, 0.18);
+	--coordina-metric-wash: rgba(36, 72, 98, 0.08);
 	background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
 	border: 1px solid var(--coordina-border); 
 	box-shadow: 0 1px 3px rgba(19, 26, 35, 0.03);
@@ -166,33 +215,30 @@
 	box-shadow: 0 10px 24px -18px rgba(36, 72, 98, 0.4);
 	transform: translateY(-2px);
 }
-.coordina-metric-card::after { content: ''; position: absolute; inset: auto 0 0 auto; width: 48px; height: 48px; border-radius: 12px 0 0 0; background: rgba(36, 72, 98, 0.08); }
+.coordina-metric-card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--coordina-metric-accent); }
+.coordina-metric-card::after { content: ''; position: absolute; inset: auto 0 0 auto; width: 48px; height: 48px; border-radius: 12px 0 0 0; background: var(--coordina-metric-wash); }
 .coordina-metric-card__label { position: relative; z-index: 1; display: block; max-width: 12ch; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--coordina-text-muted); }
 .coordina-metric-card__value { position: relative; z-index: 1; display: block; font-size: clamp(30px, 4vw, 42px); line-height: 1; letter-spacing: -0.04em; color: var(--coordina-text); }
 .coordina-metric-card--accent { 
-	background: linear-gradient(135deg, var(--coordina-primary) 0%, var(--coordina-accent) 100%);
-	border-color: rgba(36, 72, 98, 0.28);
-	box-shadow: 0 14px 28px -22px rgba(36, 72, 98, 0.55);
+	--coordina-metric-accent: linear-gradient(90deg, var(--coordina-primary) 0%, var(--coordina-accent) 100%);
+	--coordina-metric-wash: rgba(36, 72, 98, 0.12);
+	border-color: var(--coordina-border);
+	box-shadow: 0 1px 3px rgba(19, 26, 35, 0.03);
 }
 
 .coordina-metric-card--accent:hover {
-	box-shadow: 0 16px 30px -18px rgba(36, 72, 98, 0.5);
-}
-.coordina-metric-card--accent .coordina-metric-card__label,
-.coordina-metric-card--accent .coordina-metric-card__value { color: #fff; }
-.coordina-metric-card--accent::after { 
-	background: rgba(255, 255, 255, 0.12);
+	box-shadow: 0 10px 24px -18px rgba(36, 72, 98, 0.4);
 }
 .coordina-metric-card--danger { 
-	background: linear-gradient(135deg, #fff7f6 0%, #fff5f3 100%);
-	border-color: rgba(199, 31, 22, 0.2);
+	--coordina-metric-accent: linear-gradient(90deg, #c71f16 0%, #e2554d 100%);
+	--coordina-metric-wash: rgba(199, 31, 22, 0.08);
+	border-color: var(--coordina-border);
 }
-.coordina-metric-card--danger::after { background: rgba(199, 31, 22, 0.08); }
 .coordina-metric-card--warning { 
-	background: linear-gradient(135deg, #fffcf8 0%, #fff5ed 100%);
-	border-color: rgba(179, 89, 0, 0.2);
+	--coordina-metric-accent: linear-gradient(90deg, #b35900 0%, #d18b2f 100%);
+	--coordina-metric-wash: rgba(179, 89, 0, 0.08);
+	border-color: var(--coordina-border);
 }
-.coordina-metric-card--warning::after { background: rgba(179, 89, 0, 0.08); }
 .coordina-key-value { display: grid; gap: 12px; margin: 0; }
 .coordina-key-value div { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--coordina-border); }
 .coordina-key-value dt,
@@ -232,6 +278,7 @@
 }
 
 .coordina-task-group > .coordina-section-header .coordina-progress { min-width: min(280px, 100%); }
+.coordina-task-group__header-side { display: grid; gap: 10px; justify-items: end; min-width: min(320px, 100%); }
 
 .coordina-task-group-rows {
 	display: grid;
@@ -360,6 +407,7 @@
 	.coordina-filter-bar--tasks { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
 	.coordina-project-overview-hero,
 	.coordina-project-overview-layout,
+	.coordina-project-overview-core__layout,
 	.coordina-task-page__layout,
 	.coordina-workspace-settings-layout { grid-template-columns: 1fr; }
 	.coordina-activity-insights { grid-template-columns: 1fr; }
@@ -367,12 +415,18 @@
 	.coordina-checklist-editor__item { grid-template-columns: 1fr; }
 	.coordina-task-checklist-item { grid-template-columns: 1fr; }
 	.coordina-task-checklist-item__actions { justify-content: flex-start; }
+	.coordina-collapsible-card__summary { align-items: flex-start; }
 	.coordina-task-group-head {
 		display: none;
 	}
 
 	.coordina-task-group-row {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.coordina-task-group__header-side {
+		justify-items: start;
+		min-width: 0;
 	}
 
 	.coordina-work-item-split {

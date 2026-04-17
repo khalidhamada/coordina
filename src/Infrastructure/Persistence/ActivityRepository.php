@@ -73,6 +73,29 @@ final class ActivityRepository extends AbstractRepository {
 	}
 
 	/**
+	 * Get an access-aware activity summary across the full visible period.
+	 *
+	 * @param array<string, mixed> $args Optional filters.
+	 * @return array<string, mixed>
+	 */
+	public function get_summary( array $args = array() ): array {
+		$object_type = isset( $args['object_type'] ) ? sanitize_key( (string) $args['object_type'] ) : '';
+		$object_id   = isset( $args['object_id'] ) ? max( 0, (int) $args['object_id'] ) : 0;
+		$event_type  = isset( $args['event_type'] ) ? sanitize_key( (string) $args['event_type'] ) : '';
+		$actor_id    = isset( $args['actor_user_id'] ) ? max( 0, (int) $args['actor_user_id'] ) : 0;
+		$project_id  = isset( $args['project_id'] ) ? max( 0, (int) $args['project_id'] ) : 0;
+		$candidates  = $this->get_candidate_rows( $object_type, $object_id, $event_type, $actor_id, $project_id, 0 );
+		$items       = array_values( array_filter( array_map( array( $this, 'map_item' ), $candidates ) ) );
+		$latest      = $items[0]['createdAt'] ?? '';
+
+		return array(
+			'total'    => count( $items ),
+			'latestAt' => (string) $latest,
+			'charts'   => $this->build_project_activity_charts( $items ),
+		);
+	}
+
+	/**
 	 * Resolve the default activity page size.
 	 */
 	private function default_activity_per_page(): int {
@@ -91,7 +114,7 @@ final class ActivityRepository extends AbstractRepository {
 	 * @param int    $project_id Project filter.
 	 * @return array<int, object>
 	 */
-	private function get_candidate_rows( string $object_type, int $object_id, string $event_type, int $actor_id, int $project_id ): array {
+	private function get_candidate_rows( string $object_type, int $object_id, string $event_type, int $actor_id, int $project_id, int $limit = 250 ): array {
 		$table  = $this->table( 'activity_log' );
 		$where  = array( '1=1' );
 		$params = array();
@@ -121,7 +144,10 @@ final class ActivityRepository extends AbstractRepository {
 			array_push( $params, $project_id, $project_id, $project_id, $project_id, $project_id, $project_id, $project_id, $project_id );
 		}
 
-		$sql = "SELECT * FROM {$table} WHERE " . implode( ' AND ', $where ) . ' ORDER BY created_at DESC, id DESC LIMIT 250';
+		$sql = "SELECT * FROM {$table} WHERE " . implode( ' AND ', $where ) . ' ORDER BY created_at DESC, id DESC';
+		if ( $limit > 0 ) {
+			$sql .= ' LIMIT ' . (int) $limit;
+		}
 
 		if ( empty( $params ) ) {
 			return $this->wpdb->get_results( $sql ) ?: array();

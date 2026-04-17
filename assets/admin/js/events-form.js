@@ -85,6 +85,7 @@ app.handleAdminSubmitEvent = async function (form) {
 		if (state.page === 'coordina-my-work' || module.key === 'tasks') { await loadMyWork().catch(() => null); }
 		if (state.page === 'coordina-calendar' && module.key === 'projects') { await loadCalendar().catch(() => null); }
 		if (state.page === 'coordina-workload' && module.key === 'tasks') { await loadWorkload().catch(() => null); }
+		if (module.key === 'projects') { state.projectDetailEditing = false; }
 		if (module.key === 'tasks') { state.taskDetailEditing = false; }
 		if (module.key === 'milestones') { state.milestoneDetailEditing = false; }
 		if (module.key === 'risks-issues') { state.riskIssueDetailEditing = false; }
@@ -104,7 +105,7 @@ app.handleAdminSubmitEvent = async function (form) {
 	if (form.dataset.action === 'convert-form') { await api(`/requests/${form.dataset.id}/convert`, { method: 'POST', body: values }); await loadCollection(); state.modal = null; notify('success', __('Request converted.', 'coordina')); render(); }
 	if (form.dataset.action === 'save-prefs') { await api('/notification-preferences', { method: 'POST', body: values }); await loadNotifications(); state.modal = null; if (state.drawer && state.drawer.title === __('Inbox', 'coordina')) { openNotifications(); } notify('success', __('Notification preferences updated.', 'coordina')); render(); }
 	if (form.dataset.action === 'project-settings-form') { await api(`/projects/${form.dataset.projectId}/settings`, { method: 'POST', body: values }); await loadWorkspace(); notify('success', __('Project settings updated.', 'coordina')); render(); }
-	if (form.dataset.action === 'task-group-form') { await api(`/projects/${form.dataset.projectId}/task-groups`, { method: 'POST', body: values }); await loadWorkspace(); state.modal = null; notify('success', __('Task group added.', 'coordina')); render(); }
+	if (form.dataset.action === 'task-group-form') { await api(form.dataset.id ? `/task-groups/${form.dataset.id}` : `/projects/${form.dataset.projectId}/task-groups`, { method: 'POST', body: values }); await loadWorkspace(); state.modal = null; notify('success', form.dataset.id ? __('Task group updated.', 'coordina') : __('Task group added.', 'coordina')); render(); }
 	if (form.dataset.action === 'settings-form') { await api('/settings', { method: 'POST', body: collectSettingsPayload(form) }); await loadSettings(); state.shell = await api('/admin-shell'); notify('success', __('Settings updated.', 'coordina')); render(); }
 };
 }());
