@@ -4,6 +4,19 @@ Quick links to detailed release information for each version. For getting starte
 
 ## Current Release
 
+### [v1.3.0 — Workspace Expansion & Portfolio Refinement](releases/v1.3.0/RELEASE_NOTES.md)
+**April 17, 2026**
+
+Coordina 1.3.0 expands the project workspace, refines Dashboard and My Work, and adds sponsor support to the core project record.
+
+**Highlights:** Project Details tab • Dashboard redesign • My Work cleanup • Project sponsor field
+
+[View full details →](releases/v1.3.0/RELEASE_NOTES.md)
+
+---
+
+## Previous Releases
+
 ### [v1.2.1 — Modular Admin Runtime Stabilization](releases/v1.2.1/RELEASE_NOTES.md)
 **April 15, 2026**
 
@@ -14,8 +27,6 @@ Coordina 1.2.1 is a patch release focused on admin maintainability and runtime s
 [View full details →](releases/v1.2.1/RELEASE_NOTES.md)
 
 ---
-
-## Previous Releases
 
 ### [v1.2.0 — Daily Workspace & Global Inbox](releases/v1.2.0/RELEASE_NOTES.md)
 **April 15, 2026**
@@ -64,6 +75,7 @@ Complete foundation: My Work, Dashboard, Project Workspaces (9 tabs), approvals,
 ## Upgrade Path
 
 All upgrades are direct and backward-compatible:
+- **v1.2.1 → v1.3.0**: Includes a database update for the new project sponsor field
 - **v1.2.0 → v1.2.1**: No database changes
 - **v1.1.1 → v1.2.0**: No database changes
 - **v1.0.0 → v1.1.0**: No database changes

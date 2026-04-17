@@ -4,7 +4,7 @@ Tags: project management, task management, workflow, operations, approvals, requ
 Requires at least: 6.6
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: coordina
@@ -20,7 +20,7 @@ Key capabilities:
 * Custom-table domain storage for core work objects (projects, tasks, requests, approvals, risks/issues, files, discussions, notifications, and saved views)
 * Daily work execution through My Work
 * Oversight through Dashboard
-* Dedicated Project Workspaces with tabs for Overview, Work, Milestones, Risks & Issues, Approvals, Updates, Files, Activity, and Settings
+* Dedicated Project Workspaces with tabs for Overview, Details, Work, Gantt, Milestones, Risks & Issues, Approvals, Updates, Files, Activity, and Settings
 * Support surfaces for Requests, Approvals, Calendar, Workload, Files & Discussions, and global Settings
 * Project-scoped task grouping and task checklists
 * Settings-backed access policy controls for visibility and edit behavior
@@ -53,6 +53,14 @@ Yes. Coordina supports both project-linked tasks and standalone tasks.
 Yes. Visibility and edit rights are evaluated through separate settings-backed policies.
 
 == Changelog ==
+
+= 1.3.0 =
+
+* Dashboard redesigned into a cleaner portfolio overview with smaller KPIs, grouped recent activity, full-period activity-by-user insight, and clearer side queues
+* My Work flattened and cleaned up with better board/status alignment and lighter task/task-filter presentation
+* Project workspaces expanded with a new Details tab, richer overview/layout refinements, and clearer workspace-native detail screens
+* Projects now support a sponsor field and a dedicated sectioned project form for clearer create/edit flows
+* Database update included for the new sponsor-backed project schema field
 
 = 1.2.1 =
 
@@ -112,6 +120,10 @@ Yes. Visibility and edit rights are evaluated through separate settings-backed p
 * Task groups and task checklists
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+
+Feature release with dashboard, My Work, and project workspace improvements, plus a small project schema update for sponsor support.
 
 = 1.2.1 =
 

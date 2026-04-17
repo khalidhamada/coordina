@@ -165,12 +165,13 @@ Coordina includes a modern, cohesive design system:
 ### Q: Does Coordina have email notifications?
 **A:** Notifications are managed through WordPress. Email delivery uses your site's email configuration. You can extend with custom notification hooks.
 
-### Q: What's new in version 1.2.1?
-**A:** Version 1.2.1 includes:
-- **Modular Admin Pages** – Large admin page rendering code is now split into smaller settings and surface modules for safer maintenance
-- **Modular Event Handling** – Admin event logic is now split into focused shared, click, and form modules instead of one oversized dispatcher
-- **Runtime Stability Fixes** – Split-module binding issues that could break Inbox, Settings, Dashboard, and My Work rendering were fixed
-- **No Schema Changes** – This is a direct patch upgrade from 1.2.0 with no database migration required
+### Q: What's new in version 1.3.0?
+**A:** Version 1.3.0 includes:
+- **Dashboard Redesign** – Dashboard now works as a cleaner portfolio overview with smaller KPIs, grouped recent activity, and stronger review queues
+- **My Work Cleanup** – My Work is flatter, clearer, and better aligned with project workspace task statuses and filters
+- **Project Workspace Expansion** – Project workspaces now include `Details` and `Gantt`, plus clearer overview and record-detail patterns
+- **Project Sponsor Support** – Projects now store a sponsor and use a clearer sectioned project form for create and edit flows
+- **Schema Update** – This release includes a database update for the new project sponsor field
 
 ## Support & Documentation
 
@@ -182,7 +183,7 @@ Coordina includes a modern, cohesive design system:
 - **Requires at least:** WordPress 6.6
 - **Tested up to:** WordPress 6.6
 - **Requires PHP:** 7.4 or higher
-- **Stable tag:** 1.2.1
+- **Stable tag:** 1.3.0
 - **License:** GPLv2 or later
 - **Text Domain:** `coordina`
 
