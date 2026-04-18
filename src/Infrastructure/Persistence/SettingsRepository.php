@@ -9,10 +9,29 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Persistence;
 
+use Coordina\Platform\Bootstrap\CoreRegistries;
+use Coordina\Platform\Contracts\SettingsStoreInterface;
+use Coordina\Platform\Registry\SettingsRegistry;
 use RuntimeException;
 
-final class SettingsRepository {
+final class SettingsRepository implements SettingsStoreInterface {
 	private const OPTION_KEY = 'coordina_settings';
+
+	/**
+	 * Settings registry.
+	 *
+	 * @var SettingsRegistry
+	 */
+	private $registry;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param SettingsRegistry|null $registry Settings registry.
+	 */
+	public function __construct( ?SettingsRegistry $registry = null ) {
+		$this->registry = $registry ?: CoreRegistries::settings();
+	}
 
 	/**
 	 * Fetch settings with defaults applied.
@@ -59,113 +78,21 @@ final class SettingsRepository {
 	}
 
 	/**
+	 * Get all registered settings choice lists.
+	 *
+	 * @return array<string, array<int, string>>
+	 */
+	public function choice_lists(): array {
+		return $this->registry->all_choices();
+	}
+
+	/**
 	 * Build default settings.
 	 *
 	 * @return array<string, mixed>
 	 */
 	private function defaults(): array {
-		return array(
-			'general'      => array(
-				'default_landing_page' => 'coordina-my-work',
-				'date_display'         => 'site',
-				'workspace_default_tab' => 'overview',
-				'task_group_label'      => 'stage',
-				'activity_page_size'    => 10,
-				'page_descriptions_enabled'    => true,
-				'section_descriptions_enabled' => true,
-				'my_work_card_guidance_enabled' => true,
-				'my_work_card_actions_enabled'  => true,
-			),
-			'appearance'   => array(
-				'color_source'  => 'custom',
-				'primary_color' => 'cobalt',
-				'accent_color'  => 'amber',
-				'primary_custom_color' => '',
-				'accent_custom_color'  => '',
-				'theme_mode'    => 'auto',
-				'saved_themes'  => array(),
-			),
-			'dropdowns'    => array(
-				'statuses'                      => array(
-					'projects'    => array( 'draft', 'planned', 'active', 'on-hold', 'at-risk', 'blocked', 'completed', 'cancelled', 'archived' ),
-					'tasks'       => array( 'new', 'to-do', 'in-progress', 'waiting', 'blocked', 'in-review', 'done', 'cancelled' ),
-					'requests'    => array( 'submitted', 'under-review', 'awaiting-info', 'approved', 'rejected', 'converted', 'closed' ),
-					'approvals'   => array( 'pending', 'approved', 'rejected', 'cancelled' ),
-					'risksIssues' => array( 'identified', 'monitoring', 'mitigation-in-progress', 'escalated', 'resolved', 'closed' ),
-					'milestones'  => array( 'planned', 'in-progress', 'at-risk', 'completed', 'skipped' ),
-				),
-				'priorities'                    => array( 'low', 'normal', 'high', 'urgent' ),
-				'health'                        => array( 'neutral', 'good', 'at-risk', 'blocked' ),
-				'severities'                    => array( 'low', 'medium', 'high', 'critical' ),
-				'impacts'                       => array( 'low', 'medium', 'high', 'critical' ),
-				'likelihoods'                   => array( 'low', 'medium', 'high', 'critical' ),
-				'visibilityLevels'              => array( 'team', 'private', 'public' ),
-				'projectNotificationPolicies'   => array( 'default', 'important-only', 'all-updates', 'muted' ),
-				'requestTypes'                  => array( 'general', 'project', 'task', 'support' ),
-				'projectTypes'                  => array( 'operational', 'delivery', 'internal', 'client' ),
-				'fileCategories'                => array( 'brief', 'design', 'contract', 'report', 'other' ),
-				'updateTypes'                   => array( 'status', 'decision', 'blocker', 'note' ),
-			),
-			'access'       => array(
-				'project_access_default'         => 'team',
-				'portal_access_default'          => 'requesters',
-				'project_workspace_visibility'   => 'members-and-assignees',
-				'project_list_visibility'        => 'all-accessible-projects',
-				'project_task_visibility'        => 'all-tasks-in-accessible-projects',
-				'task_edit_policy'              => 'assignee-only',
-				'file_attachment_rules'         => array(
-					'project'    => 'project-leads-only',
-					'task'       => 'assignee-and-project-leads',
-					'milestone'  => 'owner-and-project-leads',
-					'risk_issue' => 'owner-and-project-leads',
-					'request'    => 'request-participants',
-				),
-				'checklist_manage_rules'       => array(
-					'project'    => 'project-leads-only',
-					'task'       => 'project-leads-only',
-					'milestone'  => 'project-leads-only',
-					'risk_issue' => 'project-leads-only',
-				),
-				'checklist_toggle_rules'       => array(
-					'project'    => 'project-leads-only',
-					'task'       => 'assignee-and-project-leads',
-					'milestone'  => 'owner-and-project-leads',
-					'risk_issue' => 'owner-and-project-leads',
-				),
-				'non_admin_navigation_scope'    => 'dashboard-my-work-projects',
-			),
-			'workflows'    => array(
-				'request_conversion_default' => 'task',
-				'allow_direct_closeout'      => false,
-				'archive_completed_only'     => true,
-				'approval_required_default'  => false,
-			),
-			'notifications' => array(
-				'assignment'       => true,
-				'mention'          => true,
-				'approval'         => true,
-				'due_date'         => true,
-				'overdue'          => true,
-				'project_update'   => true,
-				'milestone_update' => true,
-				'digest'           => false,
-			),
-			'portal'       => array(
-				'allowed_request_types' => array( 'general', 'project', 'task', 'support' ),
-				'uploads_enabled'       => true,
-				'requester_visibility'  => 'own-requests',
-			),
-			'data'         => array(
-				'activity_retention_days'     => 365,
-				'notification_retention_days' => 180,
-				'export_enabled'              => true,
-			),
-			'automation'   => array(
-				'enabled'              => false,
-				'status_sync_enabled'  => false,
-				'overdue_alerts'       => true,
-			),
-		);
+		return $this->registry->defaults();
 	}
 
 	/**
@@ -219,10 +146,10 @@ final class SettingsRepository {
 	private function sanitize_settings( array $settings ): array {
 		$defaults = $this->defaults();
 
-		$settings['general']['default_landing_page'] = $this->choice( $settings['general']['default_landing_page'] ?? '', array( 'coordina-my-work', 'coordina-dashboard', 'coordina-projects' ), $defaults['general']['default_landing_page'] );
-		$settings['general']['date_display'] = $this->choice( $settings['general']['date_display'] ?? '', array( 'site', 'relative', 'absolute' ), $defaults['general']['date_display'] );
-		$settings['general']['workspace_default_tab'] = $this->choice( $settings['general']['workspace_default_tab'] ?? '', array( 'overview', 'work', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity' ), $defaults['general']['workspace_default_tab'] );
-		$settings['general']['task_group_label'] = $this->choice( $settings['general']['task_group_label'] ?? '', array( 'stage', 'phase', 'bucket' ), $defaults['general']['task_group_label'] );
+		$settings['general']['default_landing_page'] = $this->choice( $settings['general']['default_landing_page'] ?? '', $this->choices( 'general.default_landing_page', array( 'coordina-my-work', 'coordina-dashboard', 'coordina-projects' ) ), $defaults['general']['default_landing_page'] );
+		$settings['general']['date_display'] = $this->choice( $settings['general']['date_display'] ?? '', $this->choices( 'general.date_display', array( 'site', 'relative', 'absolute' ) ), $defaults['general']['date_display'] );
+		$settings['general']['workspace_default_tab'] = $this->choice( $settings['general']['workspace_default_tab'] ?? '', $this->choices( 'general.workspace_default_tab', array( 'overview', 'work', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity' ) ), $defaults['general']['workspace_default_tab'] );
+		$settings['general']['task_group_label'] = $this->choice( $settings['general']['task_group_label'] ?? '', $this->choices( 'general.task_group_label', array( 'stage', 'phase', 'bucket' ) ), $defaults['general']['task_group_label'] );
 		$settings['general']['activity_page_size'] = max( 5, min( 50, (int) ( $settings['general']['activity_page_size'] ?? $defaults['general']['activity_page_size'] ) ) );
 		$settings['general']['page_descriptions_enabled'] = (bool) ( $settings['general']['page_descriptions_enabled'] ?? $defaults['general']['page_descriptions_enabled'] );
 		$settings['general']['section_descriptions_enabled'] = (bool) ( $settings['general']['section_descriptions_enabled'] ?? $defaults['general']['section_descriptions_enabled'] );
@@ -256,12 +183,12 @@ final class SettingsRepository {
 				$settings['appearance'] = array_merge( $legacy_map[ $legacy_palette ], is_array( $settings['appearance'] ?? null ) ? $settings['appearance'] : array() );
 			}
 		}
-		$settings['appearance']['color_source'] = $this->choice( $settings['appearance']['color_source'] ?? '', array( 'custom', 'wordpress' ), $defaults['appearance']['color_source'] );
-		$settings['appearance']['primary_color'] = $this->choice( $settings['appearance']['primary_color'] ?? '', array( 'cobalt', 'spruce', 'berry', 'terracotta', 'indigo', 'custom' ), $defaults['appearance']['primary_color'] );
-		$settings['appearance']['accent_color'] = $this->choice( $settings['appearance']['accent_color'] ?? '', array( 'sky', 'mint', 'amber', 'rose', 'lilac', 'custom' ), $defaults['appearance']['accent_color'] );
+		$settings['appearance']['color_source'] = $this->choice( $settings['appearance']['color_source'] ?? '', $this->choices( 'appearance.color_source', array( 'custom', 'wordpress' ) ), $defaults['appearance']['color_source'] );
+		$settings['appearance']['primary_color'] = $this->choice( $settings['appearance']['primary_color'] ?? '', $this->choices( 'appearance.primary_color', array( 'cobalt', 'spruce', 'berry', 'terracotta', 'indigo', 'custom' ) ), $defaults['appearance']['primary_color'] );
+		$settings['appearance']['accent_color'] = $this->choice( $settings['appearance']['accent_color'] ?? '', $this->choices( 'appearance.accent_color', array( 'sky', 'mint', 'amber', 'rose', 'lilac', 'custom' ) ), $defaults['appearance']['accent_color'] );
 		$settings['appearance']['primary_custom_color'] = $this->hex_color( $settings['appearance']['primary_custom_color'] ?? '' );
 		$settings['appearance']['accent_custom_color'] = $this->hex_color( $settings['appearance']['accent_custom_color'] ?? '' );
-		$settings['appearance']['theme_mode'] = $this->choice( $settings['appearance']['theme_mode'] ?? '', array( 'auto', 'light', 'dark' ), $defaults['appearance']['theme_mode'] );
+		$settings['appearance']['theme_mode'] = $this->choice( $settings['appearance']['theme_mode'] ?? '', $this->choices( 'appearance.theme_mode', array( 'auto', 'light', 'dark' ) ), $defaults['appearance']['theme_mode'] );
 		$settings['appearance']['saved_themes'] = $this->theme_list( $settings['appearance']['saved_themes'] ?? array() );
 
 		foreach ( $defaults['dropdowns']['statuses'] as $key => $fallback ) {
@@ -273,30 +200,30 @@ final class SettingsRepository {
 		}
 
 		$settings['access']['project_access_default'] = $this->choice( $settings['access']['project_access_default'] ?? '', $settings['dropdowns']['visibilityLevels'], $defaults['access']['project_access_default'] );
-		$settings['access']['portal_access_default'] = $this->choice( $settings['access']['portal_access_default'] ?? '', array( 'disabled', 'requesters', 'logged-in-users' ), $defaults['access']['portal_access_default'] );
-		$settings['access']['project_workspace_visibility'] = $this->choice( $settings['access']['project_workspace_visibility'] ?? '', array( 'members-only', 'members-and-assignees', 'all-coordina-users' ), $defaults['access']['project_workspace_visibility'] );
-		$settings['access']['project_list_visibility'] = $this->choice( $settings['access']['project_list_visibility'] ?? '', array( 'assigned-projects-only', 'all-accessible-projects', 'all-projects' ), $defaults['access']['project_list_visibility'] );
-		$settings['access']['project_task_visibility'] = $this->choice( $settings['access']['project_task_visibility'] ?? '', array( 'assigned-tasks-only', 'all-tasks-in-accessible-projects' ), $defaults['access']['project_task_visibility'] );
-		$settings['access']['task_edit_policy'] = $this->choice( $settings['access']['task_edit_policy'] ?? '', array( 'assignee-only', 'assignee-or-reporter', 'all-project-members' ), $defaults['access']['task_edit_policy'] );
-		$settings['access']['non_admin_navigation_scope'] = $this->choice( $settings['access']['non_admin_navigation_scope'] ?? '', array( 'dashboard-my-work-only', 'dashboard-my-work-projects', 'dashboard-my-work-projects-tasks' ), $defaults['access']['non_admin_navigation_scope'] );
+		$settings['access']['portal_access_default'] = $this->choice( $settings['access']['portal_access_default'] ?? '', $this->choices( 'access.portal_access_default', array( 'disabled', 'requesters', 'logged-in-users' ) ), $defaults['access']['portal_access_default'] );
+		$settings['access']['project_workspace_visibility'] = $this->choice( $settings['access']['project_workspace_visibility'] ?? '', $this->choices( 'access.project_workspace_visibility', array( 'members-only', 'members-and-assignees', 'all-coordina-users' ) ), $defaults['access']['project_workspace_visibility'] );
+		$settings['access']['project_list_visibility'] = $this->choice( $settings['access']['project_list_visibility'] ?? '', $this->choices( 'access.project_list_visibility', array( 'assigned-projects-only', 'all-accessible-projects', 'all-projects' ) ), $defaults['access']['project_list_visibility'] );
+		$settings['access']['project_task_visibility'] = $this->choice( $settings['access']['project_task_visibility'] ?? '', $this->choices( 'access.project_task_visibility', array( 'assigned-tasks-only', 'all-tasks-in-accessible-projects' ) ), $defaults['access']['project_task_visibility'] );
+		$settings['access']['task_edit_policy'] = $this->choice( $settings['access']['task_edit_policy'] ?? '', $this->choices( 'access.task_edit_policy', array( 'assignee-only', 'assignee-or-reporter', 'all-project-members' ) ), $defaults['access']['task_edit_policy'] );
+		$settings['access']['non_admin_navigation_scope'] = $this->choice( $settings['access']['non_admin_navigation_scope'] ?? '', $this->choices( 'access.non_admin_navigation_scope', array( 'dashboard-my-work-only', 'dashboard-my-work-projects', 'dashboard-my-work-projects-tasks' ) ), $defaults['access']['non_admin_navigation_scope'] );
 		$settings['access']['file_attachment_rules'] = is_array( $settings['access']['file_attachment_rules'] ?? null ) ? $settings['access']['file_attachment_rules'] : array();
-		$settings['access']['file_attachment_rules']['project'] = $this->choice( $settings['access']['file_attachment_rules']['project'] ?? '', array( 'project-leads-only', 'project-members' ), $defaults['access']['file_attachment_rules']['project'] );
-		$settings['access']['file_attachment_rules']['task'] = $this->choice( $settings['access']['file_attachment_rules']['task'] ?? '', array( 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members' ), $defaults['access']['file_attachment_rules']['task'] );
-		$settings['access']['file_attachment_rules']['milestone'] = $this->choice( $settings['access']['file_attachment_rules']['milestone'] ?? '', array( 'owner-and-project-leads', 'project-members' ), $defaults['access']['file_attachment_rules']['milestone'] );
-		$settings['access']['file_attachment_rules']['risk_issue'] = $this->choice( $settings['access']['file_attachment_rules']['risk_issue'] ?? '', array( 'owner-and-project-leads', 'project-members' ), $defaults['access']['file_attachment_rules']['risk_issue'] );
-		$settings['access']['file_attachment_rules']['request'] = $this->choice( $settings['access']['file_attachment_rules']['request'] ?? '', array( 'request-participants', 'triage-only' ), $defaults['access']['file_attachment_rules']['request'] );
+		$settings['access']['file_attachment_rules']['project'] = $this->choice( $settings['access']['file_attachment_rules']['project'] ?? '', $this->choices( 'access.file_attachment_rules.project', array( 'project-leads-only', 'project-members' ) ), $defaults['access']['file_attachment_rules']['project'] );
+		$settings['access']['file_attachment_rules']['task'] = $this->choice( $settings['access']['file_attachment_rules']['task'] ?? '', $this->choices( 'access.file_attachment_rules.task', array( 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members' ) ), $defaults['access']['file_attachment_rules']['task'] );
+		$settings['access']['file_attachment_rules']['milestone'] = $this->choice( $settings['access']['file_attachment_rules']['milestone'] ?? '', $this->choices( 'access.file_attachment_rules.milestone', array( 'owner-and-project-leads', 'project-members' ) ), $defaults['access']['file_attachment_rules']['milestone'] );
+		$settings['access']['file_attachment_rules']['risk_issue'] = $this->choice( $settings['access']['file_attachment_rules']['risk_issue'] ?? '', $this->choices( 'access.file_attachment_rules.risk_issue', array( 'owner-and-project-leads', 'project-members' ) ), $defaults['access']['file_attachment_rules']['risk_issue'] );
+		$settings['access']['file_attachment_rules']['request'] = $this->choice( $settings['access']['file_attachment_rules']['request'] ?? '', $this->choices( 'access.file_attachment_rules.request', array( 'request-participants', 'triage-only' ) ), $defaults['access']['file_attachment_rules']['request'] );
 		$settings['access']['checklist_manage_rules'] = is_array( $settings['access']['checklist_manage_rules'] ?? null ) ? $settings['access']['checklist_manage_rules'] : array();
-		$settings['access']['checklist_manage_rules']['project'] = $this->choice( $settings['access']['checklist_manage_rules']['project'] ?? '', array( 'project-leads-only', 'project-members' ), $defaults['access']['checklist_manage_rules']['project'] );
-		$settings['access']['checklist_manage_rules']['task'] = $this->choice( $settings['access']['checklist_manage_rules']['task'] ?? '', array( 'project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members' ), $defaults['access']['checklist_manage_rules']['task'] );
-		$settings['access']['checklist_manage_rules']['milestone'] = $this->choice( $settings['access']['checklist_manage_rules']['milestone'] ?? '', array( 'project-leads-only', 'owner-and-project-leads', 'project-members' ), $defaults['access']['checklist_manage_rules']['milestone'] );
-		$settings['access']['checklist_manage_rules']['risk_issue'] = $this->choice( $settings['access']['checklist_manage_rules']['risk_issue'] ?? '', array( 'project-leads-only', 'owner-and-project-leads', 'project-members' ), $defaults['access']['checklist_manage_rules']['risk_issue'] );
+		$settings['access']['checklist_manage_rules']['project'] = $this->choice( $settings['access']['checklist_manage_rules']['project'] ?? '', $this->choices( 'access.checklist_manage_rules.project', array( 'project-leads-only', 'project-members' ) ), $defaults['access']['checklist_manage_rules']['project'] );
+		$settings['access']['checklist_manage_rules']['task'] = $this->choice( $settings['access']['checklist_manage_rules']['task'] ?? '', $this->choices( 'access.checklist_manage_rules.task', array( 'project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members' ) ), $defaults['access']['checklist_manage_rules']['task'] );
+		$settings['access']['checklist_manage_rules']['milestone'] = $this->choice( $settings['access']['checklist_manage_rules']['milestone'] ?? '', $this->choices( 'access.checklist_manage_rules.milestone', array( 'project-leads-only', 'owner-and-project-leads', 'project-members' ) ), $defaults['access']['checklist_manage_rules']['milestone'] );
+		$settings['access']['checklist_manage_rules']['risk_issue'] = $this->choice( $settings['access']['checklist_manage_rules']['risk_issue'] ?? '', $this->choices( 'access.checklist_manage_rules.risk_issue', array( 'project-leads-only', 'owner-and-project-leads', 'project-members' ) ), $defaults['access']['checklist_manage_rules']['risk_issue'] );
 		$settings['access']['checklist_toggle_rules'] = is_array( $settings['access']['checklist_toggle_rules'] ?? null ) ? $settings['access']['checklist_toggle_rules'] : array();
-		$settings['access']['checklist_toggle_rules']['project'] = $this->choice( $settings['access']['checklist_toggle_rules']['project'] ?? '', array( 'project-leads-only', 'project-members' ), $defaults['access']['checklist_toggle_rules']['project'] );
-		$settings['access']['checklist_toggle_rules']['task'] = $this->choice( $settings['access']['checklist_toggle_rules']['task'] ?? '', array( 'project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members' ), $defaults['access']['checklist_toggle_rules']['task'] );
-		$settings['access']['checklist_toggle_rules']['milestone'] = $this->choice( $settings['access']['checklist_toggle_rules']['milestone'] ?? '', array( 'project-leads-only', 'owner-and-project-leads', 'project-members' ), $defaults['access']['checklist_toggle_rules']['milestone'] );
-		$settings['access']['checklist_toggle_rules']['risk_issue'] = $this->choice( $settings['access']['checklist_toggle_rules']['risk_issue'] ?? '', array( 'project-leads-only', 'owner-and-project-leads', 'project-members' ), $defaults['access']['checklist_toggle_rules']['risk_issue'] );
-		$settings['workflows']['request_conversion_default'] = $this->choice( $settings['workflows']['request_conversion_default'] ?? '', array( 'task', 'project' ), $defaults['workflows']['request_conversion_default'] );
-		$settings['portal']['requester_visibility'] = $this->choice( $settings['portal']['requester_visibility'] ?? '', array( 'own-requests', 'project-requests', 'none' ), $defaults['portal']['requester_visibility'] );
+		$settings['access']['checklist_toggle_rules']['project'] = $this->choice( $settings['access']['checklist_toggle_rules']['project'] ?? '', $this->choices( 'access.checklist_toggle_rules.project', array( 'project-leads-only', 'project-members' ) ), $defaults['access']['checklist_toggle_rules']['project'] );
+		$settings['access']['checklist_toggle_rules']['task'] = $this->choice( $settings['access']['checklist_toggle_rules']['task'] ?? '', $this->choices( 'access.checklist_toggle_rules.task', array( 'project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members' ) ), $defaults['access']['checklist_toggle_rules']['task'] );
+		$settings['access']['checklist_toggle_rules']['milestone'] = $this->choice( $settings['access']['checklist_toggle_rules']['milestone'] ?? '', $this->choices( 'access.checklist_toggle_rules.milestone', array( 'project-leads-only', 'owner-and-project-leads', 'project-members' ) ), $defaults['access']['checklist_toggle_rules']['milestone'] );
+		$settings['access']['checklist_toggle_rules']['risk_issue'] = $this->choice( $settings['access']['checklist_toggle_rules']['risk_issue'] ?? '', $this->choices( 'access.checklist_toggle_rules.risk_issue', array( 'project-leads-only', 'owner-and-project-leads', 'project-members' ) ), $defaults['access']['checklist_toggle_rules']['risk_issue'] );
+		$settings['workflows']['request_conversion_default'] = $this->choice( $settings['workflows']['request_conversion_default'] ?? '', $this->choices( 'workflows.request_conversion_default', array( 'task', 'project' ) ), $defaults['workflows']['request_conversion_default'] );
+		$settings['portal']['requester_visibility'] = $this->choice( $settings['portal']['requester_visibility'] ?? '', $this->choices( 'portal.requester_visibility', array( 'own-requests', 'project-requests', 'none' ) ), $defaults['portal']['requester_visibility'] );
 		$settings['portal']['allowed_request_types'] = $this->token_list( $settings['portal']['allowed_request_types'] ?? array(), $defaults['portal']['allowed_request_types'] );
 
 		foreach ( array( 'allow_direct_closeout', 'archive_completed_only', 'approval_required_default' ) as $key ) {
@@ -360,6 +287,17 @@ final class SettingsRepository {
 	private function choice( $value, array $allowed, string $fallback ): string {
 		$value = sanitize_key( (string) $value );
 		return in_array( $value, $allowed, true ) ? $value : $fallback;
+	}
+
+	/**
+	 * Get registered choices for one settings path.
+	 *
+	 * @param string             $path Dot-path key.
+	 * @param array<int, string> $fallback Fallback choices.
+	 * @return array<int, string>
+	 */
+	private function choices( string $path, array $fallback = array() ): array {
+		return $this->registry->choices( $path, $fallback );
 	}
 
 	/**

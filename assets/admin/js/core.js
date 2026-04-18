@@ -55,6 +55,7 @@ const state = {
 	riskIssueDetail: null,
 	riskIssueDetailEditing: false,
 	pageMeta: Object.assign({}, config.pages || {}),
+	contextDefinitions: Object.assign({}, config.contextDefinitions || {}),
 	visiblePages: Array.isArray(config.visiblePages) ? config.visiblePages : [],
 };
 
@@ -93,6 +94,8 @@ const hasRiskIssuePage = () => state.page === 'coordina-risk-issue' && Number(st
 const getPageMeta = (page) => state.pageMeta[String(page || state.page)] || {};
 const canAccessPage = (page) => state.visiblePages.includes(String(page || ''));
 const isDateKey = (key) => key.indexOf('date') !== -1 || key.endsWith('_at');
+const featureState = (featureKey) => (state.shell && state.shell.featureStates ? (state.shell.featureStates[String(featureKey || '')] || null) : null);
+const featureEnabled = (featureKey) => !!(featureState(featureKey) && featureState(featureKey).enabled);
 
 function escapeHtml(value) {
 	return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -501,6 +504,8 @@ Object.assign(app, {
 	getPageMeta,
 	canAccessPage,
 	isDateKey,
+	featureState,
+	featureEnabled,
 	escapeHtml,
 	nice,
 	dateLabel,

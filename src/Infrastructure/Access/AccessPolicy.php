@@ -10,9 +10,11 @@ declare(strict_types=1);
 namespace Coordina\Infrastructure\Access;
 
 use Coordina\Infrastructure\Persistence\SettingsRepository;
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\SettingsStoreInterface;
 use wpdb;
 
-final class AccessPolicy {
+final class AccessPolicy implements AccessPolicyInterface {
 	/**
 	 * WordPress database object.
 	 *
@@ -29,10 +31,13 @@ final class AccessPolicy {
 
 	/**
 	 * Constructor.
+	 *
+	 * @param SettingsStoreInterface|null $settings_repository Shared settings repository.
 	 */
-	public function __construct() {
+	public function __construct( ?SettingsStoreInterface $settings_repository = null ) {
 		global $wpdb;
-		$this->wpdb = $wpdb;
+		$this->wpdb     = $wpdb;
+		$this->settings = $settings_repository ? $settings_repository->get() : null;
 	}
 
 	/**

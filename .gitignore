@@ -25,6 +25,7 @@ blob-report/
 .copilot/
 AGENTS.md
 docs/memory/
+docs/refactoring/
 .github/copilot-instructions.md
 
 # OS noise

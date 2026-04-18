@@ -37,6 +37,36 @@ final class Container {
 	}
 
 	/**
+	 * Determine whether a service is registered or already resolved.
+	 *
+	 * @param string $id Service id.
+	 */
+	public function has( string $id ): bool {
+		return isset( $this->factories[ $id ] ) || isset( $this->instances[ $id ] );
+	}
+
+	/**
+	 * Decorate an existing service definition.
+	 *
+	 * @param string   $id       Service id.
+	 * @param callable $extender Extender callback receiving the resolved service and container.
+	 */
+	public function extend( string $id, callable $extender ): void {
+		if ( ! isset( $this->factories[ $id ] ) ) {
+			throw new InvalidArgumentException( sprintf( 'Coordina service "%s" is not registered.', $id ) );
+		}
+
+		$factory = $this->factories[ $id ];
+
+		$this->factories[ $id ] = static function ( Container $container ) use ( $factory, $extender ) {
+			$service = $factory( $container );
+			return $extender( $service, $container );
+		};
+
+		unset( $this->instances[ $id ] );
+	}
+
+	/**
 	 * Resolve a service.
 	 *
 	 * @param string $id Service id.

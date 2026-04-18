@@ -1,0 +1,891 @@
+[
+  {
+    "title": "Website Development",
+    "description": "A project to plan, design, build, test, and launch a new website or major website redesign.",
+    "wizard_summary": "Creates a standard website project with discovery, design, development, testing, content population, and launch preparation tasks.",
+    "phases": [
+      "Discovery and Planning",
+      "Design",
+      "Content Preparation",
+      "Development",
+      "Testing and Review",
+      "Launch"
+    ],
+    "milestones": [
+      "Requirements approved",
+      "Design approved",
+      "Development completed",
+      "UAT completed",
+      "Website launched"
+    ],
+    "tasks": [
+      {
+        "phase": "Discovery and Planning",
+        "items": [
+          "Define project goals",
+          "Identify target audience",
+          "Gather business requirements",
+          "Define site structure and key pages",
+          "Confirm scope and timeline"
+        ]
+      },
+      {
+        "phase": "Design",
+        "items": [
+          "Create sitemap",
+          "Prepare wireframes",
+          "Design homepage mockup",
+          "Design internal page layouts",
+          "Review and approve UI design"
+        ]
+      },
+      {
+        "phase": "Content Preparation",
+        "items": [
+          "Gather existing content",
+          "Write or revise page content",
+          "Prepare images and media",
+          "Review SEO basics for pages"
+        ]
+      },
+      {
+        "phase": "Development",
+        "items": [
+          "Set up project environment",
+          "Build frontend pages",
+          "Configure CMS or backend",
+          "Implement contact forms",
+          "Add responsive behavior"
+        ]
+      },
+      {
+        "phase": "Testing and Review",
+        "items": [
+          "Test links and navigation",
+          "Test forms",
+          "Test mobile responsiveness",
+          "Review content accuracy",
+          "Fix defects"
+        ]
+      },
+      {
+        "phase": "Launch",
+        "items": [
+          "Prepare production deployment",
+          "Configure domain and hosting",
+          "Perform final checks",
+          "Go live",
+          "Conduct post-launch monitoring"
+        ]
+      }
+    ],
+    "risks": [
+      "Delayed content from client",
+      "Scope creep on design pages",
+      "Hosting or DNS issues",
+      "Browser compatibility issues",
+      "Late feedback cycles"
+    ]
+  },
+  {
+    "title": "ERP Implementation",
+    "description": "A project to implement or roll out an ERP system across one department, business unit, or full company.",
+    "wizard_summary": "Creates a structured ERP implementation project with requirements, design, configuration, data migration, testing, training, and go-live tasks.",
+    "phases": [
+      "Initiation",
+      "Requirements and Process Mapping",
+      "Solution Design",
+      "Build and Configuration",
+      "Data Migration and Testing",
+      "Training and Go-Live"
+    ],
+    "milestones": [
+      "Requirements signed off",
+      "Solution design approved",
+      "Configuration completed",
+      "UAT signed off",
+      "Go-live completed"
+    ],
+    "tasks": [
+      {
+        "phase": "Initiation",
+        "items": [
+          "Define business objectives",
+          "Identify stakeholders",
+          "Confirm modules in scope",
+          "Assign project team",
+          "Prepare project charter"
+        ]
+      },
+      {
+        "phase": "Requirements and Process Mapping",
+        "items": [
+          "Gather current process details",
+          "Document pain points",
+          "Define future-state processes",
+          "Confirm reporting needs",
+          "Sign off requirements"
+        ]
+      },
+      {
+        "phase": "Solution Design",
+        "items": [
+          "Configure system design",
+          "Define roles and permissions",
+          "Define integrations",
+          "Prepare data migration approach",
+          "Review solution with stakeholders"
+        ]
+      },
+      {
+        "phase": "Build and Configuration",
+        "items": [
+          "Configure master data settings",
+          "Configure workflows",
+          "Configure forms and reports",
+          "Set up integrations",
+          "Prepare test environment"
+        ]
+      },
+      {
+        "phase": "Data Migration and Testing",
+        "items": [
+          "Clean source data",
+          "Map source to target fields",
+          "Load test data",
+          "Execute system testing",
+          "Execute user acceptance testing"
+        ]
+      },
+      {
+        "phase": "Training and Go-Live",
+        "items": [
+          "Prepare training materials",
+          "Conduct user training",
+          "Finalize cutover plan",
+          "Perform production migration",
+          "Go live and support hypercare"
+        ]
+      }
+    ],
+    "risks": [
+      "Poor data quality",
+      "Unclear requirements",
+      "Resistance to process change",
+      "Integration failures",
+      "Inadequate user training"
+    ]
+  },
+  {
+    "title": "Mobile App Development",
+    "description": "A project to design, build, test, and publish a mobile application.",
+    "wizard_summary": "Creates a mobile app project with product planning, UI/UX design, development, QA, store readiness, and launch activities.",
+    "phases": [
+      "Product Definition",
+      "UX and UI Design",
+      "Development Setup",
+      "App Development",
+      "Testing",
+      "Release"
+    ],
+    "milestones": [
+      "MVP scope approved",
+      "Design approved",
+      "Feature-complete build ready",
+      "Testing completed",
+      "App published"
+    ],
+    "tasks": [
+      {
+        "phase": "Product Definition",
+        "items": [
+          "Define app purpose",
+          "Identify users and use cases",
+          "Define MVP scope",
+          "Prepare feature list",
+          "Confirm timeline"
+        ]
+      },
+      {
+        "phase": "UX and UI Design",
+        "items": [
+          "Create user flows",
+          "Prepare wireframes",
+          "Design key screens",
+          "Review user experience",
+          "Finalize design assets"
+        ]
+      },
+      {
+        "phase": "Development Setup",
+        "items": [
+          "Set up repository",
+          "Configure environments",
+          "Set coding standards",
+          "Set up backend/API access",
+          "Prepare database or services"
+        ]
+      },
+      {
+        "phase": "App Development",
+        "items": [
+          "Build authentication",
+          "Build core app screens",
+          "Integrate API/services",
+          "Implement notifications if needed",
+          "Complete settings/profile features"
+        ]
+      },
+      {
+        "phase": "Testing",
+        "items": [
+          "Functional testing",
+          "Device testing",
+          "Performance testing",
+          "Security review",
+          "Bug fixing"
+        ]
+      },
+      {
+        "phase": "Release",
+        "items": [
+          "Prepare app store assets",
+          "Prepare privacy/policy texts",
+          "Submit to app stores",
+          "Release production version",
+          "Monitor feedback and crashes"
+        ]
+      }
+    ],
+    "risks": [
+      "Changing feature scope",
+      "App store rejection",
+      "API instability",
+      "Device compatibility issues",
+      "Delays in testing"
+    ]
+  },
+  {
+    "title": "Office Relocation",
+    "description": "A project to move office operations from one location to another with minimal business disruption.",
+    "wizard_summary": "Creates an office relocation project covering planning, logistics, vendors, IT readiness, physical move, and operational stabilization.",
+    "phases": [
+      "Planning",
+      "Site Preparation",
+      "Vendor and Logistics Coordination",
+      "IT and Facilities Readiness",
+      "Move Execution",
+      "Stabilization"
+    ],
+    "milestones": [
+      "New site ready",
+      "IT infrastructure ready",
+      "Move completed",
+      "Operations resumed",
+      "Post-move closure completed"
+    ],
+    "tasks": [
+      {
+        "phase": "Planning",
+        "items": [
+          "Confirm relocation objectives",
+          "Define relocation date",
+          "Prepare move scope",
+          "Identify teams affected",
+          "Assign move coordinator"
+        ]
+      },
+      {
+        "phase": "Site Preparation",
+        "items": [
+          "Review new office layout",
+          "Confirm furniture requirements",
+          "Confirm utilities readiness",
+          "Confirm security and access setup",
+          "Confirm health and safety checks"
+        ]
+      },
+      {
+        "phase": "Vendor and Logistics Coordination",
+        "items": [
+          "Select moving company",
+          "Prepare packing plan",
+          "Confirm transport schedule",
+          "Confirm disposal/storage needs",
+          "Communicate move instructions"
+        ]
+      },
+      {
+        "phase": "IT and Facilities Readiness",
+        "items": [
+          "Prepare network setup",
+          "Prepare internet and telephony",
+          "Move servers/equipment if needed",
+          "Set up printers and meeting rooms",
+          "Validate workstation readiness"
+        ]
+      },
+      {
+        "phase": "Move Execution",
+        "items": [
+          "Pack departmental assets",
+          "Label boxes and equipment",
+          "Perform physical move",
+          "Install teams in new office",
+          "Verify critical services"
+        ]
+      },
+      {
+        "phase": "Stabilization",
+        "items": [
+          "Resolve post-move issues",
+          "Confirm staff readiness",
+          "Close vendor items",
+          "Collect feedback",
+          "Finalize move report"
+        ]
+      }
+    ],
+    "risks": [
+      "Delays in new site readiness",
+      "Equipment damage",
+      "Network or internet downtime",
+      "Missing items during move",
+      "Business disruption longer than planned"
+    ]
+  },
+  {
+    "title": "Marketing Campaign",
+    "description": "A project to plan and execute a marketing campaign across digital, offline, or mixed channels.",
+    "wizard_summary": "Creates a campaign project with strategy, content preparation, creative production, launch, monitoring, and closure tasks.",
+    "phases": [
+      "Campaign Planning",
+      "Messaging and Creative Brief",
+      "Asset Production",
+      "Campaign Setup",
+      "Launch and Monitoring",
+      "Reporting and Closure"
+    ],
+    "milestones": [
+      "Campaign plan approved",
+      "Creative approved",
+      "Campaign launched",
+      "Mid-campaign review completed",
+      "Final report completed"
+    ],
+    "tasks": [
+      {
+        "phase": "Campaign Planning",
+        "items": [
+          "Define campaign objective",
+          "Define audience segments",
+          "Set KPIs",
+          "Confirm channels",
+          "Approve budget"
+        ]
+      },
+      {
+        "phase": "Messaging and Creative Brief",
+        "items": [
+          "Define key campaign message",
+          "Prepare creative brief",
+          "Define content themes",
+          "Confirm offer or CTA",
+          "Approve campaign concept"
+        ]
+      },
+      {
+        "phase": "Asset Production",
+        "items": [
+          "Design visuals",
+          "Write campaign copy",
+          "Prepare landing pages",
+          "Prepare email or social assets",
+          "Review and approve materials"
+        ]
+      },
+      {
+        "phase": "Campaign Setup",
+        "items": [
+          "Configure ad accounts",
+          "Configure targeting",
+          "Set campaign schedules",
+          "Set tracking links",
+          "Test forms or landing pages"
+        ]
+      },
+      {
+        "phase": "Launch and Monitoring",
+        "items": [
+          "Launch campaign",
+          "Monitor daily performance",
+          "Adjust budget allocation",
+          "Optimize messaging/targeting",
+          "Track leads or conversions"
+        ]
+      },
+      {
+        "phase": "Reporting and Closure",
+        "items": [
+          "Compile performance results",
+          "Compare KPIs vs targets",
+          "Document lessons learned",
+          "Archive assets",
+          "Present final report"
+        ]
+      }
+    ],
+    "risks": [
+      "Weak targeting",
+      "Delayed creative approvals",
+      "Tracking setup errors",
+      "Low conversion rates",
+      "Budget overspend"
+    ]
+  },
+  {
+    "title": "Employee Onboarding Program Setup",
+    "description": "A project to create or improve a standardized onboarding program for new employees.",
+    "wizard_summary": "Creates a project for designing onboarding structure, documents, responsibilities, training, and rollout.",
+    "phases": [
+      "Assessment",
+      "Program Design",
+      "Materials Preparation",
+      "Workflow and Tools Setup",
+      "Pilot Rollout",
+      "Full Rollout"
+    ],
+    "milestones": [
+      "Process design approved",
+      "Materials ready",
+      "Pilot completed",
+      "Final process approved",
+      "Program launched"
+    ],
+    "tasks": [
+      {
+        "phase": "Assessment",
+        "items": [
+          "Review current onboarding process",
+          "Identify gaps",
+          "Gather stakeholder input",
+          "Define onboarding goals",
+          "Confirm scope"
+        ]
+      },
+      {
+        "phase": "Program Design",
+        "items": [
+          "Define onboarding stages",
+          "Define department responsibilities",
+          "Prepare onboarding checklist",
+          "Define orientation content",
+          "Define probation follow-up steps"
+        ]
+      },
+      {
+        "phase": "Materials Preparation",
+        "items": [
+          "Prepare welcome materials",
+          "Prepare policies and handbook",
+          "Prepare training schedule",
+          "Prepare manager guides",
+          "Prepare HR forms"
+        ]
+      },
+      {
+        "phase": "Workflow and Tools Setup",
+        "items": [
+          "Configure onboarding workflow",
+          "Define approvals and notifications",
+          "Set up document repository",
+          "Assign owners",
+          "Prepare tracking method"
+        ]
+      },
+      {
+        "phase": "Pilot Rollout",
+        "items": [
+          "Run pilot onboarding batch",
+          "Collect new hire feedback",
+          "Collect manager feedback",
+          "Adjust checklists and materials",
+          "Approve final process"
+        ]
+      },
+      {
+        "phase": "Full Rollout",
+        "items": [
+          "Launch full onboarding program",
+          "Train HR and managers",
+          "Monitor completion",
+          "Track onboarding KPIs",
+          "Close setup project"
+        ]
+      }
+    ],
+    "risks": [
+      "Incomplete ownership between departments",
+      "Missing onboarding documents",
+      "Poor manager involvement",
+      "Low process adoption",
+      "Inconsistent execution"
+    ]
+  },
+  {
+    "title": "Product Launch",
+    "description": "A project to prepare and release a new product to market.",
+    "wizard_summary": "Creates a launch project covering planning, readiness, operational setup, launch execution, and post-launch review.",
+    "phases": [
+      "Launch Planning",
+      "Readiness Preparation",
+      "Sales and Operations Readiness",
+      "Marketing Preparation",
+      "Launch Execution",
+      "Post-Launch Review"
+    ],
+    "milestones": [
+      "Launch plan approved",
+      "Product ready for market",
+      "Internal teams trained",
+      "Product launched",
+      "Post-launch review completed"
+    ],
+    "tasks": [
+      {
+        "phase": "Launch Planning",
+        "items": [
+          "Define product positioning",
+          "Define target market",
+          "Define launch goals",
+          "Identify launch dependencies",
+          "Prepare launch plan"
+        ]
+      },
+      {
+        "phase": "Readiness Preparation",
+        "items": [
+          "Confirm product readiness",
+          "Confirm pricing",
+          "Confirm packaging or presentation",
+          "Confirm sales materials",
+          "Confirm internal approvals"
+        ]
+      },
+      {
+        "phase": "Sales and Operations Readiness",
+        "items": [
+          "Train sales team",
+          "Train support team",
+          "Prepare FAQs",
+          "Confirm inventory or delivery readiness",
+          "Confirm reporting measures"
+        ]
+      },
+      {
+        "phase": "Marketing Preparation",
+        "items": [
+          "Prepare launch campaign",
+          "Prepare website/product page",
+          "Prepare social/email assets",
+          "Prepare PR or announcement",
+          "Review launch messaging"
+        ]
+      },
+      {
+        "phase": "Launch Execution",
+        "items": [
+          "Release product",
+          "Activate campaign",
+          "Monitor orders or inquiries",
+          "Resolve launch-day issues",
+          "Support internal teams"
+        ]
+      },
+      {
+        "phase": "Post-Launch Review",
+        "items": [
+          "Review performance results",
+          "Gather customer feedback",
+          "Identify issues/opportunities",
+          "Agree improvement actions",
+          "Close launch project"
+        ]
+      }
+    ],
+    "risks": [
+      "Product not fully ready",
+      "Pricing confusion",
+      "Sales team not prepared",
+      "Supply/logistics delays",
+      "Weak launch communications"
+    ]
+  },
+  {
+    "title": "Business Process Improvement",
+    "description": "A project to review and improve an existing business process for efficiency, quality, control, or speed.",
+    "wizard_summary": "Creates an improvement project with current-state assessment, redesign, pilot implementation, and performance review.",
+    "phases": [
+      "Initiation and Scope",
+      "Current State Analysis",
+      "Future State Design",
+      "Implementation Planning",
+      "Pilot and Rollout",
+      "Review and Stabilization"
+    ],
+    "milestones": [
+      "Current-state analysis completed",
+      "Future-state approved",
+      "Pilot completed",
+      "Process rolled out",
+      "KPI review completed"
+    ],
+    "tasks": [
+      {
+        "phase": "Initiation and Scope",
+        "items": [
+          "Define process in scope",
+          "Define business issue",
+          "Identify stakeholders",
+          "Set success metrics",
+          "Approve improvement charter"
+        ]
+      },
+      {
+        "phase": "Current State Analysis",
+        "items": [
+          "Document current workflow",
+          "Identify bottlenecks",
+          "Gather baseline data",
+          "Identify pain points",
+          "Validate findings"
+        ]
+      },
+      {
+        "phase": "Future State Design",
+        "items": [
+          "Design improved process",
+          "Define controls and approvals",
+          "Define roles and responsibilities",
+          "Identify system/tool changes",
+          "Review future-state design"
+        ]
+      },
+      {
+        "phase": "Implementation Planning",
+        "items": [
+          "Define action plan",
+          "Assign owners",
+          "Prepare training or communications",
+          "Prepare system/config changes",
+          "Confirm pilot scope"
+        ]
+      },
+      {
+        "phase": "Pilot and Rollout",
+        "items": [
+          "Execute pilot",
+          "Monitor pilot results",
+          "Resolve issues",
+          "Roll out improved process",
+          "Support adoption"
+        ]
+      },
+      {
+        "phase": "Review and Stabilization",
+        "items": [
+          "Measure KPI improvement",
+          "Gather feedback",
+          "Adjust process documents",
+          "Finalize SOPs",
+          "Close project"
+        ]
+      }
+    ],
+    "risks": [
+      "Resistance to change",
+      "Weak stakeholder involvement",
+      "Poor baseline data",
+      "Unclear ownership",
+      "Process changes not sustained"
+    ]
+  },
+  {
+    "title": "Infrastructure Upgrade",
+    "description": "A project to upgrade servers, networks, storage, security, or core IT infrastructure.",
+    "wizard_summary": "Creates an infrastructure project with assessment, design, procurement, implementation, testing, and transition tasks.",
+    "phases": [
+      "Assessment",
+      "Design and Planning",
+      "Procurement and Preparation",
+      "Implementation",
+      "Testing",
+      "Handover and Closure"
+    ],
+    "milestones": [
+      "Design approved",
+      "Procurement completed",
+      "Implementation completed",
+      "Testing signed off",
+      "Handover completed"
+    ],
+    "tasks": [
+      {
+        "phase": "Assessment",
+        "items": [
+          "Assess current environment",
+          "Identify capacity/performance gaps",
+          "Define target architecture",
+          "Confirm scope",
+          "Prepare business justification"
+        ]
+      },
+      {
+        "phase": "Design and Planning",
+        "items": [
+          "Prepare technical design",
+          "Define upgrade path",
+          "Define downtime requirements",
+          "Define rollback approach",
+          "Approve implementation plan"
+        ]
+      },
+      {
+        "phase": "Procurement and Preparation",
+        "items": [
+          "Finalize BOM or requirements",
+          "Obtain quotations",
+          "Select vendors",
+          "Prepare environments",
+          "Confirm delivery schedule"
+        ]
+      },
+      {
+        "phase": "Implementation",
+        "items": [
+          "Install or configure components",
+          "Migrate services/data",
+          "Apply security configurations",
+          "Update monitoring",
+          "Execute change activities"
+        ]
+      },
+      {
+        "phase": "Testing",
+        "items": [
+          "Validate performance",
+          "Validate security",
+          "Test failover/backup if relevant",
+          "Test business services",
+          "Resolve defects"
+        ]
+      },
+      {
+        "phase": "Handover and Closure",
+        "items": [
+          "Update documentation",
+          "Train support team",
+          "Handover to operations",
+          "Monitor stabilization period",
+          "Close project"
+        ]
+      }
+    ],
+    "risks": [
+      "Hardware delivery delays",
+      "Downtime overruns",
+      "Compatibility problems",
+      "Insufficient rollback readiness",
+      "Unexpected performance issues"
+    ]
+  },
+  {
+    "title": "Training Program Development",
+    "description": "A project to design and roll out a structured training program for employees, customers, or partners.",
+    "wizard_summary": "Creates a training project with needs analysis, curriculum design, material preparation, pilot delivery, and rollout tasks.",
+    "phases": [
+      "Needs Analysis",
+      "Curriculum Design",
+      "Content Development",
+      "Logistics and Setup",
+      "Pilot Delivery",
+      "Rollout and Review"
+    ],
+    "milestones": [
+      "Needs analysis completed",
+      "Curriculum approved",
+      "Training materials ready",
+      "Pilot completed",
+      "Program launched"
+    ],
+    "tasks": [
+      {
+        "phase": "Needs Analysis",
+        "items": [
+          "Define target audience",
+          "Identify skill gaps",
+          "Define learning objectives",
+          "Identify delivery method",
+          "Confirm scope and timeline"
+        ]
+      },
+      {
+        "phase": "Curriculum Design",
+        "items": [
+          "Define modules",
+          "Define session structure",
+          "Define learning path",
+          "Define assessments",
+          "Review curriculum"
+        ]
+      },
+      {
+        "phase": "Content Development",
+        "items": [
+          "Prepare slides and materials",
+          "Prepare exercises",
+          "Prepare instructor guide",
+          "Prepare participant handouts",
+          "Review content quality"
+        ]
+      },
+      {
+        "phase": "Logistics and Setup",
+        "items": [
+          "Schedule sessions",
+          "Book venues or online tools",
+          "Assign trainers",
+          "Prepare registration process",
+          "Confirm communication plan"
+        ]
+      },
+      {
+        "phase": "Pilot Delivery",
+        "items": [
+          "Deliver pilot session",
+          "Collect participant feedback",
+          "Assess learning outcomes",
+          "Improve materials",
+          "Approve final version"
+        ]
+      },
+      {
+        "phase": "Rollout and Review",
+        "items": [
+          "Launch full program",
+          "Track attendance/completion",
+          "Measure effectiveness",
+          "Document lessons learned",
+          "Close project"
+        ]
+      }
+    ],
+    "risks": [
+      "Unclear training objectives",
+      "Weak attendance",
+      "Poor content quality",
+      "Scheduling conflicts",
+      "Low engagement from participants"
+    ]
+  }
+]

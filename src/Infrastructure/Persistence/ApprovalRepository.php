@@ -9,9 +9,29 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Persistence;
 
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\ApprovalRepositoryInterface;
+use Coordina\Platform\Contracts\NotificationRepositoryInterface;
 use RuntimeException;
 
-final class ApprovalRepository extends AbstractRepository {
+final class ApprovalRepository extends AbstractRepository implements ApprovalRepositoryInterface {
+	/**
+	 * Shared notifications repository.
+	 *
+	 * @var NotificationRepositoryInterface
+	 */
+	private $notifications;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AccessPolicyInterface|null         $access Shared access policy.
+	 * @param NotificationRepositoryInterface|null $notifications Shared notifications repository.
+	 */
+	public function __construct( ?AccessPolicyInterface $access = null, ?NotificationRepositoryInterface $notifications = null ) {
+		parent::__construct( $access );
+		$this->notifications = $notifications ?: new NotificationRepository();
+	}
 	/**
 	 * Get paginated approvals.
 	 *
@@ -598,7 +618,7 @@ final class ApprovalRepository extends AbstractRepository {
 			: sprintf( __( '%1$s is waiting for your approval.', 'coordina' ), $object_label ?: $object_type_label );
 		$url              = $this->approval_admin_url( $object_type, $object_id );
 
-		( new NotificationRepository() )->create( $approver_user_id, 'approval-requested', $title, $body, $url );
+		$this->notifications->create( $approver_user_id, 'approval-requested', $title, $body, $url );
 	}
 
 	/**

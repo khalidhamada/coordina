@@ -9,16 +9,17 @@ declare(strict_types=1);
 
 namespace Coordina\Core;
 
-use Coordina\Infrastructure\Capabilities\CapabilityManager;
-use Coordina\Infrastructure\Database\SchemaManager;
+use Coordina\Platform\Bootstrap\ActivationBootstrap;
 
 final class Activator {
 	/**
 	 * Run activation tasks.
 	 */
 	public static function activate(): void {
-		( new SchemaManager() )->install();
-		( new CapabilityManager() )->activate();
+		$container = ActivationBootstrap::container();
+
+		$container->get( 'schema' )->install();
+		$container->get( 'capabilities' )->activate();
 
 		update_option( 'coordina_version', COORDINA_VERSION, false );
 		flush_rewrite_rules();

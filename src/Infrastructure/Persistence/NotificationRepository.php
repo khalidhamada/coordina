@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Persistence;
 
-final class NotificationRepository extends AbstractRepository {
+use Coordina\Platform\Contracts\NotificationRepositoryInterface;
+
+final class NotificationRepository extends AbstractRepository implements NotificationRepositoryInterface {
 	/**
 	 * Fetch notifications for a user.
 	 *

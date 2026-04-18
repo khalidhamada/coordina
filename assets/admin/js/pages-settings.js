@@ -7,6 +7,16 @@ return;
 
 const { state, escapeHtml, __, nice, pageHeading, optionList, settingsTextarea, settingsCheckbox, settingsHint } = app;
 
+function settingsChoices(path, fallback) {
+	const choices = state.shell && state.shell.settingsMeta && state.shell.settingsMeta.choices;
+	const values = choices && Array.isArray(choices[path]) ? choices[path] : fallback;
+	return Array.isArray(values) ? values : (fallback || []);
+}
+
+function settingsOptionList(path, fallback, selected) {
+	return optionList(settingsChoices(path, fallback), selected);
+}
+
 function settingsPageLegacy() {
 	const settings = state.settings || {};
 	const general = settings.general || {};
@@ -18,36 +28,36 @@ function settingsPageLegacy() {
 	const portal = settings.portal || {};
 	const data = settings.data || {};
 	const automation = settings.automation || {};
-	const landingOptions = optionList(['coordina-my-work', 'coordina-dashboard', 'coordina-projects'], general.default_landing_page || 'coordina-my-work');
-	const dateOptions = optionList(['site', 'relative', 'absolute'], general.date_display || 'site');
-	const tabOptions = optionList(['overview', 'work', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity'], general.workspace_default_tab || 'overview');
-	const taskGroupLabelOptions = optionList(['stage', 'phase', 'bucket'], general.task_group_label || 'stage');
+	const landingOptions = settingsOptionList('general.default_landing_page', ['coordina-my-work', 'coordina-dashboard', 'coordina-projects'], general.default_landing_page || 'coordina-my-work');
+	const dateOptions = settingsOptionList('general.date_display', ['site', 'relative', 'absolute'], general.date_display || 'site');
+	const tabOptions = settingsOptionList('general.workspace_default_tab', ['overview', 'work', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity'], general.workspace_default_tab || 'overview');
+	const taskGroupLabelOptions = settingsOptionList('general.task_group_label', ['stage', 'phase', 'bucket'], general.task_group_label || 'stage');
 	const activityPageSizeValue = Number(general.activity_page_size || 10);
 	const accessOptions = optionList(dropdowns.visibilityLevels || ['team', 'private', 'public'], access.project_access_default || 'team');
-	const portalAccessOptions = optionList(['disabled', 'requesters', 'logged-in-users'], access.portal_access_default || 'requesters');
-	const workspaceVisibilityOptions = optionList(['members-only', 'members-and-assignees', 'all-coordina-users'], access.project_workspace_visibility || 'members-and-assignees');
-	const projectListVisibilityOptions = optionList(['assigned-projects-only', 'all-accessible-projects', 'all-projects'], access.project_list_visibility || 'all-accessible-projects');
-	const navigationScopeOptions = optionList(['dashboard-my-work-only', 'dashboard-my-work-projects', 'dashboard-my-work-projects-tasks'], access.non_admin_navigation_scope || 'dashboard-my-work-projects');
-	const projectTaskVisibilityOptions = optionList(['assigned-tasks-only', 'all-tasks-in-accessible-projects'], access.project_task_visibility || 'all-tasks-in-accessible-projects');
-	const taskEditPolicyOptions = optionList(['assignee-only', 'assignee-or-reporter', 'all-project-members'], access.task_edit_policy || 'assignee-only');
+	const portalAccessOptions = settingsOptionList('access.portal_access_default', ['disabled', 'requesters', 'logged-in-users'], access.portal_access_default || 'requesters');
+	const workspaceVisibilityOptions = settingsOptionList('access.project_workspace_visibility', ['members-only', 'members-and-assignees', 'all-coordina-users'], access.project_workspace_visibility || 'members-and-assignees');
+	const projectListVisibilityOptions = settingsOptionList('access.project_list_visibility', ['assigned-projects-only', 'all-accessible-projects', 'all-projects'], access.project_list_visibility || 'all-accessible-projects');
+	const navigationScopeOptions = settingsOptionList('access.non_admin_navigation_scope', ['dashboard-my-work-only', 'dashboard-my-work-projects', 'dashboard-my-work-projects-tasks'], access.non_admin_navigation_scope || 'dashboard-my-work-projects');
+	const projectTaskVisibilityOptions = settingsOptionList('access.project_task_visibility', ['assigned-tasks-only', 'all-tasks-in-accessible-projects'], access.project_task_visibility || 'all-tasks-in-accessible-projects');
+	const taskEditPolicyOptions = settingsOptionList('access.task_edit_policy', ['assignee-only', 'assignee-or-reporter', 'all-project-members'], access.task_edit_policy || 'assignee-only');
 	const attachmentRules = access.file_attachment_rules || {};
-	const projectAttachmentOptions = optionList(['project-leads-only', 'project-members'], attachmentRules.project || 'project-leads-only');
-	const taskAttachmentOptions = optionList(['assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], attachmentRules.task || 'assignee-and-project-leads');
-	const milestoneAttachmentOptions = optionList(['owner-and-project-leads', 'project-members'], attachmentRules.milestone || 'owner-and-project-leads');
-	const riskAttachmentOptions = optionList(['owner-and-project-leads', 'project-members'], attachmentRules.risk_issue || 'owner-and-project-leads');
-	const requestAttachmentOptions = optionList(['request-participants', 'triage-only'], attachmentRules.request || 'request-participants');
+	const projectAttachmentOptions = settingsOptionList('access.file_attachment_rules.project', ['project-leads-only', 'project-members'], attachmentRules.project || 'project-leads-only');
+	const taskAttachmentOptions = settingsOptionList('access.file_attachment_rules.task', ['assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], attachmentRules.task || 'assignee-and-project-leads');
+	const milestoneAttachmentOptions = settingsOptionList('access.file_attachment_rules.milestone', ['owner-and-project-leads', 'project-members'], attachmentRules.milestone || 'owner-and-project-leads');
+	const riskAttachmentOptions = settingsOptionList('access.file_attachment_rules.risk_issue', ['owner-and-project-leads', 'project-members'], attachmentRules.risk_issue || 'owner-and-project-leads');
+	const requestAttachmentOptions = settingsOptionList('access.file_attachment_rules.request', ['request-participants', 'triage-only'], attachmentRules.request || 'request-participants');
 	const checklistManageRules = access.checklist_manage_rules || {};
 	const checklistToggleRules = access.checklist_toggle_rules || {};
-	const projectChecklistOptions = optionList(['project-leads-only', 'project-members'], checklistManageRules.project || 'project-leads-only');
-	const projectChecklistToggleOptions = optionList(['project-leads-only', 'project-members'], checklistToggleRules.project || 'project-leads-only');
-	const taskChecklistManageOptions = optionList(['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistManageRules.task || 'project-leads-only');
-	const taskChecklistToggleOptions = optionList(['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistToggleRules.task || 'assignee-and-project-leads');
-	const milestoneChecklistManageOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.milestone || 'project-leads-only');
-	const milestoneChecklistToggleOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.milestone || 'owner-and-project-leads');
-	const riskChecklistManageOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.risk_issue || 'project-leads-only');
-	const riskChecklistToggleOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.risk_issue || 'owner-and-project-leads');
-	const conversionOptions = optionList(['task', 'project'], workflows.request_conversion_default || 'task');
-	const requesterVisibilityOptions = optionList(['own-requests', 'project-requests', 'none'], portal.requester_visibility || 'own-requests');
+	const projectChecklistOptions = settingsOptionList('access.checklist_manage_rules.project', ['project-leads-only', 'project-members'], checklistManageRules.project || 'project-leads-only');
+	const projectChecklistToggleOptions = settingsOptionList('access.checklist_toggle_rules.project', ['project-leads-only', 'project-members'], checklistToggleRules.project || 'project-leads-only');
+	const taskChecklistManageOptions = settingsOptionList('access.checklist_manage_rules.task', ['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistManageRules.task || 'project-leads-only');
+	const taskChecklistToggleOptions = settingsOptionList('access.checklist_toggle_rules.task', ['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistToggleRules.task || 'assignee-and-project-leads');
+	const milestoneChecklistManageOptions = settingsOptionList('access.checklist_manage_rules.milestone', ['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.milestone || 'project-leads-only');
+	const milestoneChecklistToggleOptions = settingsOptionList('access.checklist_toggle_rules.milestone', ['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.milestone || 'owner-and-project-leads');
+	const riskChecklistManageOptions = settingsOptionList('access.checklist_manage_rules.risk_issue', ['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.risk_issue || 'project-leads-only');
+	const riskChecklistToggleOptions = settingsOptionList('access.checklist_toggle_rules.risk_issue', ['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.risk_issue || 'owner-and-project-leads');
+	const conversionOptions = settingsOptionList('workflows.request_conversion_default', ['task', 'project'], workflows.request_conversion_default || 'task');
+	const requesterVisibilityOptions = settingsOptionList('portal.requester_visibility', ['own-requests', 'project-requests', 'none'], portal.requester_visibility || 'own-requests');
 	const dropdownFields = [
 		settingsTextarea(__('Project statuses', 'coordina'), 'dropdowns.statuses.projects', statuses.projects || []),
 		settingsTextarea(__('Task statuses', 'coordina'), 'dropdowns.statuses.tasks', statuses.tasks || []),
@@ -143,39 +153,39 @@ function settingsPage() {
 	const notifications = settings.notifications || {};
 	const portal = settings.portal || {};
 	const data = settings.data || {};
-	const landingOptions = optionList(['coordina-my-work', 'coordina-dashboard', 'coordina-projects'], general.default_landing_page || 'coordina-my-work');
-	const dateOptions = optionList(['site', 'relative', 'absolute'], general.date_display || 'site');
+	const landingOptions = settingsOptionList('general.default_landing_page', ['coordina-my-work', 'coordina-dashboard', 'coordina-projects'], general.default_landing_page || 'coordina-my-work');
+	const dateOptions = settingsOptionList('general.date_display', ['site', 'relative', 'absolute'], general.date_display || 'site');
 	const colorSourceOptions = `<option value="custom" ${colorSource === 'custom' ? 'selected' : ''}>${escapeHtml(__('Coordina colors', 'coordina'))}</option><option value="wordpress" ${colorSource === 'wordpress' ? 'selected' : ''}>${escapeHtml(__('WordPress primary color', 'coordina'))}</option>`;
 	const primaryColorOptions = primaryPalette.map((option) => `<option value="${option.key}" ${primaryColor === option.key ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).concat([`<option value="custom" ${primaryColor === 'custom' ? 'selected' : ''}>${escapeHtml(__('Custom', 'coordina'))}</option>`]).join('');
 	const accentColorOptions = accentPalette.map((option) => `<option value="${option.key}" ${accentColor === option.key ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).concat([`<option value="custom" ${accentColor === 'custom' ? 'selected' : ''}>${escapeHtml(__('Custom', 'coordina'))}</option>`]).join('');
 	const themeModeOptions = `<option value="auto" ${themeMode === 'auto' ? 'selected' : ''}>${escapeHtml(__('Automatic', 'coordina'))}</option><option value="light" ${themeMode === 'light' ? 'selected' : ''}>${escapeHtml(__('Light', 'coordina'))}</option><option value="dark" ${themeMode === 'dark' ? 'selected' : ''}>${escapeHtml(__('Dark', 'coordina'))}</option>`;
-	const tabOptions = optionList(['overview', 'work', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity'], general.workspace_default_tab || 'overview');
-	const taskGroupLabelOptions = optionList(['stage', 'phase', 'bucket'], general.task_group_label || 'stage');
+	const tabOptions = settingsOptionList('general.workspace_default_tab', ['overview', 'work', 'milestones', 'risks-issues', 'approvals', 'files', 'discussion', 'activity'], general.workspace_default_tab || 'overview');
+	const taskGroupLabelOptions = settingsOptionList('general.task_group_label', ['stage', 'phase', 'bucket'], general.task_group_label || 'stage');
 	const accessOptions = optionList(dropdowns.visibilityLevels || ['team', 'private', 'public'], access.project_access_default || 'team');
-	const portalAccessOptions = optionList(['disabled', 'requesters', 'logged-in-users'], access.portal_access_default || 'requesters');
-	const workspaceVisibilityOptions = optionList(['members-only', 'members-and-assignees', 'all-coordina-users'], access.project_workspace_visibility || 'members-and-assignees');
-	const projectListVisibilityOptions = optionList(['assigned-projects-only', 'all-accessible-projects', 'all-projects'], access.project_list_visibility || 'all-accessible-projects');
-	const navigationScopeOptions = optionList(['dashboard-my-work-only', 'dashboard-my-work-projects', 'dashboard-my-work-projects-tasks'], access.non_admin_navigation_scope || 'dashboard-my-work-projects');
-	const projectTaskVisibilityOptions = optionList(['assigned-tasks-only', 'all-tasks-in-accessible-projects'], access.project_task_visibility || 'all-tasks-in-accessible-projects');
-	const taskEditPolicyOptions = optionList(['assignee-only', 'assignee-or-reporter', 'all-project-members'], access.task_edit_policy || 'assignee-only');
+	const portalAccessOptions = settingsOptionList('access.portal_access_default', ['disabled', 'requesters', 'logged-in-users'], access.portal_access_default || 'requesters');
+	const workspaceVisibilityOptions = settingsOptionList('access.project_workspace_visibility', ['members-only', 'members-and-assignees', 'all-coordina-users'], access.project_workspace_visibility || 'members-and-assignees');
+	const projectListVisibilityOptions = settingsOptionList('access.project_list_visibility', ['assigned-projects-only', 'all-accessible-projects', 'all-projects'], access.project_list_visibility || 'all-accessible-projects');
+	const navigationScopeOptions = settingsOptionList('access.non_admin_navigation_scope', ['dashboard-my-work-only', 'dashboard-my-work-projects', 'dashboard-my-work-projects-tasks'], access.non_admin_navigation_scope || 'dashboard-my-work-projects');
+	const projectTaskVisibilityOptions = settingsOptionList('access.project_task_visibility', ['assigned-tasks-only', 'all-tasks-in-accessible-projects'], access.project_task_visibility || 'all-tasks-in-accessible-projects');
+	const taskEditPolicyOptions = settingsOptionList('access.task_edit_policy', ['assignee-only', 'assignee-or-reporter', 'all-project-members'], access.task_edit_policy || 'assignee-only');
 	const attachmentRules = access.file_attachment_rules || {};
-	const projectAttachmentOptions = optionList(['project-leads-only', 'project-members'], attachmentRules.project || 'project-leads-only');
-	const taskAttachmentOptions = optionList(['assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], attachmentRules.task || 'assignee-and-project-leads');
-	const milestoneAttachmentOptions = optionList(['owner-and-project-leads', 'project-members'], attachmentRules.milestone || 'owner-and-project-leads');
-	const riskAttachmentOptions = optionList(['owner-and-project-leads', 'project-members'], attachmentRules.risk_issue || 'owner-and-project-leads');
-	const requestAttachmentOptions = optionList(['request-participants', 'triage-only'], attachmentRules.request || 'request-participants');
+	const projectAttachmentOptions = settingsOptionList('access.file_attachment_rules.project', ['project-leads-only', 'project-members'], attachmentRules.project || 'project-leads-only');
+	const taskAttachmentOptions = settingsOptionList('access.file_attachment_rules.task', ['assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], attachmentRules.task || 'assignee-and-project-leads');
+	const milestoneAttachmentOptions = settingsOptionList('access.file_attachment_rules.milestone', ['owner-and-project-leads', 'project-members'], attachmentRules.milestone || 'owner-and-project-leads');
+	const riskAttachmentOptions = settingsOptionList('access.file_attachment_rules.risk_issue', ['owner-and-project-leads', 'project-members'], attachmentRules.risk_issue || 'owner-and-project-leads');
+	const requestAttachmentOptions = settingsOptionList('access.file_attachment_rules.request', ['request-participants', 'triage-only'], attachmentRules.request || 'request-participants');
 	const checklistManageRules = access.checklist_manage_rules || {};
 	const checklistToggleRules = access.checklist_toggle_rules || {};
-	const projectChecklistOptions = optionList(['project-leads-only', 'project-members'], checklistManageRules.project || 'project-leads-only');
-	const projectChecklistToggleOptions = optionList(['project-leads-only', 'project-members'], checklistToggleRules.project || 'project-leads-only');
-	const taskChecklistManageOptions = optionList(['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistManageRules.task || 'project-leads-only');
-	const taskChecklistToggleOptions = optionList(['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistToggleRules.task || 'assignee-and-project-leads');
-	const milestoneChecklistManageOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.milestone || 'project-leads-only');
-	const milestoneChecklistToggleOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.milestone || 'owner-and-project-leads');
-	const riskChecklistManageOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.risk_issue || 'project-leads-only');
-	const riskChecklistToggleOptions = optionList(['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.risk_issue || 'owner-and-project-leads');
-	const conversionOptions = optionList(['task', 'project'], workflows.request_conversion_default || 'task');
-	const requesterVisibilityOptions = optionList(['own-requests', 'project-requests', 'none'], portal.requester_visibility || 'own-requests');
+	const projectChecklistOptions = settingsOptionList('access.checklist_manage_rules.project', ['project-leads-only', 'project-members'], checklistManageRules.project || 'project-leads-only');
+	const projectChecklistToggleOptions = settingsOptionList('access.checklist_toggle_rules.project', ['project-leads-only', 'project-members'], checklistToggleRules.project || 'project-leads-only');
+	const taskChecklistManageOptions = settingsOptionList('access.checklist_manage_rules.task', ['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistManageRules.task || 'project-leads-only');
+	const taskChecklistToggleOptions = settingsOptionList('access.checklist_toggle_rules.task', ['project-leads-only', 'assignee-and-project-leads', 'task-participants-and-project-leads', 'project-members'], checklistToggleRules.task || 'assignee-and-project-leads');
+	const milestoneChecklistManageOptions = settingsOptionList('access.checklist_manage_rules.milestone', ['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.milestone || 'project-leads-only');
+	const milestoneChecklistToggleOptions = settingsOptionList('access.checklist_toggle_rules.milestone', ['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.milestone || 'owner-and-project-leads');
+	const riskChecklistManageOptions = settingsOptionList('access.checklist_manage_rules.risk_issue', ['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistManageRules.risk_issue || 'project-leads-only');
+	const riskChecklistToggleOptions = settingsOptionList('access.checklist_toggle_rules.risk_issue', ['project-leads-only', 'owner-and-project-leads', 'project-members'], checklistToggleRules.risk_issue || 'owner-and-project-leads');
+	const conversionOptions = settingsOptionList('workflows.request_conversion_default', ['task', 'project'], workflows.request_conversion_default || 'task');
+	const requesterVisibilityOptions = settingsOptionList('portal.requester_visibility', ['own-requests', 'project-requests', 'none'], portal.requester_visibility || 'own-requests');
 	const statusFields = [
 		settingsField(__('Project statuses', 'coordina'), `<textarea data-setting-path="dropdowns.statuses.projects" rows="4">${escapeHtml(Array.isArray(statuses.projects) ? statuses.projects.join('\n') : '')}</textarea>`, __('One value per line. Used for project lifecycle states.', 'coordina')),
 		settingsField(__('Task statuses', 'coordina'), `<textarea data-setting-path="dropdowns.statuses.tasks" rows="4">${escapeHtml(Array.isArray(statuses.tasks) ? statuses.tasks.join('\n') : '')}</textarea>`, __('One value per line. Used for day-to-day execution flow.', 'coordina')),

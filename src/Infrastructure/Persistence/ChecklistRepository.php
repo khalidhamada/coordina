@@ -9,16 +9,10 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Persistence;
 
+use Coordina\Platform\Contracts\ChecklistRepositoryInterface;
 use RuntimeException;
 
-final class ChecklistRepository extends AbstractRepository {
-	/**
-	 * Supported checklist contexts.
-	 *
-	 * @var string[]
-	 */
-	private const SUPPORTED_CONTEXTS = array( 'project', 'task', 'milestone', 'risk', 'issue' );
-
+final class ChecklistRepository extends AbstractRepository implements ChecklistRepositoryInterface {
 	/**
 	 * Default checklist header title.
 	 */
@@ -711,7 +705,7 @@ final class ChecklistRepository extends AbstractRepository {
 	 * @return bool
 	 */
 	private function is_supported_context( string $object_type ): bool {
-		return in_array( sanitize_key( $object_type ), self::SUPPORTED_CONTEXTS, true );
+		return in_array( sanitize_key( $object_type ), $this->context_types->slugs_for_flag( 'checklist_context' ), true );
 	}
 
 	/**
@@ -874,103 +868,4 @@ final class ChecklistRepository extends AbstractRepository {
 		);
 	}
 
-	/**
-	 * Determine whether a context row exists.
-	 *
-	 * @param string $object_type Context type.
-	 * @param int    $object_id Context id.
-	 * @return bool
-	 */
-	protected function context_exists( string $object_type, int $object_id ): bool {
-		if ( $object_id <= 0 ) {
-			return false;
-		}
-
-		$table = '';
-
-		switch ( $object_type ) {
-			case 'project':
-				$table = $this->table( 'projects' );
-				break;
-			case 'task':
-				$table = $this->table( 'tasks' );
-				break;
-			case 'milestone':
-				$table = $this->table( 'milestones' );
-				break;
-			case 'risk':
-			case 'issue':
-				$table = $this->table( 'risks_issues' );
-				break;
-		}
-
-		if ( '' === $table ) {
-			return false;
-		}
-
-		$found = (int) $this->wpdb->get_var( $this->wpdb->prepare( "SELECT id FROM {$table} WHERE id = %d", $object_id ) );
-
-		if ( $found <= 0 ) {
-			return false;
-		}
-
-		if ( 'risk' === $object_type || 'issue' === $object_type ) {
-			$stored_type = (string) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT object_type FROM ' . $table . ' WHERE id = %d', $object_id ) );
-			return sanitize_key( $stored_type ) === $object_type;
-		}
-
-		return true;
-	}
-
-	/**
-	 * Resolve project id for a context.
-	 *
-	 * @param string $object_type Context type.
-	 * @param int    $object_id Context id.
-	 * @return int
-	 */
-	protected function resolve_project_id_for_context( string $object_type, int $object_id ): int {
-		if ( 'project' === $object_type ) {
-			return $object_id;
-		}
-
-		switch ( $object_type ) {
-			case 'task':
-				return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', $object_id ) );
-			case 'milestone':
-				return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d', $object_id ) );
-			case 'risk':
-			case 'issue':
-				return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d', $object_id ) );
-		}
-
-		return 0;
-	}
-
-	/**
-	 * Resolve context label.
-	 *
-	 * @param string $object_type Context type.
-	 * @param int    $object_id Context id.
-	 * @return string
-	 */
-	protected function resolve_context_label( string $object_type, int $object_id ): string {
-		if ( $object_id <= 0 ) {
-			return '';
-		}
-
-		switch ( $object_type ) {
-			case 'project':
-				return (string) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', $object_id ) );
-			case 'task':
-				return (string) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', $object_id ) );
-			case 'milestone':
-				return (string) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d', $object_id ) );
-			case 'risk':
-			case 'issue':
-				return (string) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d', $object_id ) );
-		}
-
-		return '';
-	}
 }

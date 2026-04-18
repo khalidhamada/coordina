@@ -10,25 +10,27 @@ declare(strict_types=1);
 namespace Coordina\Support;
 
 use WP_CLI;
-use Coordina\Infrastructure\Persistence\ActivityRepository;
-use Coordina\Infrastructure\Persistence\ApprovalRepository;
-use Coordina\Infrastructure\Persistence\DiscussionRepository;
-use Coordina\Infrastructure\Persistence\MilestoneRepository;
-use Coordina\Infrastructure\Persistence\ProjectRepository;
-use Coordina\Infrastructure\Persistence\RiskIssueRepository;
-use Coordina\Infrastructure\Persistence\TaskRepository;
-use Coordina\Infrastructure\Persistence\FileRepository;
-use Coordina\Infrastructure\Access\AccessPolicy;
+use RuntimeException;
 
 /**
  * Coordina admin commands.
  */
 class DataSeedCommand {
+	/**
+	 * Seeder factory callback.
+	 *
+	 * @var callable|null
+	 */
+	private static $seeder_factory;
 
 	/**
 	 * Register WP-CLI commands.
+	 *
+	 * @param callable|null $seeder_factory Optional seeder factory.
 	 */
-	public static function register(): void {
+	public static function register( ?callable $seeder_factory = null ): void {
+		self::$seeder_factory = $seeder_factory;
+
 		if ( ! class_exists( 'WP_CLI' ) ) {
 			return;
 		}
@@ -229,16 +231,14 @@ class DataSeedCommand {
 	 * @return DataSeeder
 	 */
 	private static function get_seeder(): DataSeeder {
-		return new DataSeeder(
-			new ProjectRepository(),
-			new TaskRepository(),
-			new MilestoneRepository(),
-			new RiskIssueRepository(),
-			new ApprovalRepository(),
-			new DiscussionRepository(),
-			new ActivityRepository(),
-			new FileRepository(),
-			new AccessPolicy()
-		);
+		if ( is_callable( self::$seeder_factory ) ) {
+			$seeder = call_user_func( self::$seeder_factory );
+
+			if ( $seeder instanceof DataSeeder ) {
+				return $seeder;
+			}
+		}
+
+		throw new RuntimeException( 'Coordina demo seeder service is not available.' );
 	}
 }

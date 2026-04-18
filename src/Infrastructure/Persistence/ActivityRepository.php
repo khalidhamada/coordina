@@ -9,7 +9,32 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Persistence;
 
+use Coordina\Platform\Bootstrap\CoreRegistries;
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\ContextResolverInterface;
+use Coordina\Platform\Contracts\SettingsStoreInterface;
+
 final class ActivityRepository extends AbstractRepository {
+	/**
+	 * Shared settings repository.
+	 *
+	 * @var SettingsStoreInterface
+	 */
+	private $settings_repository;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param ContextResolverInterface|null $context_types Context registry.
+	 * @param SettingsStoreInterface|null   $settings_repository Settings repository.
+	 * @param AccessPolicyInterface|null    $access Shared access policy.
+	 */
+	public function __construct( ?ContextResolverInterface $context_types = null, ?SettingsStoreInterface $settings_repository = null, ?AccessPolicyInterface $access = null ) {
+		parent::__construct( $access );
+		$this->context_types       = $context_types ?: CoreRegistries::context_types();
+		$this->settings_repository = $settings_repository ?: new SettingsRepository();
+	}
+
 	/**
 	 * Fetch access-aware activity items.
 	 *
@@ -99,7 +124,7 @@ final class ActivityRepository extends AbstractRepository {
 	 * Resolve the default activity page size.
 	 */
 	private function default_activity_per_page(): int {
-		$settings = ( new SettingsRepository() )->get();
+		$settings = $this->settings_repository->get();
 
 		return max( 5, min( 50, (int) ( $settings['general']['activity_page_size'] ?? 10 ) ) );
 	}
@@ -140,8 +165,13 @@ final class ActivityRepository extends AbstractRepository {
 		}
 
 		if ( $project_id > 0 ) {
-			$where[] = $this->project_activity_where();
-			array_push( $params, $project_id, $project_id, $project_id, $project_id, $project_id, $project_id, $project_id, $project_id );
+			$project_scope_sql = $this->project_activity_where();
+			$where[]           = $project_scope_sql;
+			$project_bindings  = substr_count( $project_scope_sql, '%d' );
+
+			for ( $index = 0; $index < $project_bindings; $index++ ) {
+				$params[] = $project_id;
+			}
 		}
 
 		$sql = "SELECT * FROM {$table} WHERE " . implode( ' AND ', $where ) . ' ORDER BY created_at DESC, id DESC';
@@ -160,21 +190,43 @@ final class ActivityRepository extends AbstractRepository {
 	 * Build project activity membership SQL.
 	 */
 	private function project_activity_where(): string {
-		$tasks_table      = $this->table( 'tasks' );
-		$risks_table      = $this->table( 'risks_issues' );
-		$milestones_table = $this->table( 'milestones' );
+		$clauses          = array( "(object_type = 'project' AND object_id = %d)" );
+		$approval_clauses = array( "(object_type = 'project' AND object_id = %d)" );
 		$approvals_table  = $this->table( 'approvals' );
 
-		return "((object_type = 'project' AND object_id = %d)
-			OR (object_type = 'task' AND object_id IN (SELECT id FROM {$tasks_table} WHERE project_id = %d))
-			OR (object_type IN ('risk', 'issue') AND object_id IN (SELECT id FROM {$risks_table} WHERE project_id = %d))
-			OR (object_type = 'milestone' AND object_id IN (SELECT id FROM {$milestones_table} WHERE project_id = %d))
-			OR (object_type = 'approval' AND object_id IN (
-				SELECT id FROM {$approvals_table} WHERE (object_type = 'project' AND object_id = %d)
-				OR (object_type = 'task' AND object_id IN (SELECT id FROM {$tasks_table} WHERE project_id = %d))
-				OR (object_type IN ('risk', 'issue') AND object_id IN (SELECT id FROM {$risks_table} WHERE project_id = %d))
-				OR (object_type = 'milestone' AND object_id IN (SELECT id FROM {$milestones_table} WHERE project_id = %d))
-			)))";
+		foreach ( $this->context_types->slugs_for_flag( 'project_activity_member' ) as $slug ) {
+			$clause = $this->project_scope_context_clause( $slug );
+
+			if ( '' === $clause ) {
+				continue;
+			}
+
+			$clauses[]          = $clause;
+			$approval_clauses[] = str_replace( 'object_type', 'object_type', $clause );
+		}
+
+		$clauses[] = "(object_type = 'approval' AND object_id IN (SELECT id FROM {$approvals_table} WHERE " . implode( ' OR ', $approval_clauses ) . '))';
+
+		return '(' . implode( ' OR ', $clauses ) . ')';
+	}
+
+	/**
+	 * Build one project-scope membership clause from the context registry.
+	 *
+	 * @param string $slug Context slug.
+	 * @return string
+	 */
+	private function project_scope_context_clause( string $slug ): string {
+		$definition        = $this->context_types->definition( $slug );
+		$table_suffix      = (string) ( $definition['table'] ?? '' );
+		$project_id_column = (string) ( $definition['project_id_column'] ?? '' );
+		$object_type       = sanitize_key( $slug );
+
+		if ( '' === $table_suffix || '' === $project_id_column || '' === $object_type ) {
+			return '';
+		}
+
+		return "(object_type = '{$object_type}' AND object_id IN (SELECT id FROM " . $this->table( $table_suffix ) . " WHERE {$project_id_column} = %d))";
 	}
 
 	/**
@@ -224,10 +276,6 @@ final class ActivityRepository extends AbstractRepository {
 		$object_type = sanitize_key( (string) ( $item['object_type'] ?? '' ) );
 		$object_id   = (int) ( $item['object_id'] ?? 0 );
 
-		if ( 'milestone' === $object_type ) {
-			return $this->access->can_view_milestone( $object_id );
-		}
-
 		return $this->access->can_view_context( $object_type, $object_id );
 	}
 
@@ -235,10 +283,6 @@ final class ActivityRepository extends AbstractRepository {
 	 * Resolve project id for supported activity objects.
 	 */
 	private function resolve_project_id_for_activity( string $object_type, int $object_id ): int {
-		if ( 'milestone' === $object_type ) {
-			return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d', $object_id ) );
-		}
-
 		return $this->resolve_project_id_for_context( $object_type, $object_id );
 	}
 
@@ -246,11 +290,6 @@ final class ActivityRepository extends AbstractRepository {
 	 * Resolve object label.
 	 */
 	private function activity_object_label( string $object_type, int $object_id ): string {
-		if ( 'milestone' === $object_type ) {
-			$title = $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d', $object_id ) );
-			return $title ? (string) $title : __( 'Milestone', 'coordina' );
-		}
-
 		return $this->resolve_context_label( $object_type, $object_id );
 	}
 
@@ -258,24 +297,7 @@ final class ActivityRepository extends AbstractRepository {
 	 * Resolve a friendly object-type label.
 	 */
 	private function activity_object_type_label( string $object_type ): string {
-		switch ( $object_type ) {
-			case 'project':
-				return __( 'Project', 'coordina' );
-			case 'task':
-				return __( 'Task', 'coordina' );
-			case 'milestone':
-				return __( 'Milestone', 'coordina' );
-			case 'risk':
-				return __( 'Risk', 'coordina' );
-			case 'issue':
-				return __( 'Issue', 'coordina' );
-			case 'approval':
-				return __( 'Approval', 'coordina' );
-			case 'request':
-				return __( 'Request', 'coordina' );
-			default:
-				return __( 'Activity item', 'coordina' );
-		}
+		return $this->context_types->label( $object_type, __( 'Activity item', 'coordina' ) );
 	}
 
 	/**
@@ -487,45 +509,6 @@ final class ActivityRepository extends AbstractRepository {
 	 * Build a UI route for the activity object.
 	 */
 	private function activity_route( string $object_type, int $object_id, int $project_id ): array {
-		if ( 'project' === $object_type ) {
-			return array( 'page' => 'coordina-projects', 'project_id' => $object_id, 'project_tab' => 'overview' );
-		}
-
-		if ( 'milestone' === $object_type ) {
-			return array(
-				'page'         => 'coordina-milestone',
-				'milestone_id' => $object_id,
-				'project_id'   => $project_id,
-				'project_tab'  => $project_id > 0 ? 'milestones' : '',
-			);
-		}
-
-		if ( 'task' === $object_type ) {
-			return array(
-				'page'       => 'coordina-task',
-				'task_id'    => $object_id,
-				'project_id' => $project_id,
-				'project_tab'=> $project_id > 0 ? 'work' : '',
-			);
-		}
-
-		if ( 'request' === $object_type ) {
-			return array( 'page' => 'coordina-requests' );
-		}
-
-		if ( in_array( $object_type, array( 'risk', 'issue' ), true ) ) {
-			return array(
-				'page'          => 'coordina-risk-issue',
-				'risk_issue_id' => $object_id,
-				'project_id'    => $project_id,
-				'project_tab'   => $project_id > 0 ? 'risks-issues' : '',
-			);
-		}
-
-		if ( 'approval' === $object_type ) {
-			return array( 'page' => $project_id > 0 ? 'coordina-projects' : 'coordina-approvals', 'project_id' => $project_id, 'project_tab' => $project_id > 0 ? 'approvals' : '' );
-		}
-
-		return array( 'page' => 'coordina-dashboard' );
+		return $this->context_types->route( $object_type, $object_id, $project_id );
 	}
 }

@@ -9,7 +9,37 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Persistence;
 
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\SettingsStoreInterface;
+
 final class DashboardRepository extends AbstractRepository {
+	/**
+	 * Shared activity repository.
+	 *
+	 * @var ActivityRepository
+	 */
+	private $activity_repository;
+
+	/**
+	 * Shared settings repository.
+	 *
+	 * @var SettingsStoreInterface
+	 */
+	private $settings_repository;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param ActivityRepository|null     $activity_repository Shared activity repository.
+	 * @param SettingsStoreInterface|null $settings_repository Shared settings repository.
+	 * @param AccessPolicyInterface|null  $access Shared access policy.
+	 */
+	public function __construct( ?ActivityRepository $activity_repository = null, ?SettingsStoreInterface $settings_repository = null, ?AccessPolicyInterface $access = null ) {
+		parent::__construct( $access );
+		$this->activity_repository = $activity_repository ?: new ActivityRepository();
+		$this->settings_repository = $settings_repository ?: new SettingsRepository();
+	}
+
 	/**
 	 * Get dashboard data for current user.
 	 *
@@ -169,7 +199,7 @@ final class DashboardRepository extends AbstractRepository {
 	private function get_recent_activity( string $scope, int $user_id, int $page ): array {
 		unset( $scope, $user_id );
 
-		return ( new ActivityRepository() )->get_items(
+		return $this->activity_repository->get_items(
 			array(
 				'page'     => $page,
 				'per_page' => $this->default_activity_per_page(),
@@ -187,14 +217,14 @@ final class DashboardRepository extends AbstractRepository {
 	private function get_activity_summary( string $scope, int $user_id ): array {
 		unset( $scope, $user_id );
 
-		return ( new ActivityRepository() )->get_summary();
+		return $this->activity_repository->get_summary();
 	}
 
 	/**
 	 * Resolve the default dashboard activity page size.
 	 */
 	private function default_activity_per_page(): int {
-		$settings = ( new SettingsRepository() )->get();
+		$settings = $this->settings_repository->get();
 
 		return max( 5, min( 50, (int) ( $settings['general']['activity_page_size'] ?? 10 ) ) );
 	}

@@ -5,7 +5,7 @@ if (!app.root || !app.state) {
 	return;
 }
 
-const { state, escapeHtml, __, nice, dateLabel, dateTimeLabel } = app;
+const { state, escapeHtml, __, nice, dateLabel, dateTimeLabel, contextRoute, buildRouteAttributes } = app;
 const baseWorkspaceTabBody = app.workspaceTabBody;
 
 function fileExtension(item) {
@@ -88,21 +88,18 @@ function collaborationContextButton(item, tab) {
 	if (item.object_type === 'project') {
 		return `<button class="coordina-link-button" data-action="open-route" data-page="coordina-projects" data-project-id="${item.object_id || item.project_id || ''}" data-project-tab="${tab || 'overview'}">${escapeHtml(item.object_label || __('Project workspace', 'coordina'))}</button>`;
 	}
-	if (item.object_type === 'task') {
-		return `<button class="coordina-link-button" data-action="open-task-page" data-id="${item.object_id || ''}" data-project-id="${item.project_id || ''}" data-project-tab="${item.project_id ? 'work' : ''}">${escapeHtml(item.object_label || __('Task', 'coordina'))}</button>`;
-	}
-	if (item.object_type === 'milestone') {
-		return `<button class="coordina-link-button" data-action="open-milestone-page" data-id="${item.object_id || ''}" data-project-id="${item.project_id || ''}" data-project-tab="${item.project_id ? 'milestones' : ''}">${escapeHtml(item.object_label || __('Milestone', 'coordina'))}</button>`;
-	}
 	if (item.object_type === 'request') {
 		return `<button class="coordina-link-button" data-action="open-record" data-module="requests" data-id="${item.object_id || ''}">${escapeHtml(item.object_label || __('Request', 'coordina'))}</button>`;
-	}
-	if (item.object_type === 'risk' || item.object_type === 'issue') {
-		return `<button class="coordina-link-button" data-action="open-risk-issue-page" data-id="${item.object_id || ''}" data-project-id="${item.project_id || ''}" data-project-tab="${item.project_id ? 'risks-issues' : ''}">${escapeHtml(item.object_label || nice(item.object_type))}</button>`;
 	}
 	if (item.object_type === 'approval') {
 		return `<button class="coordina-link-button" data-action="open-record" data-module="approvals" data-id="${item.object_id || ''}">${escapeHtml(item.object_label || __('Approval', 'coordina'))}</button>`;
 	}
+
+	const route = typeof contextRoute === 'function' ? contextRoute(item.object_type, item.object_id || '', item.project_id || 0) : null;
+	if (route && typeof buildRouteAttributes === 'function') {
+		return `<button class="coordina-link-button" ${buildRouteAttributes(route)}>${escapeHtml(item.object_label || nice(item.object_type))}</button>`;
+	}
+
 	return `<span>${escapeHtml(item.object_label || __('Linked work', 'coordina'))}</span>`;
 }
 

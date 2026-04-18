@@ -4,7 +4,7 @@ Tags: project management, task management, workflow, operations, approvals, requ
 Requires at least: 6.6
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.3.1
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: coordina
@@ -53,6 +53,14 @@ Yes. Coordina supports both project-linked tasks and standalone tasks.
 Yes. Visibility and edit rights are evaluated through separate settings-backed policies.
 
 == Changelog ==
+
+= 1.4.0 =
+
+* Core runtime now boots through the platform kernel and provider graph instead of one monolithic bootstrap path
+* Admin pages, REST routes, settings metadata, capability maps, migrations, and context definitions are now registry-backed and extension-ready
+* Public contracts now sit in front of shared project, task, settings, notification, and access services to reduce direct concrete coupling
+* Entitlement and feature-state plumbing are now centralized in core for future packaged extensions
+* No database changes; direct upgrade from 1.3.1 supported
 
 = 1.3.1 =
 
@@ -128,6 +136,10 @@ Yes. Visibility and edit rights are evaluated through separate settings-backed p
 * Task groups and task checklists
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+
+Platform architecture release. No database changes required; direct upgrade from 1.3.1.
 
 = 1.3.1 =
 

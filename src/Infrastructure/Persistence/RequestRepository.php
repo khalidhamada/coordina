@@ -9,9 +9,30 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Persistence;
 
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\ApprovalRepositoryInterface;
+use Coordina\Platform\Contracts\ProjectRepositoryInterface;
+use Coordina\Platform\Contracts\TaskRepositoryInterface;
 use RuntimeException;
 
 final class RequestRepository extends AbstractRepository {
+	/**
+	 * Shared approvals repository.
+	 *
+	 * @var ApprovalRepositoryInterface
+	 */
+	private $approvals;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AccessPolicyInterface|null      $access Shared access policy.
+	 * @param ApprovalRepositoryInterface|null $approvals Shared approvals repository.
+	 */
+	public function __construct( ?AccessPolicyInterface $access = null, ?ApprovalRepositoryInterface $approvals = null ) {
+		parent::__construct( $access );
+		$this->approvals = $approvals ?: new ApprovalRepository();
+	}
 	/**
 	 * Fetch paginated requests.
 	 *
@@ -117,7 +138,7 @@ final class RequestRepository extends AbstractRepository {
 		}
 
 		$request = $this->find( (int) $this->wpdb->insert_id );
-		( new ApprovalRepository() )->sync_for_request( $request );
+		$this->approvals->sync_for_request( $request );
 
 		return $request;
 	}
@@ -158,7 +179,7 @@ final class RequestRepository extends AbstractRepository {
 		}
 
 		$request = $this->find( $id );
-		( new ApprovalRepository() )->sync_for_request( $request );
+		$this->approvals->sync_for_request( $request );
 
 		return $request;
 	}
@@ -172,7 +193,7 @@ final class RequestRepository extends AbstractRepository {
 	 * @param TaskRepository    $tasks Task repository.
 	 * @return array<string, mixed>
 	 */
-	public function convert( int $id, string $target_type, ProjectRepository $projects, TaskRepository $tasks ): array {
+	public function convert( int $id, string $target_type, ProjectRepositoryInterface $projects, TaskRepositoryInterface $tasks ): array {
 		$request = $this->find( $id );
 
 		if ( empty( $request ) ) {
@@ -237,7 +258,7 @@ final class RequestRepository extends AbstractRepository {
 		}
 
 		$request = $this->find( $id );
-		( new ApprovalRepository() )->sync_for_request( $request );
+		$this->approvals->sync_for_request( $request );
 
 		return $request;
 	}

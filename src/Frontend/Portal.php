@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Coordina\Frontend;
 
 use Coordina\Infrastructure\Persistence\SettingsRepository;
+use Coordina\Platform\Contracts\SettingsStoreInterface;
 use Coordina\Support\Formatting;
 
 final class Portal {
@@ -21,12 +22,21 @@ final class Portal {
 	private $formatting;
 
 	/**
+	 * Shared settings repository.
+	 *
+	 * @var SettingsStoreInterface
+	 */
+	private $settings;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Formatting $formatting Formatting helper.
+	 * @param Formatting                   $formatting Formatting helper.
+	 * @param SettingsStoreInterface|null $settings Shared settings repository.
 	 */
-	public function __construct( Formatting $formatting ) {
+	public function __construct( Formatting $formatting, ?SettingsStoreInterface $settings = null ) {
 		$this->formatting = $formatting;
+		$this->settings   = $settings ?: new SettingsRepository();
 	}
 
 	/**
@@ -49,7 +59,7 @@ final class Portal {
 			return '<div class="coordina-portal-notice">' . esc_html__( 'Please sign in to access the Coordina portal.', 'coordina' ) . '</div>';
 		}
 
-		$settings    = ( new SettingsRepository() )->get();
+		$settings    = $this->settings->get();
 		$portal_mode = (string) ( $settings['access']['portal_access_default'] ?? 'requesters' );
 
 		if ( 'disabled' === $portal_mode ) {

@@ -9,9 +9,47 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Persistence;
 
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\ProjectRepositoryInterface;
+use Coordina\Platform\Contracts\TaskRepositoryInterface;
 use RuntimeException;
 
-final class ProjectRepository extends AbstractRepository {
+final class ProjectRepository extends AbstractRepository implements ProjectRepositoryInterface {
+	/**
+	 * Shared task repository.
+	 *
+	 * @var TaskRepositoryInterface
+	 */
+	private $tasks;
+
+	/**
+	 * Shared risk repository.
+	 *
+	 * @var RiskIssueRepository
+	 */
+	private $risks;
+
+	/**
+	 * Shared milestone repository.
+	 *
+	 * @var MilestoneRepository
+	 */
+	private $milestones;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AccessPolicyInterface|null $access Shared access policy.
+	 * @param TaskRepositoryInterface|null $tasks Shared task repository.
+	 * @param RiskIssueRepository|null $risks Shared risk repository.
+	 * @param MilestoneRepository|null $milestones Shared milestone repository.
+	 */
+	public function __construct( ?AccessPolicyInterface $access = null, ?TaskRepositoryInterface $tasks = null, ?RiskIssueRepository $risks = null, ?MilestoneRepository $milestones = null ) {
+		parent::__construct( $access );
+		$this->tasks      = $tasks ?: new TaskRepository();
+		$this->risks      = $risks ?: new RiskIssueRepository();
+		$this->milestones = $milestones ?: new MilestoneRepository();
+	}
 	/**
 	 * Fetch paginated projects.
 	 *
@@ -369,20 +407,16 @@ final class ProjectRepository extends AbstractRepository {
 		$tasks      = $this->wpdb->get_col( $this->wpdb->prepare( 'SELECT id FROM ' . $this->table( 'tasks' ) . ' WHERE project_id = %d', $id ) );
 		$risks      = $this->wpdb->get_col( $this->wpdb->prepare( 'SELECT id FROM ' . $this->table( 'risks_issues' ) . ' WHERE project_id = %d', $id ) );
 		$milestones = $this->wpdb->get_col( $this->wpdb->prepare( 'SELECT id FROM ' . $this->table( 'milestones' ) . ' WHERE project_id = %d', $id ) );
-		$task_repo  = new TaskRepository();
-		$risk_repo  = new RiskIssueRepository();
-		$milestones_repo = new MilestoneRepository();
-
 		foreach ( array_map( 'intval', $tasks ?: array() ) as $task_id ) {
-			$task_repo->delete( $task_id );
+			$this->tasks->delete( $task_id );
 		}
 
 		foreach ( array_map( 'intval', $risks ?: array() ) as $risk_id ) {
-			$risk_repo->delete( $risk_id );
+			$this->risks->delete( $risk_id );
 		}
 
 		foreach ( array_map( 'intval', $milestones ?: array() ) as $milestone_id ) {
-			$milestones_repo->delete( $milestone_id );
+			$this->milestones->delete( $milestone_id );
 		}
 
 		$this->delete_context_relations( 'project', $id );

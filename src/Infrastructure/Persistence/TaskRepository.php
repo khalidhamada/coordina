@@ -9,9 +9,49 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Persistence;
 
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\ApprovalRepositoryInterface;
+use Coordina\Platform\Contracts\ChecklistRepositoryInterface;
+use Coordina\Platform\Contracts\NotificationRepositoryInterface;
+use Coordina\Platform\Contracts\TaskRepositoryInterface;
 use RuntimeException;
 
-final class TaskRepository extends AbstractRepository {
+final class TaskRepository extends AbstractRepository implements TaskRepositoryInterface {
+	/**
+	 * Shared checklist repository.
+	 *
+	 * @var ChecklistRepositoryInterface
+	 */
+	private $checklists;
+
+	/**
+	 * Shared approvals repository.
+	 *
+	 * @var ApprovalRepositoryInterface
+	 */
+	private $approvals;
+
+	/**
+	 * Shared notifications repository.
+	 *
+	 * @var NotificationRepositoryInterface
+	 */
+	private $notifications;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AccessPolicyInterface|null        $access Shared access policy.
+	 * @param ChecklistRepositoryInterface|null $checklists Shared checklist repository.
+	 * @param ApprovalRepositoryInterface|null  $approvals Shared approvals repository.
+	 * @param NotificationRepositoryInterface|null $notifications Shared notifications repository.
+	 */
+	public function __construct( ?AccessPolicyInterface $access = null, ?ChecklistRepositoryInterface $checklists = null, ?ApprovalRepositoryInterface $approvals = null, ?NotificationRepositoryInterface $notifications = null ) {
+		parent::__construct( $access );
+		$this->checklists    = $checklists ?: new ChecklistRepository();
+		$this->approvals     = $approvals ?: new ApprovalRepository();
+		$this->notifications = $notifications ?: new NotificationRepository();
+	}
 	/**
 	 * Fetch paginated tasks.
 	 *
@@ -653,9 +693,9 @@ final class TaskRepository extends AbstractRepository {
 
 		$task_id = (int) $this->wpdb->insert_id;
 		$task    = $this->find( $task_id );
-		( new ChecklistRepository() )->replace_from_text( 'task', $task_id, $data['checklist'] ?? '' );
+		$this->checklists->replace_from_text( 'task', $task_id, $data['checklist'] ?? '' );
 		$task = $this->find( $task_id );
-		( new ApprovalRepository() )->sync_for_task( $task );
+		$this->approvals->sync_for_task( $task );
 		$task = $this->find( $task_id );
 		$this->notify_task_assignment( array(), $task );
 		$this->log_activity( 'task', $task_id, 'task_created', sprintf( __( 'Created task "%s".', 'coordina' ), $clean['title'] ) );
@@ -724,10 +764,10 @@ final class TaskRepository extends AbstractRepository {
 
 		$task = $this->find( $id );
 		if ( array_key_exists( 'checklist', $data ) && $this->access->can_manage_checklists_on_context( 'task', $id ) ) {
-			( new ChecklistRepository() )->replace_from_text( 'task', $id, $data['checklist'] );
+			$this->checklists->replace_from_text( 'task', $id, $data['checklist'] );
 			$task = $this->find( $id );
 		}
-		( new ApprovalRepository() )->sync_for_task( $task );
+		$this->approvals->sync_for_task( $task );
 		$task = $this->find( $id );
 		$this->notify_task_assignment( $current, $task );
 		$this->log_update_activity( $id, $current, $task );
@@ -868,7 +908,7 @@ final class TaskRepository extends AbstractRepository {
 			return 'not-required';
 		}
 
-		$approval = ( new ApprovalRepository() )->get_latest_for_object( 'task', $task_id );
+		$approval = $this->approvals->get_latest_for_object( 'task', $task_id );
 
 		if ( empty( $approval ) ) {
 			return 'pending';
@@ -1080,7 +1120,7 @@ final class TaskRepository extends AbstractRepository {
 		$body          = sprintf( __( '%1$s in %2$s%3$s', 'coordina' ), (string) ( $task['title'] ?? __( 'Task', 'coordina' ) ), $project_label, $due_label ? sprintf( __( ' · Due %s', 'coordina' ), $due_label ) : '' );
 		$url           = $this->task_admin_url( $task );
 
-		( new NotificationRepository() )->create( $assignee_id, 'task-assigned', $title, $body, $url );
+		$this->notifications->create( $assignee_id, 'task-assigned', $title, $body, $url );
 	}
 
 	/**
@@ -1201,7 +1241,7 @@ final class TaskRepository extends AbstractRepository {
 			);
 		}
 
-		return ( new ChecklistRepository() )->get_items(
+		return $this->checklists->get_items(
 			array(
 				'object_type' => 'task',
 				'object_id'   => $task_id,

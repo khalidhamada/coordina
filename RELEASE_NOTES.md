@@ -4,6 +4,19 @@ Quick links to detailed release information for each version. For getting starte
 
 ## Current Release
 
+### [v1.4.0 — Modular Core Platform](releases/v1.4.0/RELEASE_NOTES.md)
+**April 18, 2026**
+
+Coordina 1.4.0 is the core platform architecture release. It packages the kernel/provider runtime, registry-backed extension points, public contracts, and centralized entitlement plumbing into the main plugin without bundling separate add-on features into this release.
+
+**Highlights:** Kernel/provider boot • Registry-backed runtime • Public contracts • Centralized entitlement state
+
+[View full details →](releases/v1.4.0/RELEASE_NOTES.md)
+
+---
+
+## Previous Releases
+
 ### [v1.3.1 — Planning & File Experience Polish](releases/v1.3.1/RELEASE_NOTES.md)
 **April 18, 2026**
 
@@ -14,8 +27,6 @@ Coordina 1.3.1 is a focused patch release that tightens approval routing, stabil
 [View full details →](releases/v1.3.1/RELEASE_NOTES.md)
 
 ---
-
-## Previous Releases
 
 ### [v1.3.0 — Workspace Expansion & Portfolio Refinement](releases/v1.3.0/RELEASE_NOTES.md)
 **April 17, 2026**
@@ -87,6 +98,7 @@ Complete foundation: My Work, Dashboard, Project Workspaces (9 tabs), approvals,
 
 All upgrades are direct and backward-compatible:
 - **v1.3.0 → v1.3.1**: No database changes
+- **v1.3.1 → v1.4.0**: No database changes
 - **v1.2.1 → v1.3.0**: Includes a database update for the new project sponsor field
 - **v1.2.0 → v1.2.1**: No database changes
 - **v1.1.1 → v1.2.0**: No database changes

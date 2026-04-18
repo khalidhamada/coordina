@@ -9,8 +9,11 @@ declare(strict_types=1);
 
 namespace Coordina\Admin;
 
-use Coordina\Infrastructure\Access\AccessPolicy;
-use Coordina\Infrastructure\Persistence\SettingsRepository;
+use Coordina\Platform\Bootstrap\CoreRegistries;
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\ContextResolverInterface;
+use Coordina\Platform\Contracts\SettingsStoreInterface;
+use Coordina\Platform\Registry\AdminPageRegistry;
 use Coordina\Support\Formatting;
 
 final class AdminApp {
@@ -31,27 +34,43 @@ final class AdminApp {
 	/**
 	 * Settings repository.
 	 *
-	 * @var SettingsRepository
+	 * @var SettingsStoreInterface
 	 */
 	private $settings;
 
 	/**
 	 * Shared access policy.
 	 *
-	 * @var AccessPolicy
+	 * @var AccessPolicyInterface
 	 */
 	private $access;
+
+	/**
+	 * Admin page registry.
+	 *
+	 * @var AdminPageRegistry
+	 */
+	private $page_registry;
+
+	/**
+	 * Context registry.
+	 *
+	 * @var ContextResolverInterface
+	 */
+	private $context_types;
 
 	/**
 	 * Constructor.
 	 *
 	 * @param Formatting $formatting Formatting helper.
 	 */
-	public function __construct( Formatting $formatting, SettingsRepository $settings, AccessPolicy $access ) {
-		$this->formatting = $formatting;
-		$this->settings   = $settings;
-		$this->access     = $access;
-		$this->pages      = $this->get_pages();
+	public function __construct( Formatting $formatting, SettingsStoreInterface $settings, AccessPolicyInterface $access, ?AdminPageRegistry $page_registry = null, ?ContextResolverInterface $context_types = null ) {
+		$this->formatting    = $formatting;
+		$this->settings      = $settings;
+		$this->access        = $access;
+		$this->page_registry = $page_registry ?: CoreRegistries::admin_pages();
+		$this->context_types = $context_types ?: CoreRegistries::context_types();
+		$this->pages         = $this->page_registry->all();
 	}
 
 	/**
@@ -127,6 +146,7 @@ final class AdminApp {
 				'riskIssueContext' => array(
 					'id' => $this->get_current_risk_issue_id(),
 				),
+				'contextDefinitions' => $this->get_frontend_context_definitions(),
 				'pages'          => $this->get_frontend_pages(),
 				'i18n'           => array(
 					'loading'    => __( 'Loading Coordina shell...', 'coordina' ),
@@ -244,19 +264,17 @@ final class AdminApp {
 			$page_data['description'] = __( 'See project work, planning, updates, and supporting details in one workspace.', 'coordina' );
 		}
 
-		if ( 'coordina-task' === $page_slug && $this->get_current_task_id() > 0 ) {
-			$page_data['title']       = __( 'Task Detail', 'coordina' );
-			$page_data['description'] = __( 'See task details, updates, files, and edits in one place.', 'coordina' );
-		}
+		foreach ( $this->context_types->slugs() as $slug ) {
+			$definition = $this->context_types->definition( $slug );
+			$admin_page = (string) ( $definition['admin_page'] ?? '' );
 
-		if ( 'coordina-milestone' === $page_slug && $this->get_current_milestone_id() > 0 ) {
-			$page_data['title']       = __( 'Milestone Detail', 'coordina' );
-			$page_data['description'] = __( 'See milestone details, updates, files, and edits in one place.', 'coordina' );
-		}
+			if ( empty( $definition['detail_context'] ) || $admin_page !== $page_slug || $this->get_current_context_id( $slug ) <= 0 ) {
+				continue;
+			}
 
-		if ( 'coordina-risk-issue' === $page_slug && $this->get_current_risk_issue_id() > 0 ) {
-			$page_data['title']       = __( 'Risk & Issue Detail', 'coordina' );
-			$page_data['description'] = __( 'See risk or issue details, updates, files, and edits in one place.', 'coordina' );
+			$page_data['title']       = (string) ( $page['title'] ?? $page_data['title'] );
+			$page_data['description'] = (string) ( $page['description'] ?? $page_data['description'] );
+			break;
 		}
 
 		if ( ! file_exists( $template ) ) {
@@ -333,6 +351,23 @@ final class AdminApp {
 	}
 
 	/**
+	 * Get the current context id for a registered context type.
+	 *
+	 * @param string $slug Context type slug.
+	 * @return int
+	 */
+	private function get_current_context_id( string $slug ): int {
+		$definition = $this->context_types->definition( $slug );
+		$query_arg  = (string) ( $definition['query_arg'] ?? '' );
+
+		if ( '' === $query_arg || ! isset( $_GET[ $query_arg ] ) ) {
+			return 0;
+		}
+
+		return max( 0, absint( wp_unslash( $_GET[ $query_arg ] ) ) );
+	}
+
+	/**
 	 * Get current project tab.
 	 *
 	 * @return string
@@ -403,7 +438,7 @@ final class AdminApp {
 				continue;
 			}
 
-			if ( in_array( $slug, $allowed_non_admin, true ) ) {
+			if ( ! empty( $page['non_admin_visible'] ) || in_array( $slug, $allowed_non_admin, true ) ) {
 				$visible[] = $slug;
 			}
 		}
@@ -438,28 +473,27 @@ final class AdminApp {
 			return true;
 		}
 
+		if ( ! empty( $this->pages[ $slug ]['allow_direct_access'] ) && in_array( $slug, $this->get_visible_page_slugs(), true ) ) {
+			return true;
+		}
+
 		if ( 'coordina-projects' === $slug && ! $this->is_admin_level_user() ) {
 			$project_id = $this->get_current_project_id();
 
 			return $project_id > 0 && $this->access->can_view_project( $project_id );
 		}
 
-		if ( 'coordina-task' === $slug ) {
-			$task_id = $this->get_current_task_id();
+		foreach ( $this->context_types->slugs() as $context_slug ) {
+			$definition    = $this->context_types->definition( $context_slug );
+			$admin_page    = (string) ( $definition['admin_page'] ?? '' );
+			$access_method = (string) ( $definition['access_method'] ?? '' );
+			$context_id    = $this->get_current_context_id( $context_slug );
 
-			return $task_id > 0 && $this->access->can_view_task( $task_id );
-		}
+			if ( empty( $definition['detail_context'] ) || $admin_page !== $slug || '' === $access_method || $context_id <= 0 || ! method_exists( $this->access, $access_method ) ) {
+				continue;
+			}
 
-		if ( 'coordina-milestone' === $slug ) {
-			$milestone_id = $this->get_current_milestone_id();
-
-			return $milestone_id > 0 && $this->access->can_view_milestone( $milestone_id );
-		}
-
-		if ( 'coordina-risk-issue' === $slug ) {
-			$risk_issue_id = $this->get_current_risk_issue_id();
-
-			return $risk_issue_id > 0 && $this->access->can_view_risk_issue( $risk_issue_id );
+			return (bool) $this->access->{$access_method}( $context_id );
 		}
 
 		if ( $this->is_admin_level_user() ) {
@@ -495,127 +529,28 @@ final class AdminApp {
 	}
 
 	/**
-	 * Build page configuration.
+	 * Frontend context-route config derived from the registry.
 	 *
-	 * @return array<string, array<string, string>>
+	 * @return array<string, array<string, mixed>>
 	 */
-	private function get_pages(): array {
-		return array(
-			'coordina-dashboard' => array(
-				'title'       => __( 'Dashboard', 'coordina' ),
-				'menu_title'  => __( 'Dashboard', 'coordina' ),
-				'capability'  => 'coordina_view_dashboard',
-				'description' => __( 'See key issues, deadlines, and decisions across your work.', 'coordina' ),
-				'priority'    => 'primary',
-				'purpose'     => 'oversight',
-			),
-			'coordina-my-work' => array(
-				'title'       => __( 'My Work', 'coordina' ),
-				'menu_title'  => __( 'My Work', 'coordina' ),
-				'capability'  => 'coordina_access',
-				'description' => __( 'See what needs your attention today, what is waiting, and what needs a decision.', 'coordina' ),
-				'priority'    => 'primary',
-				'purpose'     => 'execution',
-			),
-			'coordina-projects' => array(
-				'title'       => __( 'Projects', 'coordina' ),
-				'menu_title'  => __( 'Projects', 'coordina' ),
-				'capability'  => 'coordina_access',
-				'description' => __( 'Browse projects and open a workspace to plan or review the details.', 'coordina' ),
-				'priority'    => 'primary',
-				'purpose'     => 'portfolio',
-			),
-			'coordina-requests' => array(
-				'title'       => __( 'Requests', 'coordina' ),
-				'menu_title'  => __( 'Requests', 'coordina' ),
-				'capability'  => 'coordina_access',
-				'description' => __( 'Review incoming requests, assign ownership, and decide what happens next.', 'coordina' ),
-				'priority'    => 'primary',
-				'purpose'     => 'execution',
-			),
-			'coordina-approvals' => array(
-				'title'       => __( 'Approvals', 'coordina' ),
-				'menu_title'  => __( 'Approvals', 'coordina' ),
-				'capability'  => 'coordina_access',
-				'description' => __( 'Review pending approvals and record each decision.', 'coordina' ),
-				'priority'    => 'primary',
-				'purpose'     => 'execution',
-			),
-			'coordina-tasks' => array(
-				'title'       => __( 'Tasks', 'coordina' ),
-				'menu_title'  => __( 'Tasks', 'coordina' ),
-				'capability'  => 'coordina_manage_tasks',
-				'description' => __( 'Browse tasks across projects and standalone work.', 'coordina' ),
-				'priority'    => 'secondary',
-				'purpose'     => 'support',
-			),
-			'coordina-task' => array(
-				'title'       => __( 'Task Detail', 'coordina' ),
-				'menu_title'  => __( 'Task Detail', 'coordina' ),
-				'capability'  => 'coordina_access',
-				'description' => __( 'See task details, updates, files, and edits in one place.', 'coordina' ),
-				'priority'    => 'secondary',
-				'purpose'     => 'execution',
-				'hidden'      => true,
-			),
-			'coordina-milestone' => array(
-				'title'       => __( 'Milestone Detail', 'coordina' ),
-				'menu_title'  => __( 'Milestone Detail', 'coordina' ),
-				'capability'  => 'coordina_access',
-				'description' => __( 'See milestone details, updates, files, and edits in one place.', 'coordina' ),
-				'priority'    => 'secondary',
-				'purpose'     => 'execution',
-				'hidden'      => true,
-			),
-			'coordina-risk-issue' => array(
-				'title'       => __( 'Risk & Issue Detail', 'coordina' ),
-				'menu_title'  => __( 'Risk & Issue Detail', 'coordina' ),
-				'capability'  => 'coordina_access',
-				'description' => __( 'See risk or issue details, updates, files, and edits in one place.', 'coordina' ),
-				'priority'    => 'secondary',
-				'purpose'     => 'execution',
-				'hidden'      => true,
-			),
-			'coordina-calendar' => array(
-				'title'       => __( 'Calendar', 'coordina' ),
-				'menu_title'  => __( 'Calendar', 'coordina' ),
-				'capability'  => 'coordina_access',
-				'description' => __( 'See work by date and open the related item when you need details.', 'coordina' ),
-				'priority'    => 'secondary',
-				'purpose'     => 'support',
-			),
-			'coordina-workload' => array(
-				'title'       => __( 'Workload', 'coordina' ),
-				'menu_title'  => __( 'Workload', 'coordina' ),
-				'capability'  => 'coordina_manage_projects',
-				'description' => __( 'See who is busy and where work may need to be rebalanced.', 'coordina' ),
-				'priority'    => 'secondary',
-				'purpose'     => 'support',
-			),
-			'coordina-risks-issues' => array(
-				'title'       => __( 'Risks & Issues', 'coordina' ),
-				'menu_title'  => __( 'Risks & Issues', 'coordina' ),
-				'capability'  => 'coordina_manage_projects',
-				'description' => __( 'Review risks and issues across projects.', 'coordina' ),
-				'priority'    => 'secondary',
-				'purpose'     => 'support',
-			),
-			'coordina-files-discussion' => array(
-				'title'       => __( 'Files & Discussions', 'coordina' ),
-				'menu_title'  => __( 'Files & Discussions', 'coordina' ),
-				'capability'  => 'coordina_access',
-				'description' => __( 'Browse recent files and updates, then open the related work item when needed.', 'coordina' ),
-				'priority'    => 'secondary',
-				'purpose'     => 'support',
-			),
-			'coordina-settings' => array(
-				'title'       => __( 'Settings', 'coordina' ),
-				'menu_title'  => __( 'Settings', 'coordina' ),
-				'capability'  => 'coordina_manage_settings',
-				'description' => __( 'Manage defaults, access, dropdowns, and other plugin settings.', 'coordina' ),
-				'priority'    => 'secondary',
-				'purpose'     => 'admin',
-			),
-		);
+	private function get_frontend_context_definitions(): array {
+		$definitions = array();
+
+		foreach ( $this->context_types->slugs() as $slug ) {
+			$definition = $this->context_types->definition( $slug );
+			$route      = is_array( $definition['route'] ?? null ) ? $definition['route'] : array();
+
+			$definitions[ $slug ] = array(
+				'page'                => (string) ( $route['page'] ?? '' ),
+				'queryArg'            => (string) ( $definition['query_arg'] ?? $route['param'] ?? '' ),
+				'projectTab'          => (string) ( $route['project_tab'] ?? '' ),
+				'projectTabWhenProject' => (string) ( $route['project_tab_when_project'] ?? '' ),
+				'includeProjectId'    => ! empty( $route['include_project_id'] ),
+				'adminPage'           => (string) ( $definition['admin_page'] ?? '' ),
+			);
+		}
+
+		return $definitions;
 	}
+
 }

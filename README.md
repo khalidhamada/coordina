@@ -165,13 +165,13 @@ Coordina includes a modern, cohesive design system:
 ### Q: Does Coordina have email notifications?
 **A:** Notifications are managed through WordPress. Email delivery uses your site's email configuration. You can extend with custom notification hooks.
 
-### Q: What's new in version 1.3.1?
-**A:** Version 1.3.1 includes:
-- **Approval Drawer Fixes** – Linked source routing now opens the correct work item, and drawers clear the WordPress admin bar properly
-- **Calendar Reliability** – Month and week navigation now works consistently, view changes refresh instantly, and the page uses clearer contrast
-- **Gantt Refinement** – Gantt rows are more compact, longer timelines group more intelligently, and tooltips and alignment are more reliable
-- **File Experience Upgrade** – Project and record files now use clearer cards and a richer drawer with type icons, readable file labels, and direct actions
-- **No Schema Changes** – This patch does not require a database update
+### Q: What's new in version 1.4.0?
+**A:** Version 1.4.0 includes:
+- **Platform Kernel And Providers** – Core boot now runs through a modular kernel and provider graph instead of one monolithic bootstrap path
+- **Registry-Backed Runtime** – Admin pages, REST routes, capability maps, settings metadata, migrations, and context definitions are now extension-ready registries
+- **Public Contract Layer** – Shared project, task, settings, notification, and access services are exposed through platform contracts for safer future extensions
+- **Entitlement And Feature State** – Core now has centralized entitlement plumbing and add-on-ready feature gating inside the shared shell
+- **No Schema Changes** – This release updates architecture and packaging without changing the database model
 
 ## Support & Documentation
 
@@ -183,7 +183,7 @@ Coordina includes a modern, cohesive design system:
 - **Requires at least:** WordPress 6.6
 - **Tested up to:** WordPress 6.6
 - **Requires PHP:** 7.4 or higher
-- **Stable tag:** 1.3.1
+- **Stable tag:** 1.4.0
 - **License:** GPLv2 or later
 - **Text Domain:** `coordina`
 

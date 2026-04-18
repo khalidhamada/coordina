@@ -9,23 +9,28 @@ declare(strict_types=1);
 
 namespace Coordina\Rest;
 
-use Coordina\Infrastructure\Access\AccessPolicy;
 use Coordina\Infrastructure\Persistence\ActivityRepository;
-use Coordina\Infrastructure\Persistence\ApprovalRepository;
 use Coordina\Infrastructure\Persistence\CalendarRepository;
-use Coordina\Infrastructure\Persistence\ChecklistRepository;
 use Coordina\Infrastructure\Persistence\DashboardRepository;
 use Coordina\Infrastructure\Persistence\DiscussionRepository;
 use Coordina\Infrastructure\Persistence\FileRepository;
 use Coordina\Infrastructure\Persistence\MilestoneRepository;
-use Coordina\Infrastructure\Persistence\NotificationRepository;
-use Coordina\Infrastructure\Persistence\ProjectRepository;
 use Coordina\Infrastructure\Persistence\RequestRepository;
 use Coordina\Infrastructure\Persistence\RiskIssueRepository;
 use Coordina\Infrastructure\Persistence\SavedViewRepository;
-use Coordina\Infrastructure\Persistence\SettingsRepository;
-use Coordina\Infrastructure\Persistence\TaskRepository;
 use Coordina\Infrastructure\Persistence\WorkloadRepository;
+use Coordina\Platform\Bootstrap\CoreRegistries;
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\ApprovalRepositoryInterface;
+use Coordina\Platform\Contracts\ChecklistRepositoryInterface;
+use Coordina\Platform\Contracts\ContextResolverInterface;
+use Coordina\Platform\Contracts\EntitlementManagerInterface;
+use Coordina\Platform\Contracts\NotificationRepositoryInterface;
+use Coordina\Platform\Contracts\ProjectRepositoryInterface;
+use Coordina\Platform\Contracts\SettingsStoreInterface;
+use Coordina\Platform\Contracts\TaskRepositoryInterface;
+use Coordina\Platform\Registry\ContextTypeRegistry;
+use Coordina\Platform\Registry\RestRouteRegistry;
 use Coordina\Support\DataSeeder;
 use Coordina\Support\Formatting;
 use Throwable;
@@ -54,26 +59,34 @@ final class RestRegistrar {
 	private $milestones;
 	private $discussions;
 	private $access;
+	private $entitlements;
+	private $data_seeder;
+	private $routes;
+	private $context_types;
 
 	public function __construct(
 		Formatting $formatting,
 		ActivityRepository $activity,
-		ProjectRepository $projects,
-		TaskRepository $tasks,
+		ProjectRepositoryInterface $projects,
+		TaskRepositoryInterface $tasks,
 		RequestRepository $requests,
-		ApprovalRepository $approvals,
+		ApprovalRepositoryInterface $approvals,
 		CalendarRepository $calendar,
 		DashboardRepository $dashboard,
-		ChecklistRepository $checklists,
+		ChecklistRepositoryInterface $checklists,
 		RiskIssueRepository $risks_issues,
 		WorkloadRepository $workload,
-		NotificationRepository $notifications,
+		NotificationRepositoryInterface $notifications,
 		SavedViewRepository $saved_views,
-		SettingsRepository $settings,
+		SettingsStoreInterface $settings,
 		FileRepository $files,
 		MilestoneRepository $milestones,
 		DiscussionRepository $discussions,
-		AccessPolicy $access
+		AccessPolicyInterface $access,
+		EntitlementManagerInterface $entitlements,
+		DataSeeder $data_seeder,
+		?RestRouteRegistry $routes = null,
+		?ContextResolverInterface $context_types = null
 	) {
 		$this->formatting    = $formatting;
 		$this->activity      = $activity;
@@ -93,6 +106,10 @@ final class RestRegistrar {
 		$this->milestones    = $milestones;
 		$this->discussions   = $discussions;
 		$this->access        = $access;
+		$this->entitlements  = $entitlements;
+		$this->data_seeder   = $data_seeder;
+		$this->routes        = $routes ?: CoreRegistries::rest_routes();
+		$this->context_types = $context_types ?: CoreRegistries::context_types();
 	}
 
 	public function register(): void {
@@ -100,6 +117,13 @@ final class RestRegistrar {
 	}
 
 	public function register_routes(): void {
+		$this->routes->register( $this );
+	}
+
+	/**
+	 * Register the current core route set.
+	 */
+	public function register_core_routes(): void {
 		register_rest_route(
 			self::NAMESPACE,
 			'/status',
@@ -570,7 +594,541 @@ final class RestRegistrar {
 		);
 	}
 
-	private function register_collection_routes( string $base, string $capability, callable $list_callback, callable $create_callback, callable $update_callback, callable $find_callback, callable $bulk_callback, ?callable $delete_callback = null, string $read_capability = '', string $update_capability = '', string $bulk_capability = '' ): void {
+	/**
+	 * Register status routes.
+	 */
+	public function register_status_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/status',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_status' ),
+				'permission_callback' => array( $this, 'can_access_any_shell' ),
+			)
+		);
+	}
+
+	/**
+	 * Register admin-shell routes.
+	 */
+	public function register_admin_shell_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/admin-shell',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_admin_shell' ),
+				'permission_callback' => array( $this, 'can_access_admin' ),
+			)
+		);
+	}
+
+	/**
+	 * Register dashboard and overview routes.
+	 */
+	public function register_overview_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/calendar',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_calendar' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/dashboard',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_dashboard' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/activity',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_activity' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+	}
+
+	/**
+	 * Register collection resource routes.
+	 */
+	public function register_collection_resource_routes(): void {
+		$this->register_collection_routes( 'projects', 'coordina_manage_projects', array( $this->projects, 'get_items' ), array( $this->projects, 'create' ), array( $this->projects, 'update' ), array( $this->projects, 'find' ), array( $this->projects, 'bulk_update_status' ), array( $this->projects, 'delete' ), 'coordina_access' );
+		$this->register_collection_routes( 'tasks', 'coordina_manage_tasks', array( $this->tasks, 'get_items' ), array( $this->tasks, 'create' ), array( $this->tasks, 'update' ), array( $this->tasks, 'find' ), array( $this->tasks, 'bulk_update_status' ), array( $this->tasks, 'delete' ), 'coordina_access', 'coordina_access', 'coordina_access' );
+		$this->register_collection_routes( 'requests', 'coordina_access', array( $this->requests, 'get_items' ), array( $this->requests, 'create' ), array( $this->requests, 'update' ), array( $this->requests, 'find' ), array( $this->requests, 'bulk_update_status' ), array( $this->requests, 'delete' ), 'coordina_access', 'coordina_access', 'coordina_access' );
+		$this->register_collection_routes( 'approvals', 'coordina_access', array( $this->approvals, 'get_items' ), array( $this->approvals, 'create' ), array( $this->approvals, 'update' ), array( $this->approvals, 'find' ), array( $this->approvals, 'bulk_update_status' ), null, 'coordina_access', 'coordina_access', 'coordina_access' );
+		$this->register_collection_routes( 'risks-issues', 'coordina_manage_projects', array( $this->risks_issues, 'get_items' ), array( $this->risks_issues, 'create' ), array( $this->risks_issues, 'update' ), array( $this->risks_issues, 'find' ), array( $this->risks_issues, 'bulk_update_status' ), array( $this->risks_issues, 'delete' ) );
+		$this->register_collection_routes( 'milestones', 'coordina_manage_projects', array( $this->milestones, 'get_items' ), array( $this->milestones, 'create' ), array( $this->milestones, 'update' ), array( $this->milestones, 'find' ), array( $this->milestones, 'bulk_update_status' ), array( $this->milestones, 'delete' ), 'coordina_access' );
+	}
+
+	/**
+	 * Register checklist routes.
+	 */
+	public function register_checklist_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/checklists',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_checklists' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'create_checklist' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/checklists/(?P<id>\\d+)',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_checklist' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::EDITABLE,
+					'callback'            => array( $this, 'update_checklist' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( $this, 'delete_checklist' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/checklists/(?P<id>\\d+)/move',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'move_checklist' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/checklist-items',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'create_checklist_item' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/checklist-items/(?P<id>\\d+)',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_checklist_item' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::EDITABLE,
+					'callback'            => array( $this, 'update_checklist_item' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( $this, 'delete_checklist_item' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/checklist-items/(?P<id>\\d+)/toggle',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'toggle_checklist_item' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/checklist-items/(?P<id>\\d+)/move',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'move_checklist_item' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+	}
+
+	/**
+	 * Register collaboration routes.
+	 */
+	public function register_collaboration_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/files',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_files' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'create_file' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/files/(?P<id>\\d+)',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_file' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( $this, 'delete_file' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/discussions',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_discussions' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'create_discussion' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/discussions/(?P<id>\\d+)',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_discussion' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( $this, 'delete_discussion' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+			)
+		);
+	}
+
+	/**
+	 * Register project workspace routes.
+	 */
+	public function register_project_workspace_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/projects/(?P<id>\\d+)/workspace',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_project_workspace' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/projects/(?P<id>\\d+)/settings',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_project_settings' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'update_project_settings' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_manage_projects' ) || current_user_can( 'coordina_manage_settings' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/projects/(?P<id>\\d+)/task-groups',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_project_task_groups' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'create_project_task_group' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_manage_projects' ) || current_user_can( 'coordina_manage_settings' );
+					},
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/task-groups/(?P<id>\\d+)',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'update_task_group' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_manage_projects' ) || current_user_can( 'coordina_manage_settings' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( $this, 'delete_task_group' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_manage_projects' ) || current_user_can( 'coordina_manage_settings' );
+					},
+				),
+			)
+		);
+	}
+
+	/**
+	 * Register request conversion routes.
+	 */
+	public function register_request_conversion_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/requests/(?P<id>\\d+)/convert',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'convert_request' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+	}
+
+	/**
+	 * Register My Work routes.
+	 */
+	public function register_my_work_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/my-work',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_my_work' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+	}
+
+	/**
+	 * Register workload routes.
+	 */
+	public function register_workload_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/workload',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_workload' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_manage_projects' );
+				},
+			)
+		);
+	}
+
+	/**
+	 * Register notification routes.
+	 */
+	public function register_notification_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/notifications',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_notifications' ),
+				'permission_callback' => array( $this, 'can_access_any_shell' ),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/notifications/(?P<id>\\d+)',
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( $this, 'update_notification' ),
+				'permission_callback' => array( $this, 'can_access_any_shell' ),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/notification-preferences',
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( $this, 'update_notification_preferences' ),
+				'permission_callback' => array( $this, 'can_access_any_shell' ),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/notifications/mark-all-read',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'mark_all_notifications_read' ),
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'coordina_access' );
+				},
+			)
+		);
+	}
+
+	/**
+	 * Register settings routes.
+	 */
+	public function register_settings_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/settings',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_settings' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_manage_settings' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'update_settings' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_manage_settings' );
+					},
+				),
+			)
+		);
+	}
+
+	/**
+	 * Register saved-view routes.
+	 */
+	public function register_saved_view_routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/saved-views',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'get_saved_views' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'create_saved_view' ),
+					'permission_callback' => static function (): bool {
+						return current_user_can( 'coordina_access' );
+					},
+				),
+			)
+		);
+	}
+
+	public function register_collection_routes( string $base, string $capability, callable $list_callback, callable $create_callback, callable $update_callback, callable $find_callback, callable $bulk_callback, ?callable $delete_callback = null, string $read_capability = '', string $update_capability = '', string $bulk_capability = '' ): void {
 		$read_capability = '' !== $read_capability ? $read_capability : $capability;
 		$update_capability = '' !== $update_capability ? $update_capability : $capability;
 		$bulk_capability = '' !== $bulk_capability ? $bulk_capability : $update_capability;
@@ -750,6 +1308,8 @@ final class RestRegistrar {
 					'canManageRequests' => current_user_can( 'coordina_manage_requests' ),
 					'canManageSettings' => current_user_can( 'coordina_manage_settings' ),
 				),
+				'licenseState' => $this->entitlements->license_state(),
+				'featureStates' => $this->entitlements->all_feature_states(),
 				'statuses'     => $dropdowns['statuses'],
 				'priorities'   => $dropdowns['priorities'],
 				'health'       => $dropdowns['health'],
@@ -759,6 +1319,9 @@ final class RestRegistrar {
 				'projectTypes' => $dropdowns['projectTypes'],
 				'fileCategories' => $dropdowns['fileCategories'],
 				'updateTypes' => $dropdowns['updateTypes'],
+				'settingsMeta' => array(
+					'choices' => $this->settings->choice_lists(),
+				),
 				'dateDisplay' => (string) ( $settings['general']['date_display'] ?? 'site' ),
 				'taskGroupLabel' => $settings['general']['task_group_label'] ?? 'stage',
 				'activityPageSize' => (int) ( $settings['general']['activity_page_size'] ?? 10 ),
@@ -772,9 +1335,9 @@ final class RestRegistrar {
 				'themePrimaryCustomColor' => (string) ( $appearance['primary_custom_color'] ?? '' ),
 				'themeAccentCustomColor' => (string) ( $appearance['accent_custom_color'] ?? '' ),
 				'themeMode' => (string) ( $appearance['theme_mode'] ?? 'auto' ),
-				'objectTypes'  => array( 'risk', 'issue' ),
-				'approvalObjectTypes' => array( 'project', 'task', 'request', 'risk', 'issue', 'milestone' ),
-				'contextObjectTypes'  => array( 'project', 'task', 'request', 'risk', 'issue', 'milestone', 'approval' ),
+				'objectTypes'  => $this->context_types->slugs_for_flag( 'risk_object' ),
+				'approvalObjectTypes' => $this->context_types->slugs_for_flag( 'approval_object' ),
+				'contextObjectTypes'  => $this->context_types->slugs(),
 				'severities'   => $dropdowns['severities'],
 				'impacts'      => $dropdowns['impacts'],
 				'likelihoods'  => $dropdowns['likelihoods'],
@@ -1821,37 +2384,25 @@ final class RestRegistrar {
 		}
 
 		try {
-			$seeder = new DataSeeder(
-				$this->projects,
-				$this->tasks,
-				$this->milestones,
-				$this->risks_issues,
-				$this->approvals,
-				$this->discussions,
-				$this->activity,
-				$this->files,
-				$this->access
-			);
-
 			$projects = array();
 
 			switch ( $type ) {
 				case 'website':
-					$projects[] = $seeder->seed_website_redesign( $manager_id );
+					$projects[] = $this->data_seeder->seed_website_redesign( $manager_id );
 					break;
 
 				case 'mobile':
-					$projects[] = $seeder->seed_mobile_app( $manager_id );
+					$projects[] = $this->data_seeder->seed_mobile_app( $manager_id );
 					break;
 
 				case 'support':
-					$projects[] = $seeder->seed_support_process( $manager_id );
+					$projects[] = $this->data_seeder->seed_support_process( $manager_id );
 					break;
 
 				case 'all':
-					$projects[] = $seeder->seed_website_redesign( $manager_id );
-					$projects[] = $seeder->seed_mobile_app( $manager_id );
-					$projects[] = $seeder->seed_support_process( $manager_id );
+					$projects[] = $this->data_seeder->seed_website_redesign( $manager_id );
+					$projects[] = $this->data_seeder->seed_mobile_app( $manager_id );
+					$projects[] = $this->data_seeder->seed_support_process( $manager_id );
 					break;
 			}
 

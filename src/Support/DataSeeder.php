@@ -9,15 +9,15 @@ declare(strict_types=1);
 
 namespace Coordina\Support;
 
-use Coordina\Infrastructure\Access\AccessPolicy;
 use Coordina\Infrastructure\Persistence\ActivityRepository;
-use Coordina\Infrastructure\Persistence\ApprovalRepository;
 use Coordina\Infrastructure\Persistence\DiscussionRepository;
-use Coordina\Infrastructure\Persistence\MilestoneRepository;
-use Coordina\Infrastructure\Persistence\ProjectRepository;
-use Coordina\Infrastructure\Persistence\RiskIssueRepository;
-use Coordina\Infrastructure\Persistence\TaskRepository;
 use Coordina\Infrastructure\Persistence\FileRepository;
+use Coordina\Infrastructure\Persistence\MilestoneRepository;
+use Coordina\Infrastructure\Persistence\RiskIssueRepository;
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\ApprovalRepositoryInterface;
+use Coordina\Platform\Contracts\ProjectRepositoryInterface;
+use Coordina\Platform\Contracts\TaskRepositoryInterface;
 
 /**
  * Generates realistic demo projects with tasks, milestones, risks, and activity.
@@ -27,14 +27,14 @@ class DataSeeder {
 	/**
 	 * Project repository.
 	 *
-	 * @var ProjectRepository
+	 * @var ProjectRepositoryInterface
 	 */
 	private $projects;
 
 	/**
 	 * Task repository.
 	 *
-	 * @var TaskRepository
+	 * @var TaskRepositoryInterface
 	 */
 	private $tasks;
 
@@ -55,7 +55,7 @@ class DataSeeder {
 	/**
 	 * Approval repository.
 	 *
-	 * @var ApprovalRepository
+	 * @var ApprovalRepositoryInterface
 	 */
 	private $approvals;
 
@@ -83,33 +83,33 @@ class DataSeeder {
 	/**
 	 * Access policy.
 	 *
-	 * @var AccessPolicy
+	 * @var AccessPolicyInterface
 	 */
 	private $access;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param ProjectRepository $projects Projects repo.
-	 * @param TaskRepository $tasks Tasks repo.
+	 * @param ProjectRepositoryInterface $projects Projects repo.
+	 * @param TaskRepositoryInterface $tasks Tasks repo.
 	 * @param MilestoneRepository $milestones Milestones repo.
 	 * @param RiskIssueRepository $risks Risks repo.
-	 * @param ApprovalRepository $approvals Approvals repo.
+	 * @param ApprovalRepositoryInterface $approvals Approvals repo.
 	 * @param DiscussionRepository $discussions Discussions repo.
 	 * @param ActivityRepository $activity Activity repo.
 	 * @param FileRepository $files Files repo.
-	 * @param AccessPolicy $access Access policy.
+	 * @param AccessPolicyInterface $access Access policy.
 	 */
 	public function __construct(
-		ProjectRepository $projects,
-		TaskRepository $tasks,
+		ProjectRepositoryInterface $projects,
+		TaskRepositoryInterface $tasks,
 		MilestoneRepository $milestones,
 		RiskIssueRepository $risks,
-		ApprovalRepository $approvals,
+		ApprovalRepositoryInterface $approvals,
 		DiscussionRepository $discussions,
 		ActivityRepository $activity,
 		FileRepository $files,
-		AccessPolicy $access
+		AccessPolicyInterface $access
 	) {
 		$this->projects    = $projects;
 		$this->tasks       = $tasks;

@@ -9,58 +9,25 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Capabilities;
 
+use Coordina\Platform\Bootstrap\CoreRegistries;
+use Coordina\Platform\Registry\CapabilityRegistry;
+
 final class CapabilityManager {
 	/**
-	 * Capability map by role.
+	 * Capability registry.
 	 *
-	 * @var array<string, array<int, string>>
+	 * @var CapabilityRegistry
 	 */
-	private $role_capabilities = array(
-		'administrator'             => array(
-			'read',
-			'upload_files',
-			'coordina_access',
-			'coordina_manage_settings',
-			'coordina_view_reports',
-			'coordina_manage_projects',
-			'coordina_manage_tasks',
-			'coordina_manage_requests',
-			'coordina_manage_approvals',
-			'coordina_view_dashboard',
-			'coordina_access_portal',
-		),
-		'coordina_project_manager'  => array(
-			'read',
-			'upload_files',
-			'coordina_access',
-			'coordina_view_dashboard',
-			'coordina_manage_projects',
-			'coordina_manage_tasks',
-			'coordina_manage_requests',
-			'coordina_manage_approvals',
-			'coordina_view_reports',
-			'coordina_access_portal',
-		),
-		'coordina_team_member'      => array(
-			'read',
-			'upload_files',
-			'coordina_access',
-			'coordina_access_portal',
-		),
-		'coordina_executive_viewer' => array(
-			'read',
-			'upload_files',
-			'coordina_access',
-			'coordina_view_dashboard',
-			'coordina_view_reports',
-			'coordina_access_portal',
-		),
-		'coordina_portal_user'      => array(
-			'read',
-			'upload_files',
-			'coordina_access_portal',
-		),
-	);
+	private $registry;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param CapabilityRegistry|null $registry Capability registry.
+	 */
+	public function __construct( ?CapabilityRegistry $registry = null ) {
+		$this->registry = $registry ?: CoreRegistries::capabilities();
+	}
 
 	/**
 	 * Register hooks.
@@ -82,29 +49,19 @@ final class CapabilityManager {
 	 * Add custom roles.
 	 */
 	public function add_roles(): void {
-		add_role(
-			'coordina_project_manager',
-			__( 'Coordina Project Manager', 'coordina' ),
-			$this->get_role_caps( 'coordina_project_manager' )
-		);
+		$labels = $this->registry->labels();
 
-		add_role(
-			'coordina_team_member',
-			__( 'Coordina Team Member', 'coordina' ),
-			$this->get_role_caps( 'coordina_team_member' )
-		);
+		foreach ( $this->registry->role_capabilities() as $role_name => $capabilities ) {
+			if ( 'administrator' === $role_name ) {
+				continue;
+			}
 
-		add_role(
-			'coordina_executive_viewer',
-			__( 'Coordina Executive Viewer', 'coordina' ),
-			$this->get_role_caps( 'coordina_executive_viewer' )
-		);
-
-		add_role(
-			'coordina_portal_user',
-			__( 'Coordina Portal User', 'coordina' ),
-			$this->get_role_caps( 'coordina_portal_user' )
-		);
+			add_role(
+				$role_name,
+				$labels[ $role_name ] ?? $role_name,
+				$this->get_role_caps( $role_name )
+			);
+		}
 	}
 
 	/**
@@ -113,7 +70,7 @@ final class CapabilityManager {
 	public function sync_role_caps(): void {
 		$managed_capabilities = $this->get_managed_capabilities();
 
-		foreach ( $this->role_capabilities as $role_name => $expected_caps ) {
+		foreach ( $this->registry->role_capabilities() as $role_name => $expected_caps ) {
 			$role = get_role( $role_name );
 
 			if ( ! $role instanceof \WP_Role ) {
@@ -140,7 +97,7 @@ final class CapabilityManager {
 	private function get_role_caps( string $role ): array {
 		$caps = array();
 
-		foreach ( $this->role_capabilities[ $role ] as $capability ) {
+		foreach ( $this->registry->role_capabilities()[ $role ] as $capability ) {
 			$caps[ $capability ] = true;
 		}
 
@@ -153,16 +110,6 @@ final class CapabilityManager {
 	 * @return array<int, string>
 	 */
 	private function get_managed_capabilities(): array {
-		$capabilities = array();
-
-		foreach ( $this->role_capabilities as $role_caps ) {
-			foreach ( $role_caps as $capability ) {
-				if ( ! in_array( $capability, $capabilities, true ) ) {
-					$capabilities[] = $capability;
-				}
-			}
-		}
-
-		return $capabilities;
+		return $this->registry->managed_capabilities();
 	}
 }

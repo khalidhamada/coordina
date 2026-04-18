@@ -10,6 +10,9 @@ declare(strict_types=1);
 namespace Coordina\Infrastructure\Persistence;
 
 use Coordina\Infrastructure\Access\AccessPolicy;
+use Coordina\Platform\Bootstrap\CoreRegistries;
+use Coordina\Platform\Contracts\AccessPolicyInterface;
+use Coordina\Platform\Contracts\ContextResolverInterface;
 use wpdb;
 
 abstract class AbstractRepository {
@@ -23,17 +26,32 @@ abstract class AbstractRepository {
 	/**
 	 * Shared access policy.
 	 *
-	 * @var AccessPolicy
+	 * @var AccessPolicyInterface
 	 */
 	protected $access;
 
 	/**
-	 * Constructor.
+	 * Shared context registry.
+	 *
+	 * @var ContextResolverInterface
 	 */
-	public function __construct() {
+	protected $context_types;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param AccessPolicyInterface|null  $access Shared access policy.
+	 * @param ContextResolverInterface|null $context_types Shared context registry.
+	 */
+	public function __construct( ?AccessPolicyInterface $access = null, ?ContextResolverInterface $context_types = null ) {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->access = new AccessPolicy();
+		$this->context_types = $context_types ?: CoreRegistries::context_types();
+
+		if ( $access instanceof AccessPolicyInterface ) {
+			$this->access = $access;
+		}
 	}
 
 	/**
@@ -128,26 +146,35 @@ abstract class AbstractRepository {
 	 * @return string
 	 */
 	protected function resolve_context_label( string $object_type, int $object_id ): string {
-		$table_map = array(
-			'project'  => 'projects',
-			'task'     => 'tasks',
-			'request'  => 'requests',
-			'risk'     => 'risks_issues',
-			'issue'    => 'risks_issues',
-			'milestone'=> 'milestones',
-			'approval' => 'approvals',
-		);
+		$definition = $this->context_types->definition( $object_type );
 
-		if ( ! isset( $table_map[ $object_type ] ) || $object_id <= 0 ) {
+		if ( $object_id <= 0 || empty( $definition ) ) {
 			return '';
 		}
 
-		if ( 'approval' === $object_type ) {
-			return sprintf( __( 'Approval #%d', 'coordina' ), $object_id );
+		if ( isset( $definition['label_callback'] ) && is_callable( $definition['label_callback'] ) ) {
+			return (string) $definition['label_callback']( $object_id, $this );
 		}
 
-		$table = $this->table( $table_map[ $object_type ] );
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( "SELECT title FROM {$table} WHERE id = %d", $object_id ) );
+		$table_suffix = (string) ( $definition['table'] ?? '' );
+		$title_column = (string) ( $definition['title_column'] ?? 'title' );
+		$type_column  = (string) ( $definition['type_column'] ?? '' );
+		$type_value   = sanitize_key( (string) ( $definition['type_value'] ?? '' ) );
+
+		if ( '' === $table_suffix || '' === $title_column ) {
+			return '';
+		}
+
+		$table = $this->table( $table_suffix );
+		$sql   = "SELECT {$title_column} FROM {$table} WHERE id = %d";
+		$args  = array( $object_id );
+
+		if ( '' !== $type_column && '' !== $type_value ) {
+			$sql   .= " AND {$type_column} = %s";
+			$args[] = $type_value;
+		}
+
+		$title = $this->wpdb->get_var( $this->wpdb->prepare( $sql, $args ) );
 
 		return $title ? (string) $title : '';
 	}
@@ -160,24 +187,35 @@ abstract class AbstractRepository {
 	 * @return int
 	 */
 	protected function resolve_project_id_for_context( string $object_type, int $object_id ): int {
+		$definition = $this->context_types->definition( $object_type );
+
 		if ( $object_id <= 0 ) {
 			return 0;
 		}
 
-		if ( 'project' === $object_type ) {
+		if ( 'self' === ( $definition['project_lookup'] ?? '' ) ) {
 			return $object_id;
 		}
 
-		if ( 'task' === $object_type ) {
-			return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', $object_id ) );
+		if ( isset( $definition['project_lookup_callback'] ) && is_callable( $definition['project_lookup_callback'] ) ) {
+			return (int) $definition['project_lookup_callback']( $object_id, $this );
 		}
 
-		if ( in_array( $object_type, array( 'risk', 'issue' ), true ) ) {
-			return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d', $object_id ) );
-		}
+		$table_suffix       = (string) ( $definition['table'] ?? '' );
+		$project_id_column  = (string) ( $definition['project_id_column'] ?? '' );
+		$type_column        = (string) ( $definition['type_column'] ?? '' );
+		$type_value         = sanitize_key( (string) ( $definition['type_value'] ?? '' ) );
 
-		if ( 'milestone' === $object_type ) {
-			return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d', $object_id ) );
+		if ( '' !== $table_suffix && '' !== $project_id_column ) {
+			$sql  = 'SELECT ' . $project_id_column . ' FROM ' . $this->table( $table_suffix ) . ' WHERE id = %d';
+			$args = array( $object_id );
+
+			if ( '' !== $type_column && '' !== $type_value ) {
+				$sql   .= ' AND ' . $type_column . ' = %s';
+				$args[] = $type_value;
+			}
+
+			return (int) $this->wpdb->get_var( $this->wpdb->prepare( $sql, $args ) );
 		}
 
 		if ( 'approval' === $object_type ) {
@@ -199,22 +237,25 @@ abstract class AbstractRepository {
 	 * @return bool
 	 */
 	protected function context_exists( string $object_type, int $object_id ): bool {
-		$table_map = array(
-			'project'  => 'projects',
-			'task'     => 'tasks',
-			'request'  => 'requests',
-			'risk'     => 'risks_issues',
-			'issue'    => 'risks_issues',
-			'milestone'=> 'milestones',
-			'approval' => 'approvals',
-		);
+		$definition   = $this->context_types->definition( $object_type );
+		$table_suffix = (string) ( $definition['table'] ?? '' );
+		$type_column  = (string) ( $definition['type_column'] ?? '' );
+		$type_value   = sanitize_key( (string) ( $definition['type_value'] ?? '' ) );
 
-		if ( ! isset( $table_map[ $object_type ] ) || $object_id <= 0 ) {
+		if ( '' === $table_suffix || $object_id <= 0 ) {
 			return false;
 		}
 
-		$table = $this->table( $table_map[ $object_type ] );
-		$count = (int) $this->wpdb->get_var( $this->wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE id = %d", $object_id ) );
+		$table = $this->table( $table_suffix );
+		$sql   = "SELECT COUNT(*) FROM {$table} WHERE id = %d";
+		$args  = array( $object_id );
+
+		if ( '' !== $type_column && '' !== $type_value ) {
+			$sql   .= " AND {$type_column} = %s";
+			$args[] = $type_value;
+		}
+
+		$count = (int) $this->wpdb->get_var( $this->wpdb->prepare( $sql, $args ) );
 
 		return $count > 0;
 	}

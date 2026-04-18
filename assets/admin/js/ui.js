@@ -41,6 +41,48 @@ function buildRouteAttributes(route) {
 	return attrs.join(' ');
 }
 
+function contextDefinition(objectType) {
+	return state.contextDefinitions ? (state.contextDefinitions[String(objectType || '')] || null) : null;
+}
+
+function contextRoute(objectType, objectId, projectId, forcedProjectTab) {
+	const definition = contextDefinition(objectType);
+	const id = Number(objectId || 0);
+	if (!definition || !definition.page || id <= 0) {
+		return null;
+	}
+
+	const route = { page: definition.page };
+	const queryArg = String(definition.queryArg || '');
+	if (queryArg) {
+		route[queryArg] = id;
+	}
+	if (definition.includeProjectId && Number(projectId || 0) > 0) {
+		route.project_id = Number(projectId || 0);
+	}
+	if (forcedProjectTab) {
+		route.project_tab = forcedProjectTab;
+	} else if (Number(projectId || 0) > 0 && definition.projectTabWhenProject) {
+		route.project_tab = definition.projectTabWhenProject;
+	} else if (definition.projectTab) {
+		route.project_tab = definition.projectTab;
+	}
+	return route;
+}
+
+function routeTargetsKnownDetailPage(route) {
+	if (!route || !route.page) {
+		return false;
+	}
+	return Object.values(state.contextDefinitions || {}).some((definition) => {
+		if (!definition || String(definition.page || '') !== String(route.page || '')) {
+			return false;
+		}
+		const queryArg = String(definition.queryArg || '');
+		return queryArg && Number(route[queryArg] || 0) > 0;
+	});
+}
+
 function buildDataAttributes(data) {
 	if (!data || typeof data !== 'object') {
 		return '';
@@ -302,6 +344,10 @@ function moduleHeaderActions(module) {
 		return [];
 	}
 	const actions = [buttonAction(__('Save view', 'coordina'), { action: 'save-view' })];
+	const projectWizardFeature = module.key === 'projects' && typeof app.featureState === 'function' ? app.featureState('project_wizard') : null;
+	if (projectWizardFeature && projectWizardFeature.enabled && projectWizardFeature.route && projectWizardFeature.route.page) {
+		actions.push(routeAction(projectWizardFeature.label || __('Project Wizard', 'coordina'), projectWizardFeature.route));
+	}
 	if (moduleCanCreate(module)) {
 		actions.push(buttonAction(`${__('New', 'coordina')} ${module.singular || __('record', 'coordina')}`, { action: 'open-create' }, 'primary'));
 	}
@@ -408,19 +454,10 @@ function approvalSourceRoute(item) {
 	if (objectType === 'project' && objectId > 0) {
 		return { page: 'coordina-projects', project_id: objectId, project_tab: 'approvals' };
 	}
-	if (objectType === 'task') {
-		return { page: 'coordina-task', task_id: objectId, project_id: projectId, project_tab: projectId > 0 ? 'work' : '' };
-	}
-	if (objectType === 'milestone') {
-		return { page: 'coordina-milestone', milestone_id: objectId, project_id: projectId, project_tab: projectId > 0 ? 'milestones' : '' };
-	}
 	if (objectType === 'request') {
 		return { page: 'coordina-requests' };
 	}
-	if (objectType === 'risk' || objectType === 'issue') {
-		return { page: 'coordina-risk-issue', risk_issue_id: objectId, project_id: projectId, project_tab: projectId > 0 ? 'risks-issues' : '' };
-	}
-	return null;
+	return contextRoute(objectType, objectId, projectId);
 }
 
 function fileSourceRoute(item) {
@@ -430,22 +467,13 @@ function fileSourceRoute(item) {
 	if (objectType === 'project' && objectId > 0) {
 		return { page: 'coordina-projects', project_id: objectId, project_tab: 'files' };
 	}
-	if (objectType === 'task') {
-		return { page: 'coordina-task', task_id: objectId, project_id: projectId, project_tab: projectId > 0 ? 'work' : '' };
-	}
-	if (objectType === 'milestone') {
-		return { page: 'coordina-milestone', milestone_id: objectId, project_id: projectId, project_tab: projectId > 0 ? 'milestones' : '' };
-	}
-	if (objectType === 'risk' || objectType === 'issue') {
-		return { page: 'coordina-risk-issue', risk_issue_id: objectId, project_id: projectId, project_tab: projectId > 0 ? 'risks-issues' : '' };
-	}
 	if (objectType === 'request') {
 		return { page: 'coordina-requests' };
 	}
 	if (objectType === 'approval') {
 		return { page: 'coordina-approvals' };
 	}
-	return null;
+	return contextRoute(objectType, objectId, projectId);
 }
 
 function fileSizeLabel(bytes) {
@@ -1492,33 +1520,19 @@ function openTaskPage(id, route) {
 }
 
 function openMilestonePage(id, route) {
-	const milestoneId = Number(id || 0);
-	if (milestoneId <= 0) {
+	const nextRoute = contextRoute('milestone', id, route && route.project_id ? route.project_id : 0, route && route.project_tab ? route.project_tab : '');
+	if (!nextRoute) {
 		return;
 	}
-
-	const url = new URL(window.location.href);
-	url.searchParams.set('page', 'coordina-milestone');
-	url.searchParams.set('milestone_id', milestoneId);
-	if (route && route.project_id) { url.searchParams.set('project_id', route.project_id); } else { url.searchParams.delete('project_id'); }
-	if (route && route.project_tab) { url.searchParams.set('project_tab', route.project_tab); } else { url.searchParams.delete('project_tab'); }
-	url.searchParams.delete('task_id');
-	window.location.href = url.toString();
+	openRoute(nextRoute);
 }
 
 function openRiskIssuePage(id, route) {
-	const riskIssueId = Number(id || 0);
-	if (riskIssueId <= 0) {
+	const nextRoute = contextRoute('risk', id, route && route.project_id ? route.project_id : 0, route && route.project_tab ? route.project_tab : '');
+	if (!nextRoute) {
 		return;
 	}
-
-	const url = new URL(window.location.href);
-	url.searchParams.set('page', 'coordina-risk-issue');
-	url.searchParams.set('risk_issue_id', riskIssueId);
-	if (route && route.project_id) { url.searchParams.set('project_id', route.project_id); } else { url.searchParams.delete('project_id'); }
-	if (route && route.project_tab) { url.searchParams.set('project_tab', route.project_tab); } else { url.searchParams.delete('project_tab'); }
-	url.searchParams.delete('task_id');
-	window.location.href = url.toString();
+	openRoute(nextRoute);
 }
 
 function openRoute(route) {
@@ -1526,14 +1540,11 @@ function openRoute(route) {
 	const targetPage = route.page || 'coordina-dashboard';
 	const projectId = Number(route.project_id || 0);
 	const taskId = Number(route.task_id || 0);
-	const milestoneId = Number(route.milestone_id || 0);
-	const riskIssueId = Number(route.risk_issue_id || 0);
 	const allowProjectWorkspace = targetPage === 'coordina-projects' && projectId > 0;
 	const allowTaskPage = targetPage === 'coordina-task' && taskId > 0;
-	const allowMilestonePage = targetPage === 'coordina-milestone' && milestoneId > 0;
-	const allowRiskIssuePage = targetPage === 'coordina-risk-issue' && riskIssueId > 0;
+	const allowKnownDetailPage = routeTargetsKnownDetailPage(route);
 	const fallbackPage = canAccessPage('coordina-dashboard') ? 'coordina-dashboard' : 'coordina-my-work';
-	url.searchParams.set('page', (canAccessPage(targetPage) || allowProjectWorkspace || allowTaskPage || allowMilestonePage || allowRiskIssuePage) ? targetPage : fallbackPage);
+	url.searchParams.set('page', (canAccessPage(targetPage) || allowProjectWorkspace || allowTaskPage || allowKnownDetailPage) ? targetPage : fallbackPage);
 	if (route.project_id) { url.searchParams.set('project_id', route.project_id); } else { url.searchParams.delete('project_id'); }
 	if (route.project_tab) { url.searchParams.set('project_tab', route.project_tab); } else { url.searchParams.delete('project_tab'); }
 	if (route.task_id) { url.searchParams.set('task_id', route.task_id); } else { url.searchParams.delete('task_id'); }
@@ -1562,11 +1573,17 @@ async function loadRecordCollaboration(seed) {
 async function openRecord(moduleKey, id) {
 	const module = modules[`coordina-${moduleKey}`] || currentModule() || modules['coordina-tasks'];
 	if (module.key === 'milestones') {
-		openMilestonePage(id);
+		const route = contextRoute('milestone', id);
+		if (route) {
+			openRoute(route);
+		}
 		return;
 	}
 	if (module.key === 'risks-issues') {
-		openRiskIssuePage(id);
+		const route = contextRoute('risk', id);
+		if (route) {
+			openRoute(route);
+		}
 		return;
 	}
 	const item = await api(`/${module.endpoint}/${id}`);
@@ -1593,6 +1610,8 @@ function openNotifications() {
 }
 
 Object.assign(app, {
+	buildRouteAttributes,
+	contextRoute,
 	entityIcon,
 	iconLabel,
 	approvalSourceRoute,
