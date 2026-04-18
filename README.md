@@ -97,6 +97,23 @@ Coordina brings professional work management, project oversight, and team coordi
 3. Use **Calendar** for planning
 4. Reference **Activity** feed for updates and collaboration
 
+## Screenshots
+
+The v1.4.0 release includes a refreshed screenshot set covering the main operational surfaces in Coordina. The numbered files in `assets/` match the WordPress.org screenshot order:
+
+1. [Dashboard overview](assets/screenshot-1.png) - Portfolio metrics, execution pressure, and priority watchlists.
+2. [Projects index](assets/screenshot-2.png) - Project cards for scanning health, ownership, and progress.
+3. [Project overview workspace](assets/screenshot-3.png) - Dedicated project workspace with KPIs, tabs, and summary context.
+4. [Project board view](assets/screenshot-4.png) - Task board inside the project workspace for status-based execution.
+5. [Project Gantt view](assets/screenshot-5.png) - Visual project timeline for tasks and milestones.
+6. [Milestones workspace](assets/screenshot-6.png) - Milestone tracking with project-scoped planning context.
+7. [Risks and issues workspace](assets/screenshot-7.png) - Risk and issue monitoring inside the project workspace.
+8. [Project activity feed](assets/screenshot-8.png) - Date-grouped project activity for review and auditing.
+9. [Project updates feed](assets/screenshot-9.png) - Contextual update stream for project communication.
+10. [Task detail page](assets/screenshot-10.png) - Full task detail page with progress update, checklist, and record details.
+11. [Calendar view](assets/screenshot-11.png) - Planning-first calendar surface for operational timelines.
+12. [My Work hub](assets/screenshot-12.png) - Daily execution hub with queue, board, tasks, and personal calendar context.
+
 ## Architecture & Design
 
 ### Data Storage

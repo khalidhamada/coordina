@@ -11,6 +11,8 @@ Coordina 1.4.0 is the core platform architecture release. It packages the kernel
 
 **Highlights:** Kernel/provider boot • Registry-backed runtime • Public contracts • Centralized entitlement state
 
+**Screenshots:** Dashboard • Projects • Project overview • Board • Gantt • Milestones • Risks & issues • Activity • Updates • Task details • Calendar • My Work
+
 [View full details →](releases/v1.4.0/RELEASE_NOTES.md)
 
 ---

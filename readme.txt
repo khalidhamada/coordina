@@ -1,6 +1,6 @@
 === Coordina ===
-Contributors: coordina
-Tags: project management, task management, workflow, operations, approvals, requests, teamwork
+Contributors: khalidhamada
+Tags: project management, task management, project manager, kanban, teamwork
 Requires at least: 6.6
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -26,6 +26,21 @@ Key capabilities:
 * Settings-backed access policy controls for visibility and edit behavior
 
 Coordina is designed to stay simpler than heavyweight PM suites while remaining more structured than lightweight board-only tools.
+
+== Screenshots ==
+
+1. Dashboard overview with portfolio metrics, execution pressure, and priority watchlists.
+2. Projects index with project cards for health, ownership, and progress scanning.
+3. Project overview workspace with KPIs, workspace tabs, and core project context.
+4. Project board view for status-based task execution inside a project workspace.
+5. Project Gantt timeline for scheduled tasks and milestone checkpoints.
+6. Milestones workspace for project-scoped milestone tracking.
+7. Risks & Issues workspace for project risk and issue monitoring.
+8. Project activity feed grouped by date for review and auditing.
+9. Project updates feed for contextual project communication.
+10. Task detail page with quick progress update, checklist, and record details.
+11. Calendar view for planning operational dates and upcoming work.
+12. My Work hub with queue, board, tasks, and a personal calendar panel.
 
 == Installation ==
 
@@ -60,6 +75,7 @@ Yes. Visibility and edit rights are evaluated through separate settings-backed p
 * Admin pages, REST routes, settings metadata, capability maps, migrations, and context definitions are now registry-backed and extension-ready
 * Public contracts now sit in front of shared project, task, settings, notification, and access services to reduce direct concrete coupling
 * Entitlement and feature-state plumbing are now centralized in core for future packaged extensions
+* Refreshed screenshot set now covers Dashboard, Projects, workspaces, planning, task detail, and My Work surfaces
 * No database changes; direct upgrade from 1.3.1 supported
 
 = 1.3.1 =

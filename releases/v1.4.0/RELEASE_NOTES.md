@@ -37,6 +37,23 @@ This release is intentionally about the core plugin. It does not bundle separate
 - Registry-driven definitions reduce drift between PHP runtime behavior and admin-shell behavior
 - The architecture is now materially modular instead of only planned on paper
 
+## Screenshot Set
+
+The v1.4.0 documentation set now includes refreshed screenshots for the main Coordina surfaces, with WordPress.org-ready numbered assets staged in the top-level `assets/` directory:
+
+1. [Dashboard overview](../../assets/screenshot-1.png)
+2. [Projects index](../../assets/screenshot-2.png)
+3. [Project overview workspace](../../assets/screenshot-3.png)
+4. [Project board view](../../assets/screenshot-4.png)
+5. [Project Gantt view](../../assets/screenshot-5.png)
+6. [Milestones workspace](../../assets/screenshot-6.png)
+7. [Risks and issues workspace](../../assets/screenshot-7.png)
+8. [Project activity feed](../../assets/screenshot-8.png)
+9. [Project updates feed](../../assets/screenshot-9.png)
+10. [Task detail page](../../assets/screenshot-10.png)
+11. [Calendar view](../../assets/screenshot-11.png)
+12. [My Work hub](../../assets/screenshot-12.png)
+
 ## Upgrade Notes
 
 - No database changes are required in this release
