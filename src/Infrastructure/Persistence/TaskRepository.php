@@ -110,12 +110,12 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$where_sql = implode( ' AND ', $where );
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
 		$list_sql  = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY {$order_by} {$order} LIMIT %d OFFSET %d";
-		$total     = (int) $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, $params ) );
+		$total     = (int) $this->prepared_var( $count_sql, $params );
 
 		$list_params   = $params;
 		$list_params[] = $per_page;
 		$list_params[] = $offset;
-		$rows          = $this->wpdb->get_results( $this->wpdb->prepare( $list_sql, $list_params ) );
+		$rows          = $this->prepared_results( $list_sql, $list_params );
 
 		return array(
 			'items'      => array_map( array( $this, 'map_item' ), $rows ?: array() ),
@@ -155,7 +155,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		}
 
 		$table = $this->table( 'task_groups' );
-		$rows  = $this->wpdb->get_results( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE project_id = %d ORDER BY sort_order ASC, title ASC", $project_id ) );
+		$rows  = $this->prepared_results( 'SELECT * FROM ' . $table . ' WHERE project_id = %d ORDER BY sort_order ASC, title ASC', array( $project_id ) );
 
 		return array_map( array( $this, 'map_group' ), $rows ?: array() );
 	}
@@ -169,7 +169,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 	 */
 	public function create_group( int $project_id, array $data ): array {
 		if ( $project_id <= 0 || ! $this->access->can_edit_project( $project_id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to create task groups for this project.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to create task groups for this project.', 'coordina' ) );
 		}
 
 		$table = $this->table( 'task_groups' );
@@ -184,16 +184,17 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		);
 
 		if ( '' === $clean['title'] ) {
-			throw new RuntimeException( __( 'Task group title is required.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task group title is required.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->insert( $table, $clean );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Task group could not be created.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task group could not be created.', 'coordina' ) );
 		}
 
 		$id = (int) $this->wpdb->insert_id;
+		/* translators: %s: task group title. */
 		$this->log_activity( 'project', $project_id, 'task-group-created', sprintf( __( 'Created task group "%s".', 'coordina' ), $clean['title'] ) );
 
 		return $this->find_group( $id );
@@ -210,19 +211,19 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$current = $this->find_group( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Task group could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task group could not be found.', 'coordina' ) );
 		}
 
 		$project_id = (int) ( $current['project_id'] ?? 0 );
 
 		if ( $project_id <= 0 || ! $this->access->can_edit_project( $project_id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this task group.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this task group.', 'coordina' ) );
 		}
 
 		$title = sanitize_text_field( (string) ( $data['title'] ?? $current['title'] ?? '' ) );
 
 		if ( '' === $title ) {
-			throw new RuntimeException( __( 'Task group title is required.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task group title is required.', 'coordina' ) );
 		}
 
 		$clean = array(
@@ -234,10 +235,11 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$result = $this->wpdb->update( $this->table( 'task_groups' ), $clean, array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Task group could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task group could not be updated.', 'coordina' ) );
 		}
 
 		if ( $title !== (string) ( $current['title'] ?? '' ) ) {
+			/* translators: %s: task group title. */
 			$this->log_activity( 'project', $project_id, 'task-group-updated', sprintf( __( 'Updated task group "%s".', 'coordina' ), $title ) );
 		}
 
@@ -254,13 +256,13 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$current = $this->find_group( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Task group could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task group could not be found.', 'coordina' ) );
 		}
 
 		$project_id = (int) ( $current['project_id'] ?? 0 );
 
 		if ( $project_id <= 0 || ! $this->access->can_edit_project( $project_id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this task group.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this task group.', 'coordina' ) );
 		}
 
 		$this->wpdb->update(
@@ -275,9 +277,10 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$result = $this->wpdb->delete( $this->table( 'task_groups' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Task group could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task group could not be deleted.', 'coordina' ) );
 		}
 
+		/* translators: %s: task group title. */
 		$this->log_activity( 'project', $project_id, 'task-group-deleted', sprintf( __( 'Deleted task group "%s".', 'coordina' ), (string) ( $current['title'] ?? '' ) ) );
 
 		return true;
@@ -292,23 +295,19 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 	public function get_project_summary( int $project_id ): array {
 		$table = $this->table( 'tasks' );
 		list( $access_sql, $access_params ) = $this->access->task_access_where( 'id' );
-		$row   = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT
+		$row   = $this->prepared_row(
+			"SELECT
 					COUNT(*) AS total_count,
 					SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS completed_count,
 					SUM(CASE WHEN status = 'blocked' OR blocked = 1 THEN 1 ELSE 0 END) AS blocked_count,
 					SUM(CASE WHEN due_date IS NOT NULL AND due_date < %s AND status NOT IN ('done', 'cancelled') THEN 1 ELSE 0 END) AS overdue_count
-				FROM {$table}
-				WHERE project_id = %d AND {$access_sql}",
+				FROM " . $table . "
+				WHERE project_id = %d AND " . $access_sql,
 				array_merge( array( current_time( 'mysql', true ), $project_id ), $access_params )
-			)
 		);
-		$status_rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT status, COUNT(*) AS total FROM {$table} WHERE project_id = %d AND {$access_sql} GROUP BY status",
-				array_merge( array( $project_id ), $access_params )
-			)
+		$status_rows = $this->prepared_results(
+			'SELECT status, COUNT(*) AS total FROM ' . $table . ' WHERE project_id = %d AND ' . $access_sql . ' GROUP BY status',
+			array_merge( array( $project_id ), $access_params )
 		);
 
 		$status_counts = array();
@@ -339,7 +338,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 	public function get_my_work( int $user_id ): array {
 		$table    = $this->table( 'tasks' );
 		$sql      = "SELECT * FROM {$table} WHERE assignee_user_id = %d AND status NOT IN ('done', 'cancelled') ORDER BY due_date ASC, updated_at DESC LIMIT 40";
-		$rows     = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $user_id ) );
+		$rows     = $this->prepared_results( $sql, array( $user_id ) );
 		$items    = array_map( array( $this, 'map_item' ), $rows ?: array() );
 		$today    = current_datetime()->format( 'Y-m-d' );
 		$week_ago = gmdate( 'Y-m-d H:i:s', strtotime( '-7 days', current_time( 'timestamp', true ) ) );
@@ -640,7 +639,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		}
 
 		$table = $this->table( 'tasks' );
-		$row   = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
+		$row   = $this->prepared_row( 'SELECT * FROM ' . $table . ' WHERE id = %d', array( $id ) );
 		return $this->map_item( $row );
 	}
 
@@ -660,7 +659,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$completion_percent = $this->resolve_task_completion_percent( $data, $status );
 
 		if ( $project_id > 0 && ! $this->access->can_edit_project( $project_id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to create tasks for this project.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to create tasks for this project.', 'coordina' ) );
 		}
 
 		$clean = array(
@@ -688,7 +687,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$result = $this->wpdb->insert( $table, $clean );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Task could not be created.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task could not be created.', 'coordina' ) );
 		}
 
 		$task_id = (int) $this->wpdb->insert_id;
@@ -698,6 +697,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$this->approvals->sync_for_task( $task );
 		$task = $this->find( $task_id );
 		$this->notify_task_assignment( array(), $task );
+		/* translators: %s: task title. */
 		$this->log_activity( 'task', $task_id, 'task_created', sprintf( __( 'Created task "%s".', 'coordina' ), $clean['title'] ) );
 
 		return $task;
@@ -712,7 +712,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 	 */
 	public function update( int $id, array $data ): array {
 		if ( ! $this->access->can_edit_task( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this task.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this task.', 'coordina' ) );
 		}
 
 		$current           = $this->find( $id );
@@ -721,7 +721,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$target_project_id = max( 0, (int) ( $incoming['project_id'] ?? ( $current['project_id'] ?? 0 ) ) );
 
 		if ( $can_full_edit && $target_project_id > 0 && ! $this->access->can_edit_project( $target_project_id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to move this task into that project.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to move this task into that project.', 'coordina' ) );
 		}
 
 		$table             = $this->table( 'tasks' );
@@ -759,7 +759,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$result = $this->wpdb->update( $table, $clean, array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Task could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task could not be updated.', 'coordina' ) );
 		}
 
 		$task = $this->find( $id );
@@ -807,10 +807,10 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$params       = array_merge( array( sanitize_key( $status ), $this->now() ), $ids );
 		$sql          = "UPDATE {$table} SET status = %s, updated_at = %s WHERE id IN ({$placeholders})";
 
-		$result = $this->wpdb->query( $this->wpdb->prepare( $sql, $params ) );
+		$result = $this->prepared_query( $sql, $params );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Task statuses could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task statuses could not be updated.', 'coordina' ) );
 		}
 
 		return (int) $result;
@@ -824,13 +824,13 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 	 */
 	public function delete( int $id ): bool {
 		if ( ! $this->access->can_delete_task( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this task.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this task.', 'coordina' ) );
 		}
 
 		$task = $this->find( $id );
 
 		if ( empty( $task ) ) {
-			throw new RuntimeException( __( 'Task could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task could not be found.', 'coordina' ) );
 		}
 
 		$this->wpdb->delete( $this->table( 'task_checklist_items' ), array( 'task_id' => $id ) );
@@ -839,10 +839,11 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$result = $this->wpdb->delete( $this->table( 'tasks' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Task could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Task could not be deleted.', 'coordina' ) );
 		}
 
 		if ( $result > 0 && (int) ( $task['project_id'] ?? 0 ) > 0 ) {
+			/* translators: %s: task title. */
 			$this->log_activity( 'project', (int) $task['project_id'], 'task_deleted', sprintf( __( 'Deleted task "%s".', 'coordina' ), (string) ( $task['title'] ?? __( 'Task', 'coordina' ) ) ) );
 		}
 
@@ -1046,14 +1047,17 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		}
 
 		if ( (string) ( $current['status'] ?? '' ) !== (string) ( $updated['status'] ?? '' ) ) {
+			/* translators: %s: task status label. */
 			$this->log_activity( 'task', $id, 'task_status_changed', sprintf( __( 'Changed task status to %s.', 'coordina' ), $this->humanize_status( (string) ( $updated['status'] ?? '' ) ) ) );
 		}
 
 		if ( (string) ( $current['priority'] ?? '' ) !== (string) ( $updated['priority'] ?? '' ) ) {
+			/* translators: %s: task priority label. */
 			$this->log_activity( 'task', $id, 'task_priority_changed', sprintf( __( 'Changed task priority to %s.', 'coordina' ), $this->humanize_status( (string) ( $updated['priority'] ?? '' ) ) ) );
 		}
 
 		if ( (int) ( $current['assignee_user_id'] ?? 0 ) !== (int) ( $updated['assignee_user_id'] ?? 0 ) ) {
+			/* translators: %s: assignee display name. */
 			$this->log_activity( 'task', $id, 'task_assignee_changed', sprintf( __( 'Changed task assignee to %s.', 'coordina' ), $updated['assignee_label'] ?: __( 'Unassigned', 'coordina' ) ) );
 		}
 
@@ -1074,6 +1078,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		}
 
 		if ( (int) ( $current['completion_percent'] ?? 0 ) !== (int) ( $updated['completion_percent'] ?? 0 ) ) {
+			/* translators: %d: task completion percentage. */
 			$this->log_activity( 'task', $id, 'task_completion_changed', sprintf( __( 'Changed task completion to %d%%.', 'coordina' ), (int) ( $updated['completion_percent'] ?? 0 ) ) );
 		}
 
@@ -1117,7 +1122,10 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		$project_label = ! empty( $task['project_label'] ) ? (string) $task['project_label'] : __( 'Standalone', 'coordina' );
 		$due_label     = ! empty( $task['due_date'] ) ? substr( (string) $task['due_date'], 0, 10 ) : '';
 		$title         = 0 === $previous_assignee ? __( 'You were assigned a task', 'coordina' ) : __( 'A task was reassigned to you', 'coordina' );
-		$body          = sprintf( __( '%1$s in %2$s%3$s', 'coordina' ), (string) ( $task['title'] ?? __( 'Task', 'coordina' ) ), $project_label, $due_label ? sprintf( __( ' · Due %s', 'coordina' ), $due_label ) : '' );
+		/* translators: %s: task due date. */
+		$due_suffix    = $due_label ? sprintf( __( ' · Due %s', 'coordina' ), $due_label ) : '';
+		/* translators: 1: task title, 2: project label, 3: optional due date suffix. */
+		$body          = sprintf( __( '%1$s in %2$s%3$s', 'coordina' ), (string) ( $task['title'] ?? __( 'Task', 'coordina' ) ), $project_label, $due_suffix );
 		$url           = $this->task_admin_url( $task );
 
 		$this->notifications->create( $assignee_id, 'task-assigned', $title, $body, $url );
@@ -1162,7 +1170,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 	 */
 	private function find_group( int $id ): array {
 		$table = $this->table( 'task_groups' );
-		$row   = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
+		$row   = $this->prepared_row( 'SELECT * FROM ' . $table . ' WHERE id = %d', array( $id ) );
 		return $this->map_group( $row );
 	}
 
@@ -1192,7 +1200,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 	 */
 	private function next_group_sort_order( int $project_id ): int {
 		$table = $this->table( 'task_groups' );
-		return (int) $this->wpdb->get_var( $this->wpdb->prepare( "SELECT COALESCE(MAX(sort_order), 0) + 10 FROM {$table} WHERE project_id = %d", $project_id ) );
+		return (int) $this->prepared_var( 'SELECT COALESCE(MAX(sort_order), 0) + 10 FROM ' . $table . ' WHERE project_id = %d', array( $project_id ) );
 	}
 
 	/**
@@ -1204,7 +1212,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		}
 
 		$table = $this->table( 'task_groups' );
-		$found = (int) $this->wpdb->get_var( $this->wpdb->prepare( "SELECT id FROM {$table} WHERE id = %d AND project_id = %d", $task_group_id, $project_id ) );
+		$found = (int) $this->prepared_var( 'SELECT id FROM ' . $table . ' WHERE id = %d AND project_id = %d', array( $task_group_id, $project_id ) );
 
 		return $found > 0 ? $found : 0;
 	}
@@ -1218,7 +1226,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		}
 
 		$table = $this->table( 'task_groups' );
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( "SELECT title FROM {$table} WHERE id = %d", $task_group_id ) );
+		$title = $this->prepared_var( 'SELECT title FROM ' . $table . ' WHERE id = %d', array( $task_group_id ) );
 
 		return $title ? (string) $title : '';
 	}
@@ -1302,7 +1310,7 @@ final class TaskRepository extends AbstractRepository implements TaskRepositoryI
 		}
 
 		$projects_table = $this->table( 'projects' );
-		$title          = $this->wpdb->get_var( $this->wpdb->prepare( "SELECT title FROM {$projects_table} WHERE id = %d", $project_id ) );
+		$title          = $this->prepared_var( 'SELECT title FROM ' . $projects_table . ' WHERE id = %d', array( $project_id ) );
 
 		return $title ? (string) $title : __( 'Project task', 'coordina' );
 	}

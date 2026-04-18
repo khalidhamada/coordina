@@ -86,12 +86,12 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 		$where_sql = implode( ' AND ', $where );
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
 		$list_sql  = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY {$order_by} {$order} LIMIT %d OFFSET %d";
-		$total     = (int) $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, $params ) );
+		$total     = (int) $this->prepared_var( $count_sql, $params );
 
 		$list_params   = $params;
 		$list_params[] = $per_page;
 		$list_params[] = $offset;
-		$rows          = $this->wpdb->get_results( $this->wpdb->prepare( $list_sql, $list_params ) );
+		$rows          = $this->prepared_results( $list_sql, $list_params );
 
 		return array(
 			'items'      => array_map( array( $this, 'map_item' ), $rows ?: array() ),
@@ -114,7 +114,7 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 		}
 
 		$table = $this->table( 'projects' );
-		$row   = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
+		$row   = $this->prepared_row( 'SELECT * FROM ' . $table . ' WHERE id = %d', array( $id ) );
 
 		return $this->map_item( $row );
 	}
@@ -134,18 +134,16 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 
 		$tasks_table = $this->table( 'tasks' );
 		list( $task_access_sql, $task_access_params ) = $this->access->task_access_where( 'id' );
-		$summary_row = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT
+		$summary_row = $this->prepared_row(
+			"SELECT
 					COUNT(*) AS total_count,
 					SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS completed_count,
 					SUM(CASE WHEN status = 'blocked' OR blocked = 1 THEN 1 ELSE 0 END) AS blocked_count,
 					SUM(CASE WHEN due_date IS NOT NULL AND due_date < %s AND status NOT IN ('done', 'cancelled') THEN 1 ELSE 0 END) AS overdue_count,
 					SUM(CASE WHEN assignee_user_id > 0 THEN 1 ELSE 0 END) AS assigned_count
-				FROM {$tasks_table}
-				WHERE project_id = %d AND {$task_access_sql}",
+				FROM " . $tasks_table . "
+				WHERE project_id = %d AND " . $task_access_sql,
 				array_merge( array( current_time( 'mysql', true ), $id ), $task_access_params )
-			)
 		);
 
 		$summary            = $this->row_to_array( $summary_row );
@@ -179,7 +177,7 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 	 */
 	public function create( array $data ): array {
 		if ( ! $this->access->can_edit_projects() ) {
-			throw new RuntimeException( __( 'You are not allowed to create projects.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to create projects.', 'coordina' ) );
 		}
 
 		$table           = $this->table( 'projects' );
@@ -212,7 +210,7 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 		$result = $this->wpdb->insert( $table, $clean );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Project could not be created.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Project could not be created.', 'coordina' ) );
 		}
 
 		return $this->find( (int) $this->wpdb->insert_id );
@@ -227,7 +225,7 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 	 */
 	public function update( int $id, array $data ): array {
 		if ( ! $this->access->can_edit_project( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this project.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this project.', 'coordina' ) );
 		}
 
 		$table           = $this->table( 'projects' );
@@ -255,7 +253,7 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 		$result = $this->wpdb->update( $table, $clean, array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Project could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Project could not be updated.', 'coordina' ) );
 		}
 
 		return $this->find( $id );
@@ -305,13 +303,13 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 	 */
 	public function update_settings( int $id, array $data ): array {
 		if ( ! $this->access->can_edit_project( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this project settings.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this project settings.', 'coordina' ) );
 		}
 
 		$current = $this->find( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Project could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Project could not be found.', 'coordina' ) );
 		}
 
 		$table           = $this->table( 'projects' );
@@ -336,7 +334,7 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 		$result = $this->wpdb->update( $table, $clean, array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Project settings could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Project settings could not be updated.', 'coordina' ) );
 		}
 
 		$this->set_project_members( $id, $this->parse_member_ids( $data['team_member_ids'] ?? array() ) );
@@ -369,7 +367,7 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 		);
 
 		if ( empty( $ids ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update project statuses.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update project statuses.', 'coordina' ) );
 		}
 
 		$table           = $this->table( 'projects' );
@@ -378,10 +376,10 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 		$params          = array_merge( array( sanitize_key( $status ), $normalized_date, $this->now() ), $ids );
 		$sql             = "UPDATE {$table} SET status = %s, actual_end_date = %s, updated_at = %s WHERE id IN ({$placeholders})";
 
-		$result = $this->wpdb->query( $this->wpdb->prepare( $sql, $params ) );
+		$result = $this->prepared_query( $sql, $params );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Project statuses could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Project statuses could not be updated.', 'coordina' ) );
 		}
 
 		return (int) $result;
@@ -395,18 +393,18 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 	 */
 	public function delete( int $id ): bool {
 		if ( ! $this->access->can_delete_project( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this project.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this project.', 'coordina' ) );
 		}
 
 		$project = $this->find( $id );
 
 		if ( empty( $project ) ) {
-			throw new RuntimeException( __( 'Project could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Project could not be found.', 'coordina' ) );
 		}
 
-		$tasks      = $this->wpdb->get_col( $this->wpdb->prepare( 'SELECT id FROM ' . $this->table( 'tasks' ) . ' WHERE project_id = %d', $id ) );
-		$risks      = $this->wpdb->get_col( $this->wpdb->prepare( 'SELECT id FROM ' . $this->table( 'risks_issues' ) . ' WHERE project_id = %d', $id ) );
-		$milestones = $this->wpdb->get_col( $this->wpdb->prepare( 'SELECT id FROM ' . $this->table( 'milestones' ) . ' WHERE project_id = %d', $id ) );
+		$tasks      = $this->prepared_col( 'SELECT id FROM ' . $this->table( 'tasks' ) . ' WHERE project_id = %d', array( $id ) );
+		$risks      = $this->prepared_col( 'SELECT id FROM ' . $this->table( 'risks_issues' ) . ' WHERE project_id = %d', array( $id ) );
+		$milestones = $this->prepared_col( 'SELECT id FROM ' . $this->table( 'milestones' ) . ' WHERE project_id = %d', array( $id ) );
 		foreach ( array_map( 'intval', $tasks ?: array() ) as $task_id ) {
 			$this->tasks->delete( $task_id );
 		}
@@ -426,7 +424,7 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 		$result = $this->wpdb->delete( $this->table( 'projects' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Project could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Project could not be deleted.', 'coordina' ) );
 		}
 
 		return $result > 0;
@@ -471,11 +469,9 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 
 		$tasks_table = $this->table( 'tasks' );
 		list( $task_access_sql, $task_access_params ) = $this->access->task_access_where( 'id' );
-		$row = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT COUNT(*) AS total_count, SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS completed_count FROM {$tasks_table} WHERE project_id = %d AND {$task_access_sql}",
-				array_merge( array( $project_id ), $task_access_params )
-			)
+		$row = $this->prepared_row(
+			'SELECT COUNT(*) AS total_count, SUM(CASE WHEN status = \'done\' THEN 1 ELSE 0 END) AS completed_count FROM ' . $tasks_table . ' WHERE project_id = %d AND ' . $task_access_sql,
+			array_merge( array( $project_id ), $task_access_params )
 		);
 
 		$summary = $this->row_to_array( $row );
@@ -493,7 +489,7 @@ final class ProjectRepository extends AbstractRepository implements ProjectRepos
 	 */
 	private function get_project_members( int $project_id ): array {
 		$table = $this->table( 'project_members' );
-		$rows  = $this->wpdb->get_results( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE project_id = %d ORDER BY id ASC", $project_id ) );
+		$rows  = $this->prepared_results( 'SELECT * FROM ' . $table . ' WHERE project_id = %d ORDER BY id ASC', array( $project_id ) );
 
 		return array_map(
 			function ( $row ): array {

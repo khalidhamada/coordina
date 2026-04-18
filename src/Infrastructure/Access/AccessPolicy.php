@@ -303,12 +303,10 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return true;
 		}
 
-		$row = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				'SELECT project_id, owner_user_id, created_by FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d',
-				$risk_issue_id
-			),
-			ARRAY_A
+		$row = $this->prepared_row(
+			'SELECT project_id, owner_user_id, created_by FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d',
+			array( $risk_issue_id ),
+			\ARRAY_A
 		);
 
 		if ( ! is_array( $row ) || empty( $row ) ) {
@@ -337,12 +335,10 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return true;
 		}
 
-		$row = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				'SELECT project_id, owner_user_id, created_by FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d',
-				$risk_issue_id
-			),
-			ARRAY_A
+		$row = $this->prepared_row(
+			'SELECT project_id, owner_user_id, created_by FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d',
+			array( $risk_issue_id ),
+			\ARRAY_A
 		);
 
 		if ( ! is_array( $row ) || empty( $row ) ) {
@@ -375,11 +371,9 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return true;
 		}
 
-		$project_id = (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				'SELECT project_id FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d',
-				$risk_issue_id
-			)
+		$project_id = (int) $this->prepared_var(
+			'SELECT project_id FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d',
+			array( $risk_issue_id )
 		);
 
 		if ( $project_id > 0 ) {
@@ -404,12 +398,10 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return true;
 		}
 
-		$row = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				'SELECT project_id, owner_user_id FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d',
-				$milestone_id
-			),
-			ARRAY_A
+		$row = $this->prepared_row(
+			'SELECT project_id, owner_user_id FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d',
+			array( $milestone_id ),
+			\ARRAY_A
 		);
 
 		if ( ! is_array( $row ) || empty( $row ) ) {
@@ -435,11 +427,9 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return true;
 		}
 
-		$project_id = (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				'SELECT project_id FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d',
-				$milestone_id
-			)
+		$project_id = (int) $this->prepared_var(
+			'SELECT project_id FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d',
+			array( $milestone_id )
 		);
 
 		return $project_id > 0 && $this->can_edit_project( $project_id );
@@ -761,7 +751,7 @@ final class AccessPolicy implements AccessPolicyInterface {
 	 * @param array<int,mixed> $params Prepare params.
 	 */
 	private function exists_by_sql( string $sql, array $params ): bool {
-		return (int) $this->wpdb->get_var( $this->wpdb->prepare( $sql, $params ) ) > 0;
+		return (int) $this->prepared_var( $sql, $params ) > 0;
 	}
 
 	/**
@@ -994,7 +984,7 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return array();
 		}
 
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', $task_id ), ARRAY_A );
+		$row = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', array( $task_id ), \ARRAY_A );
 
 		return is_array( $row ) ? $row : array();
 	}
@@ -1009,7 +999,7 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return array();
 		}
 
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d', $milestone_id ), ARRAY_A );
+		$row = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d', array( $milestone_id ), \ARRAY_A );
 
 		return is_array( $row ) ? $row : array();
 	}
@@ -1024,7 +1014,7 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return array();
 		}
 
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', $project_id ), ARRAY_A );
+		$row = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', array( $project_id ), \ARRAY_A );
 
 		return is_array( $row ) ? $row : array();
 	}
@@ -1039,7 +1029,7 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return array();
 		}
 
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d', $risk_issue_id ), ARRAY_A );
+		$row = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d', array( $risk_issue_id ), \ARRAY_A );
 
 		return is_array( $row ) ? $row : array();
 	}
@@ -1054,7 +1044,54 @@ final class AccessPolicy implements AccessPolicyInterface {
 			return array();
 		}
 
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'requests' ) . ' WHERE id = %d', $request_id ), ARRAY_A );
+		$row = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'requests' ) . ' WHERE id = %d', array( $request_id ), \ARRAY_A );
+
+		return is_array( $row ) ? $row : array();
+	}
+
+	/**
+	 * Prepare SQL with trusted internal fragments and placeholder values.
+	 *
+	 * @param string            $sql SQL statement.
+	 * @param array<int, mixed> $params Placeholder values.
+	 * @return string
+	 */
+	private function prepare_statement( string $sql, array $params = array() ): string {
+		if ( empty( $params ) ) {
+			return $sql;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Internal access-policy fragments are assembled from trusted helper methods before placeholder substitution.
+		return $this->wpdb->prepare( $sql, $params );
+	}
+
+	/**
+	 * Execute a prepared scalar query.
+	 *
+	 * @param string            $sql SQL statement.
+	 * @param array<int, mixed> $params Placeholder values.
+	 * @return mixed
+	 */
+	private function prepared_var( string $sql, array $params = array() ) {
+		$prepared_sql = $this->prepare_statement( $sql, $params );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom-table access query prepared through shared policy helper.
+		return $this->wpdb->get_var( $prepared_sql );
+	}
+
+	/**
+	 * Execute a prepared row query.
+	 *
+	 * @param string            $sql SQL statement.
+	 * @param array<int, mixed> $params Placeholder values.
+	 * @param string|int        $output Output format.
+	 * @return mixed
+	 */
+	private function prepared_row( string $sql, array $params = array(), $output = \OBJECT ) {
+		$prepared_sql = $this->prepare_statement( $sql, $params );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom-table access query prepared through shared policy helper.
+		return $this->wpdb->get_row( $prepared_sql, $output );
 
 		return is_array( $row ) ? $row : array();
 	}

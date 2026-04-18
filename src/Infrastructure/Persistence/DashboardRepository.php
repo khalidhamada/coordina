@@ -124,12 +124,12 @@ final class DashboardRepository extends AbstractRepository {
 		list( $task_where, $task_params ) = $this->get_task_scope_sql( $scope, $user_id );
 		list( $approval_where, $approval_params ) = $this->get_approval_scope_sql( $scope, $user_id );
 
-		$total_projects = (int) $this->wpdb->get_var( $this->prepare_optional( "SELECT COUNT(*) FROM {$projects_table} WHERE {$project_where}", $project_params ) );
-		$active_projects = (int) $this->wpdb->get_var( $this->prepare_optional( "SELECT COUNT(*) FROM {$projects_table} WHERE {$project_where} AND status IN ('planned', 'active', 'on-hold', 'at-risk', 'blocked')", $project_params ) );
-		$at_risk_projects = (int) $this->wpdb->get_var( $this->prepare_optional( "SELECT COUNT(*) FROM {$projects_table} WHERE {$project_where} AND (health IN ('at-risk', 'blocked') OR status IN ('at-risk', 'blocked'))", $project_params ) );
-		$blocked_projects = (int) $this->wpdb->get_var( $this->prepare_optional( "SELECT COUNT(*) FROM {$projects_table} WHERE {$project_where} AND (health = 'blocked' OR status = 'blocked')", $project_params ) );
-		$overdue_tasks = (int) $this->wpdb->get_var( $this->prepare_optional( "SELECT COUNT(*) FROM {$tasks_table} WHERE {$task_where} AND due_date IS NOT NULL AND due_date < %s AND status NOT IN ('done', 'cancelled')", array_merge( $task_params, array( current_time( 'mysql', true ) ) ) ) );
-		$pending_approvals = (int) $this->wpdb->get_var( $this->prepare_optional( "SELECT COUNT(*) FROM {$approvals_table} WHERE {$approval_where} AND status = 'pending'", $approval_params ) );
+		$total_projects    = (int) $this->prepared_var( "SELECT COUNT(*) FROM {$projects_table} WHERE {$project_where}", $project_params );
+		$active_projects   = (int) $this->prepared_var( "SELECT COUNT(*) FROM {$projects_table} WHERE {$project_where} AND status IN ('planned', 'active', 'on-hold', 'at-risk', 'blocked')", $project_params );
+		$at_risk_projects  = (int) $this->prepared_var( "SELECT COUNT(*) FROM {$projects_table} WHERE {$project_where} AND (health IN ('at-risk', 'blocked') OR status IN ('at-risk', 'blocked'))", $project_params );
+		$blocked_projects  = (int) $this->prepared_var( "SELECT COUNT(*) FROM {$projects_table} WHERE {$project_where} AND (health = 'blocked' OR status = 'blocked')", $project_params );
+		$overdue_tasks     = (int) $this->prepared_var( "SELECT COUNT(*) FROM {$tasks_table} WHERE {$task_where} AND due_date IS NOT NULL AND due_date < %s AND status NOT IN ('done', 'cancelled')", array_merge( $task_params, array( current_time( 'mysql', true ) ) ) );
+		$pending_approvals = (int) $this->prepared_var( "SELECT COUNT(*) FROM {$approvals_table} WHERE {$approval_where} AND status = 'pending'", $approval_params );
 
 		return array(
 			'totalProjects'    => $total_projects,
@@ -151,8 +151,7 @@ final class DashboardRepository extends AbstractRepository {
 	private function get_at_risk_projects( string $scope, int $user_id ): array {
 		$table = $this->table( 'projects' );
 		list( $where, $params ) = $this->get_project_scope_sql( $scope, $user_id );
-		$sql   = $this->prepare_optional( "SELECT * FROM {$table} WHERE {$where} AND (health IN ('at-risk', 'blocked') OR status IN ('at-risk', 'blocked')) ORDER BY updated_at DESC LIMIT 6", $params );
-		$rows  = $this->wpdb->get_results( $sql );
+		$rows  = $this->prepared_results( "SELECT * FROM {$table} WHERE {$where} AND (health IN ('at-risk', 'blocked') OR status IN ('at-risk', 'blocked')) ORDER BY updated_at DESC LIMIT 6", $params );
 
 		return array_map( array( $this, 'map_project_row' ), $rows ?: array() );
 	}
@@ -167,8 +166,7 @@ final class DashboardRepository extends AbstractRepository {
 	private function get_overdue_tasks( string $scope, int $user_id ): array {
 		$table = $this->table( 'tasks' );
 		list( $where, $params ) = $this->get_task_scope_sql( $scope, $user_id );
-		$sql   = $this->prepare_optional( "SELECT * FROM {$table} WHERE {$where} AND due_date IS NOT NULL AND due_date < %s AND status NOT IN ('done', 'cancelled') ORDER BY due_date ASC LIMIT 6", array_merge( $params, array( current_time( 'mysql', true ) ) ) );
-		$rows  = $this->wpdb->get_results( $sql );
+		$rows  = $this->prepared_results( "SELECT * FROM {$table} WHERE {$where} AND due_date IS NOT NULL AND due_date < %s AND status NOT IN ('done', 'cancelled') ORDER BY due_date ASC LIMIT 6", array_merge( $params, array( current_time( 'mysql', true ) ) ) );
 
 		return array_map( array( $this, 'map_task_row' ), $rows ?: array() );
 	}
@@ -183,8 +181,7 @@ final class DashboardRepository extends AbstractRepository {
 	private function get_pending_approvals( string $scope, int $user_id ): array {
 		$table = $this->table( 'approvals' );
 		list( $where, $params ) = $this->get_approval_scope_sql( $scope, $user_id );
-		$sql   = $this->prepare_optional( "SELECT * FROM {$table} WHERE {$where} AND status = 'pending' ORDER BY submitted_at DESC LIMIT 6", $params );
-		$rows  = $this->wpdb->get_results( $sql );
+		$rows  = $this->prepared_results( "SELECT * FROM {$table} WHERE {$where} AND status = 'pending' ORDER BY submitted_at DESC LIMIT 6", $params );
 
 		return array_map( array( $this, 'map_approval_row' ), $rows ?: array() );
 	}
@@ -255,8 +252,7 @@ final class DashboardRepository extends AbstractRepository {
 	private function get_upcoming_project_deadlines( string $scope, int $user_id ): array {
 		$table = $this->table( 'projects' );
 		list( $where, $params ) = $this->get_project_scope_sql( $scope, $user_id );
-		$sql   = $this->prepare_optional( "SELECT * FROM {$table} WHERE {$where} AND target_end_date IS NOT NULL AND target_end_date >= %s ORDER BY target_end_date ASC LIMIT 4", array_merge( $params, array( current_time( 'mysql', true ) ) ) );
-		$rows  = $this->wpdb->get_results( $sql );
+		$rows  = $this->prepared_results( "SELECT * FROM {$table} WHERE {$where} AND target_end_date IS NOT NULL AND target_end_date >= %s ORDER BY target_end_date ASC LIMIT 4", array_merge( $params, array( current_time( 'mysql', true ) ) ) );
 
 		return array_map(
 			function ( $row ): array {
@@ -282,8 +278,7 @@ final class DashboardRepository extends AbstractRepository {
 	private function get_upcoming_task_deadlines( string $scope, int $user_id ): array {
 		$table = $this->table( 'tasks' );
 		list( $where, $params ) = $this->get_task_scope_sql( $scope, $user_id );
-		$sql   = $this->prepare_optional( "SELECT * FROM {$table} WHERE {$where} AND due_date IS NOT NULL AND due_date >= %s AND status NOT IN ('done', 'cancelled') ORDER BY due_date ASC LIMIT 6", array_merge( $params, array( current_time( 'mysql', true ) ) ) );
-		$rows  = $this->wpdb->get_results( $sql );
+		$rows  = $this->prepared_results( "SELECT * FROM {$table} WHERE {$where} AND due_date IS NOT NULL AND due_date >= %s AND status NOT IN ('done', 'cancelled') ORDER BY due_date ASC LIMIT 6", array_merge( $params, array( current_time( 'mysql', true ) ) ) );
 
 		return array_map(
 			function ( $row ): array {
@@ -315,7 +310,7 @@ final class DashboardRepository extends AbstractRepository {
 		}
 
 		if ( 'managed' === $scope ) {
-			return array( $this->wpdb->prepare( '(manager_user_id = %d OR created_by = %d)', $user_id, $user_id ), array() );
+			return array( $this->prepare_statement( '(manager_user_id = %d OR created_by = %d)', array( $user_id, $user_id ) ), array() );
 		}
 
 		if ( 'personal' === $scope ) {
@@ -335,7 +330,7 @@ final class DashboardRepository extends AbstractRepository {
 		}
 
 		if ( 'managed' === $scope ) {
-			return array( $this->wpdb->prepare( '(project_id IN (SELECT id FROM ' . $this->table( 'projects' ) . ' WHERE manager_user_id = %d OR created_by = %d) OR assignee_user_id = %d OR reporter_user_id = %d)', $user_id, $user_id, $user_id, $user_id ), array() );
+			return array( $this->prepare_statement( '(project_id IN (SELECT id FROM ' . $this->table( 'projects' ) . ' WHERE manager_user_id = %d OR created_by = %d) OR assignee_user_id = %d OR reporter_user_id = %d)', array( $user_id, $user_id, $user_id, $user_id ) ), array() );
 		}
 
 		if ( 'personal' === $scope ) {
@@ -354,7 +349,7 @@ final class DashboardRepository extends AbstractRepository {
 			return $this->access->approval_access_where( 'id' );
 		}
 
-		return array( $this->wpdb->prepare( 'approver_user_id = %d', $user_id ), array() );
+		return array( $this->prepare_statement( 'approver_user_id = %d', array( $user_id ) ), array() );
 	}
 
 	/**
@@ -368,7 +363,7 @@ final class DashboardRepository extends AbstractRepository {
 			return $sql;
 		}
 
-		return $this->wpdb->prepare( $sql, $params );
+		return $this->prepare_statement( $sql, $params );
 	}
 
 	private function map_project_row( $row ): array {
@@ -393,7 +388,7 @@ final class DashboardRepository extends AbstractRepository {
 
 	private function get_project_task_counts( int $project_id ): array {
 		$table = $this->table( 'tasks' );
-		$row   = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT COUNT(*) AS total_count, SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS completed_count FROM {$table} WHERE project_id = %d", $project_id ) );
+		$row   = $this->prepared_row( "SELECT COUNT(*) AS total_count, SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS completed_count FROM {$table} WHERE project_id = %d", array( $project_id ) );
 		$item  = $this->row_to_array( $row );
 		$total = (int) ( $item['total_count'] ?? 0 );
 		$done  = (int) ( $item['completed_count'] ?? 0 );
@@ -467,7 +462,7 @@ final class DashboardRepository extends AbstractRepository {
 			return ucfirst( $object_type );
 		}
 
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( "SELECT title FROM {$table} WHERE id = %d", $object_id ) );
+		$title = $this->prepared_var( "SELECT title FROM {$table} WHERE id = %d", array( $object_id ) );
 		return $title ? (string) $title : ucfirst( $object_type );
 	}
 
@@ -481,11 +476,11 @@ final class DashboardRepository extends AbstractRepository {
 		}
 
 		if ( 'task' === $object_type ) {
-			return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', $object_id ) );
+			return (int) $this->prepared_var( 'SELECT project_id FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', array( $object_id ) );
 		}
 
 		if ( in_array( $object_type, array( 'risk', 'issue' ), true ) ) {
-			return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d', $object_id ) );
+			return (int) $this->prepared_var( 'SELECT project_id FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d', array( $object_id ) );
 		}
 
 		return 0;
@@ -517,7 +512,7 @@ final class DashboardRepository extends AbstractRepository {
 			return __( 'Standalone', 'coordina' );
 		}
 
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', $project_id ) );
+		$title = $this->prepared_var( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', array( $project_id ) );
 		return $title ? (string) $title : __( 'Project task', 'coordina' );
 	}
 }

@@ -119,7 +119,7 @@ final class CalendarRepository extends AbstractRepository {
 		}
 
 		$sql  = "SELECT * FROM {$table} WHERE " . implode( ' AND ', $where ) . ' ORDER BY due_date ASC, priority DESC';
-		$rows = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $params ) );
+		$rows = $this->prepared_results( $sql, $params );
 
 		return array_map(
 			function ( $row ): array {
@@ -202,7 +202,7 @@ final class CalendarRepository extends AbstractRepository {
 		}
 
 		$sql  = "SELECT * FROM {$table} WHERE " . implode( ' AND ', $where ) . ' ORDER BY target_end_date ASC, updated_at DESC';
-		$rows = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $params ) );
+		$rows = $this->prepared_results( $sql, $params );
 
 		return array_map(
 			function ( $row ): array {
@@ -395,15 +395,14 @@ final class CalendarRepository extends AbstractRepository {
 		}
 
 		if ( 'managed' === $scope ) {
-			return array( $this->wpdb->prepare( '(manager_user_id = %d OR created_by = %d)', $user_id, $user_id ), array() );
+			return array( $this->prepare_statement( '(manager_user_id = %d OR created_by = %d)', array( $user_id, $user_id ) ), array() );
 		}
 
 		if ( 'personal' === $scope ) {
 			return array(
-				$this->wpdb->prepare(
-				'id IN (SELECT DISTINCT project_id FROM ' . $this->table( 'tasks' ) . ' WHERE project_id > 0 AND (assignee_user_id = %d OR reporter_user_id = %d))',
-				$user_id,
-				$user_id
+				$this->prepare_statement(
+					'id IN (SELECT DISTINCT project_id FROM ' . $this->table( 'tasks' ) . ' WHERE project_id > 0 AND (assignee_user_id = %d OR reporter_user_id = %d))',
+					array( $user_id, $user_id )
 				),
 				array()
 			);
@@ -430,19 +429,16 @@ final class CalendarRepository extends AbstractRepository {
 
 		if ( 'managed' === $scope ) {
 			return array(
-				$this->wpdb->prepare(
-				'(project_id IN (SELECT id FROM ' . $this->table( 'projects' ) . ' WHERE manager_user_id = %d OR created_by = %d) OR assignee_user_id = %d OR reporter_user_id = %d)',
-				$user_id,
-				$user_id,
-				$user_id,
-				$user_id
+				$this->prepare_statement(
+					'(project_id IN (SELECT id FROM ' . $this->table( 'projects' ) . ' WHERE manager_user_id = %d OR created_by = %d) OR assignee_user_id = %d OR reporter_user_id = %d)',
+					array( $user_id, $user_id, $user_id, $user_id )
 				),
 				array()
 			);
 		}
 
 		if ( 'personal' === $scope ) {
-			return array( $this->wpdb->prepare( '(assignee_user_id = %d OR reporter_user_id = %d)', $user_id, $user_id ), array() );
+			return array( $this->prepare_statement( '(assignee_user_id = %d OR reporter_user_id = %d)', array( $user_id, $user_id ) ), array() );
 		}
 
 		return array( '1=0', array() );
@@ -473,7 +469,7 @@ final class CalendarRepository extends AbstractRepository {
 			return __( 'Standalone', 'coordina' );
 		}
 
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', $project_id ) );
+		$title = $this->prepared_var( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', array( $project_id ) );
 
 		return $title ? (string) $title : __( 'Project task', 'coordina' );
 	}

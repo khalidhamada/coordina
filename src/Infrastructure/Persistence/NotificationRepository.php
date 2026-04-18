@@ -21,7 +21,7 @@ final class NotificationRepository extends AbstractRepository implements Notific
 	public function get_for_user( int $user_id ): array {
 		$table = $this->table( 'notifications' );
 		$sql   = "SELECT * FROM {$table} WHERE user_id = %d ORDER BY is_read ASC, created_at DESC LIMIT 30";
-		$rows  = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $user_id ) );
+		$rows  = $this->prepared_results( $sql, array( $user_id ) );
 		return array_map( array( $this, 'map_item' ), $rows ?: array() );
 	}
 
@@ -58,7 +58,7 @@ final class NotificationRepository extends AbstractRepository implements Notific
 			return array();
 		}
 
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'notifications' ) . ' WHERE id = %d', (int) $this->wpdb->insert_id ) );
+		$row = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'notifications' ) . ' WHERE id = %d', array( (int) $this->wpdb->insert_id ) );
 
 		return $this->map_item( $row );
 	}

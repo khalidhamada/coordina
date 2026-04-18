@@ -20,7 +20,7 @@ final class SavedViewRepository extends AbstractRepository {
 	public function get_for_user( int $user_id, string $module ): array {
 		$table = $this->table( 'saved_views' );
 		$sql   = "SELECT * FROM {$table} WHERE user_id = %d AND module = %s ORDER BY is_default DESC, updated_at DESC";
-		$rows  = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $user_id, $module ) );
+		$rows  = $this->prepared_results( $sql, array( $user_id, $module ) );
 		return array_map( array( $this, 'map_view' ), $rows ?: array() );
 	}
 
@@ -53,7 +53,7 @@ final class SavedViewRepository extends AbstractRepository {
 			)
 		);
 
-		return $this->map_view( $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", (int) $this->wpdb->insert_id ) ) );
+		return $this->map_view( $this->prepared_row( 'SELECT * FROM ' . $table . ' WHERE id = %d', array( (int) $this->wpdb->insert_id ) ) );
 	}
 
 	/**

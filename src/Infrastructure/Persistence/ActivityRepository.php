@@ -179,11 +179,7 @@ final class ActivityRepository extends AbstractRepository {
 			$sql .= ' LIMIT ' . (int) $limit;
 		}
 
-		if ( empty( $params ) ) {
-			return $this->wpdb->get_results( $sql ) ?: array();
-		}
-
-		return $this->wpdb->get_results( $this->wpdb->prepare( $sql, $params ) ) ?: array();
+		return $this->prepared_results( $sql, $params );
 	}
 
 	/**

@@ -56,7 +56,7 @@ final class SettingsRepository implements SettingsStoreInterface {
 	 */
 	public function update( array $data ): array {
 		if ( ! current_user_can( 'coordina_manage_settings' ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update Coordina settings.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update Coordina settings.', 'coordina' ) );
 		}
 
 		$settings = $this->merge_config( $this->get(), $data );

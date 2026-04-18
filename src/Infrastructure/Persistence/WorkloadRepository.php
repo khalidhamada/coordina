@@ -101,7 +101,7 @@ final class WorkloadRepository extends AbstractRepository {
 		}
 
 		$sql  = "SELECT * FROM {$table} WHERE " . implode( ' AND ', $where ) . ' ORDER BY blocked DESC, due_date ASC, priority DESC, updated_at DESC';
-		$rows = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $params ) );
+		$rows = $this->prepared_results( $sql, $params );
 		$today = wp_date( 'Y-m-d' );
 
 		return array_map(
@@ -332,7 +332,7 @@ final class WorkloadRepository extends AbstractRepository {
 			return __( 'Standalone', 'coordina' );
 		}
 
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', $project_id ) );
+		$title = $this->prepared_var( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', array( $project_id ) );
 
 		return $title ? (string) $title : __( 'Project task', 'coordina' );
 	}

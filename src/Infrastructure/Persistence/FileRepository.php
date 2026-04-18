@@ -68,12 +68,12 @@ final class FileRepository extends AbstractRepository {
 		$where_sql = implode( ' AND ', $where );
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
 		$list_sql  = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY created_at {$order}, id {$order} LIMIT %d OFFSET %d";
-		$total     = (int) $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, $params ) );
+		$total     = (int) $this->prepared_var( $count_sql, $params );
 
 		$list_params   = $params;
 		$list_params[] = $per_page;
 		$list_params[] = $offset;
-		$rows          = $this->wpdb->get_results( $this->wpdb->prepare( $list_sql, $list_params ) );
+		$rows          = $this->prepared_results( $list_sql, $list_params );
 
 		return array(
 			'items'      => array_map( array( $this, 'map_item' ), $rows ?: array() ),
@@ -91,13 +91,13 @@ final class FileRepository extends AbstractRepository {
 	 * @return array<string, mixed>
 	 */
 	public function find( int $id ): array {
-		$item = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT object_type, object_id, created_by FROM ' . $this->table( 'files' ) . ' WHERE id = %d', $id ) );
+		$item = $this->prepared_row( 'SELECT object_type, object_id, created_by FROM ' . $this->table( 'files' ) . ' WHERE id = %d', array( $id ) );
 
 		if ( ! $item || ( (int) $item->created_by !== get_current_user_id() && ! $this->access->can_view_context( (string) $item->object_type, (int) $item->object_id ) ) ) {
 			return array();
 		}
 
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'files' ) . ' WHERE id = %d', $id ) );
+		$row = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'files' ) . ' WHERE id = %d', array( $id ) );
 		return $this->map_item( $row );
 	}
 
@@ -114,15 +114,15 @@ final class FileRepository extends AbstractRepository {
 		$note          = sanitize_textarea_field( (string) ( $data['note'] ?? '' ) );
 
 		if ( ! $this->context_exists( $object_type, $object_id ) ) {
-			throw new RuntimeException( __( 'A valid parent context is required for files.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'A valid parent context is required for files.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_attach_files_to_context( $object_type, $object_id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to attach files to this context.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to attach files to this context.', 'coordina' ) );
 		}
 
 		if ( $attachment_id <= 0 || 'attachment' !== get_post_type( $attachment_id ) ) {
-			throw new RuntimeException( __( 'Select a media file before attaching it.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Select a media file before attaching it.', 'coordina' ) );
 		}
 
 		$file_path  = get_attached_file( $attachment_id );
@@ -146,7 +146,7 @@ final class FileRepository extends AbstractRepository {
 		$result = $this->wpdb->insert( $this->table( 'files' ), $clean );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'The file could not be attached.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'The file could not be attached.', 'coordina' ) );
 		}
 
 		$context_label = $this->resolve_context_label( $object_type, $object_id );
@@ -186,11 +186,9 @@ final class FileRepository extends AbstractRepository {
 	public function get_project_summary( int $project_id ): array {
 		$table = $this->table( 'files' );
 		list( $access_sql, $access_params ) = $this->access->context_access_where( 'object_type', 'object_id', 'created_by' );
-		$row   = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT COUNT(*) AS total_count, MAX(created_at) AS latest_created_at FROM {$table} WHERE project_id = %d AND {$access_sql}",
-				array_merge( array( $project_id ), $access_params )
-			)
+		$row   = $this->prepared_row(
+			'SELECT COUNT(*) AS total_count, MAX(created_at) AS latest_created_at FROM ' . $table . ' WHERE project_id = %d AND ' . $access_sql,
+			array_merge( array( $project_id ), $access_params )
 		);
 		$item  = $this->row_to_array( $row );
 
@@ -210,17 +208,17 @@ final class FileRepository extends AbstractRepository {
 		$file = $this->find( $id );
 
 		if ( empty( $file ) ) {
-			throw new RuntimeException( __( 'File could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'File could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->can_delete_record( $file ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this file.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this file.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->delete( $this->table( 'files' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'File could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'File could not be deleted.', 'coordina' ) );
 		}
 
 		if ( $result > 0 ) {
@@ -228,6 +226,7 @@ final class FileRepository extends AbstractRepository {
 				(string) ( $file['object_type'] ?? 'project' ),
 				(int) ( $file['object_id'] ?? 0 ),
 				'file_deleted',
+				/* translators: %s: file name. */
 				sprintf( __( 'Removed file "%s".', 'coordina' ), (string) ( $file['file_name'] ?? __( 'File', 'coordina' ) ) )
 			);
 		}

@@ -53,7 +53,7 @@ final class Container {
 	 */
 	public function extend( string $id, callable $extender ): void {
 		if ( ! isset( $this->factories[ $id ] ) ) {
-			throw new InvalidArgumentException( sprintf( 'Coordina service "%s" is not registered.', $id ) );
+			throw new InvalidArgumentException( sprintf( 'Coordina service "%s" is not registered.', esc_html( $id ) ) );
 		}
 
 		$factory = $this->factories[ $id ];
@@ -78,7 +78,7 @@ final class Container {
 		}
 
 		if ( ! isset( $this->factories[ $id ] ) ) {
-			throw new InvalidArgumentException( sprintf( 'Coordina service "%s" is not registered.', $id ) );
+			throw new InvalidArgumentException( sprintf( 'Coordina service "%s" is not registered.', esc_html( $id ) ) );
 		}
 
 		$this->instances[ $id ] = ( $this->factories[ $id ] )( $this );

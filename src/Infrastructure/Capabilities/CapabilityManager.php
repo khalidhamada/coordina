@@ -9,6 +9,10 @@ declare(strict_types=1);
 
 namespace Coordina\Infrastructure\Capabilities;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Coordina\Platform\Bootstrap\CoreRegistries;
 use Coordina\Platform\Registry\CapabilityRegistry;
 

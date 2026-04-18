@@ -9,6 +9,10 @@ declare(strict_types=1);
 
 namespace Coordina\Rest;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Coordina\Infrastructure\Persistence\ActivityRepository;
 use Coordina\Infrastructure\Persistence\CalendarRepository;
 use Coordina\Infrastructure\Persistence\DashboardRepository;
@@ -31,7 +35,6 @@ use Coordina\Platform\Contracts\SettingsStoreInterface;
 use Coordina\Platform\Contracts\TaskRepositoryInterface;
 use Coordina\Platform\Registry\ContextTypeRegistry;
 use Coordina\Platform\Registry\RestRouteRegistry;
-use Coordina\Support\DataSeeder;
 use Coordina\Support\Formatting;
 use Throwable;
 use WP_REST_Request;
@@ -60,7 +63,6 @@ final class RestRegistrar {
 	private $discussions;
 	private $access;
 	private $entitlements;
-	private $data_seeder;
 	private $routes;
 	private $context_types;
 
@@ -84,7 +86,6 @@ final class RestRegistrar {
 		DiscussionRepository $discussions,
 		AccessPolicyInterface $access,
 		EntitlementManagerInterface $entitlements,
-		DataSeeder $data_seeder,
 		?RestRouteRegistry $routes = null,
 		?ContextResolverInterface $context_types = null
 	) {
@@ -107,7 +108,6 @@ final class RestRegistrar {
 		$this->discussions   = $discussions;
 		$this->access        = $access;
 		$this->entitlements  = $entitlements;
-		$this->data_seeder   = $data_seeder;
 		$this->routes        = $routes ?: CoreRegistries::rest_routes();
 		$this->context_types = $context_types ?: CoreRegistries::context_types();
 	}
@@ -1243,25 +1243,6 @@ final class RestRegistrar {
 			)
 		);
 
-		register_rest_route(
-			self::NAMESPACE,
-			'/demo-data/seed',
-			array(
-				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => array( $this, 'seed_demo_data' ),
-				'permission_callback' => array( $this, 'can_manage_settings' ),
-			)
-		);
-
-		register_rest_route(
-			self::NAMESPACE,
-			'/demo-data/clear',
-			array(
-				'methods'             => WP_REST_Server::CREATABLE,
-				'callback'            => array( $this, 'clear_demo_data' ),
-				'permission_callback' => array( $this, 'can_manage_settings' ),
-			)
-		);
 	}
 
 	public function get_status( WP_REST_Request $request ): WP_REST_Response {
@@ -2369,161 +2350,6 @@ final class RestRegistrar {
 
 	public function can_manage_settings(): bool {
 		return current_user_can( 'coordina_manage_settings' );
-	}
-
-	public function seed_demo_data( WP_REST_Request $request ): WP_REST_Response {
-		$type       = sanitize_key( (string) $request->get_param( 'type' ) );
-		$manager_id = absint( $request->get_param( 'manager_id' ) ) ?: get_current_user_id();
-
-		if ( ! in_array( $type, array( 'all', 'website', 'mobile', 'support' ), true ) ) {
-			return $this->error_response( __( 'Invalid project type.', 'coordina' ), 400 );
-		}
-
-		if ( ! get_userdata( $manager_id ) ) {
-			return $this->error_response( __( 'Invalid manager user ID.', 'coordina' ), 400 );
-		}
-
-		try {
-			$projects = array();
-
-			switch ( $type ) {
-				case 'website':
-					$projects[] = $this->data_seeder->seed_website_redesign( $manager_id );
-					break;
-
-				case 'mobile':
-					$projects[] = $this->data_seeder->seed_mobile_app( $manager_id );
-					break;
-
-				case 'support':
-					$projects[] = $this->data_seeder->seed_support_process( $manager_id );
-					break;
-
-				case 'all':
-					$projects[] = $this->data_seeder->seed_website_redesign( $manager_id );
-					$projects[] = $this->data_seeder->seed_mobile_app( $manager_id );
-					$projects[] = $this->data_seeder->seed_support_process( $manager_id );
-					break;
-			}
-
-			return $this->respond( array( 'projects' => $projects ) );
-		} catch ( Throwable $exception ) {
-			return $this->error_response( $exception->getMessage() );
-		}
-	}
-
-	public function clear_demo_data( WP_REST_Request $request ): WP_REST_Response {
-		unset( $request );
-
-		global $wpdb;
-
-		try {
-			$projects = $wpdb->get_col( "SELECT id FROM {$wpdb->prefix}coordina_projects" );
-
-			foreach ( (array) $projects as $project_id ) {
-				$project_id = (int) $project_id;
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_activities',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_approvals',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_risks_issues',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_milestones',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-
-				$task_ids = $wpdb->get_col(
-					$wpdb->prepare(
-						"SELECT id FROM {$wpdb->prefix}coordina_tasks WHERE project_id = %d",
-						$project_id
-					)
-				);
-
-				foreach ( (array) $task_ids as $task_id ) {
-					$wpdb->delete(
-						$wpdb->prefix . 'coordina_task_checklist_items',
-						array( 'task_id' => $task_id ),
-						array( '%d' )
-					);
-					$wpdb->delete(
-						$wpdb->prefix . 'coordina_checklist_items',
-						array(
-							'object_type' => 'task',
-							'object_id'   => (int) $task_id,
-						),
-						array( '%s', '%d' )
-					);
-					$wpdb->delete(
-						$wpdb->prefix . 'coordina_checklists',
-						array(
-							'object_type' => 'task',
-							'object_id'   => (int) $task_id,
-						),
-						array( '%s', '%d' )
-					);
-				}
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_checklist_items',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_checklists',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_tasks',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_task_groups',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_project_members',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_checklist_items',
-					array( 'project_id' => $project_id ),
-					array( '%d' )
-				);
-
-				$wpdb->delete(
-					$wpdb->prefix . 'coordina_projects',
-					array( 'id' => $project_id ),
-					array( '%d' )
-				);
-			}
-
-			return $this->respond( array( 'cleared' => count( $projects ) ) );
-		} catch ( Throwable $exception ) {
-			return $this->error_response( $exception->getMessage() );
-		}
 	}
 
 	public function can_access_any_shell(): bool {

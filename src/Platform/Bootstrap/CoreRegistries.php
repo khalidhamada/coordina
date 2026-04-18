@@ -564,6 +564,7 @@ final class CoreRegistries {
 				'table'          => 'approvals',
 				'admin_page'     => 'coordina-approvals',
 				'label_callback' => static function ( int $object_id ): string {
+					/* translators: %d: approval ID. */
 					return sprintf( __( 'Approval #%d', 'coordina' ), $object_id );
 				},
 				'route_callback' => static function ( int $object_id, int $project_id ): array {
@@ -897,7 +898,9 @@ final class CoreRegistries {
 		$new_table    = $prefix . 'coordina_checklist_items';
 		$tasks_table  = $prefix . 'coordina_tasks';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Migration bootstrap checks table existence once against trusted table names.
 		$legacy_exists = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $legacy_table ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Migration bootstrap checks table existence once against trusted table names.
 		$new_exists    = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $new_table ) );
 
 		if ( $legacy_table !== $legacy_exists || $new_table !== $new_exists ) {
@@ -905,15 +908,18 @@ final class CoreRegistries {
 			return;
 		}
 
-		$already_migrated = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$new_table} WHERE object_type = %s", 'task' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Migration query uses trusted table names built from the active prefix and a prepared value placeholder.
+		$already_migrated = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . $new_table . ' WHERE object_type = %s', 'task' ) );
 
 		if ( $already_migrated <= 0 ) {
+			// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One-time migration query against trusted custom tables built from the active prefix.
 			$wpdb->query(
-				"INSERT INTO {$new_table} (project_id, object_type, object_id, item_text, is_done, sort_order, created_by, created_at, updated_at)
+				'INSERT INTO ' . $new_table . " (project_id, object_type, object_id, item_text, is_done, sort_order, created_by, created_at, updated_at)
 				SELECT task.project_id, 'task', legacy.task_id, legacy.item_text, legacy.is_done, legacy.sort_order, legacy.created_by, legacy.created_at, legacy.updated_at
-				FROM {$legacy_table} legacy
-				LEFT JOIN {$tasks_table} task ON task.id = legacy.task_id"
+				FROM " . $legacy_table . ' legacy
+				LEFT JOIN ' . $tasks_table . ' task ON task.id = legacy.task_id'
 			);
+			// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		}
 
 		update_option( $migration_key, '0.2.8', false );
@@ -935,7 +941,9 @@ final class CoreRegistries {
 			return;
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Migration bootstrap checks table existence once against trusted table names.
 		$headers_exists = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $headers_table ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Migration bootstrap checks table existence once against trusted table names.
 		$items_exists   = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $items_table ) );
 
 		if ( $headers_table !== $headers_exists || $items_table !== $items_exists ) {
@@ -943,12 +951,14 @@ final class CoreRegistries {
 			return;
 		}
 
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Migration query uses trusted table names built from the active prefix.
 		$contexts = $wpdb->get_results(
-			"SELECT object_type, object_id, MAX(project_id) AS project_id
-			FROM {$items_table}
+			'SELECT object_type, object_id, MAX(project_id) AS project_id
+			FROM ' . $items_table . '
 			WHERE COALESCE(checklist_id, 0) = 0
-			GROUP BY object_type, object_id"
+			GROUP BY object_type, object_id'
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		foreach ( $contexts ?: array() as $context ) {
 			$object_type = sanitize_key( (string) $context->object_type );
@@ -959,16 +969,19 @@ final class CoreRegistries {
 				continue;
 			}
 
+			// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Migration query uses trusted table names built from the active prefix and prepared value placeholders.
 			$header_id = (int) $wpdb->get_var(
 				$wpdb->prepare(
-					"SELECT id FROM {$headers_table} WHERE object_type = %s AND object_id = %d AND title = %s ORDER BY sort_order ASC, id ASC LIMIT 1",
+					'SELECT id FROM ' . $headers_table . ' WHERE object_type = %s AND object_id = %d AND title = %s ORDER BY sort_order ASC, id ASC LIMIT 1',
 					$object_type,
 					$object_id,
 					'Checklist'
 				)
 			);
+			// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 			if ( $header_id <= 0 ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- One-time migration insert into a trusted custom table.
 				$wpdb->insert(
 					$headers_table,
 					array(
@@ -986,14 +999,16 @@ final class CoreRegistries {
 			}
 
 			if ( $header_id > 0 ) {
+				// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Migration query uses trusted table names built from the active prefix and prepared value placeholders.
 				$wpdb->query(
 					$wpdb->prepare(
-						"UPDATE {$items_table} SET checklist_id = %d WHERE object_type = %s AND object_id = %d AND COALESCE(checklist_id, 0) = 0",
+						'UPDATE ' . $items_table . ' SET checklist_id = %d WHERE object_type = %s AND object_id = %d AND COALESCE(checklist_id, 0) = 0',
 						$header_id,
 						$object_type,
 						$object_id
 					)
 				);
+				// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			}
 		}
 
@@ -1015,6 +1030,7 @@ final class CoreRegistries {
 			return;
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Migration bootstrap checks table existence once against a trusted table name.
 		$table_exists = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
 
 		if ( $table !== $table_exists ) {
@@ -1022,10 +1038,12 @@ final class CoreRegistries {
 			return;
 		}
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema inspection uses a trusted table name built from the active prefix and a prepared column placeholder.
 		$column_exists = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW COLUMNS FROM ' . $table . ' LIKE %s', 'sponsor_user_id' ) );
 
 		if ( '' === $column_exists ) {
-			$wpdb->query( "ALTER TABLE {$table} ADD COLUMN sponsor_user_id bigint(20) unsigned NOT NULL DEFAULT 0 AFTER manager_user_id" );
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Schema migration uses a trusted table name built from the active prefix.
+			$wpdb->query( 'ALTER TABLE ' . $table . ' ADD COLUMN sponsor_user_id bigint(20) unsigned NOT NULL DEFAULT 0 AFTER manager_user_id' );
 		}
 
 		update_option( $migration_key, '0.2.8', false );

@@ -73,12 +73,12 @@ final class RiskIssueRepository extends AbstractRepository {
 		$where_sql = implode( ' AND ', $where );
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
 		$list_sql  = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY {$order_by} {$order} LIMIT %d OFFSET %d";
-		$total     = (int) $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, $params ) );
+		$total     = (int) $this->prepared_var( $count_sql, $params );
 
 		$list_params   = $params;
 		$list_params[] = $per_page;
 		$list_params[] = $offset;
-		$rows          = $this->wpdb->get_results( $this->wpdb->prepare( $list_sql, $list_params ) );
+		$rows          = $this->prepared_results( $list_sql, $list_params );
 
 		return array(
 			'items'      => array_map( array( $this, 'map_item' ), $rows ?: array() ),
@@ -115,25 +115,21 @@ final class RiskIssueRepository extends AbstractRepository {
 	public function get_project_summary( int $project_id ): array {
 		$table       = $this->table( 'risks_issues' );
 		list( $access_sql, $access_params ) = $this->access->risk_issue_access_where( 'id' );
-		$summary_row = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT
+		$summary_row = $this->prepared_row(
+			"SELECT
 					COUNT(*) AS total_count,
 					SUM(CASE WHEN object_type = 'risk' THEN 1 ELSE 0 END) AS risk_count,
 					SUM(CASE WHEN object_type = 'issue' THEN 1 ELSE 0 END) AS issue_count,
 					SUM(CASE WHEN severity IN ('high', 'critical') THEN 1 ELSE 0 END) AS high_severity_count,
 					SUM(CASE WHEN status IN ('resolved', 'closed') THEN 1 ELSE 0 END) AS resolved_count,
 					SUM(CASE WHEN status = 'escalated' THEN 1 ELSE 0 END) AS escalated_count
-				FROM {$table}
-				WHERE project_id = %d AND {$access_sql}",
+				FROM " . $table . "
+				WHERE project_id = %d AND " . $access_sql,
 				array_merge( array( $project_id ), $access_params )
-			)
 		);
-		$status_rows  = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT status, COUNT(*) AS total FROM {$table} WHERE project_id = %d AND {$access_sql} GROUP BY status",
-				array_merge( array( $project_id ), $access_params )
-			)
+		$status_rows  = $this->prepared_results(
+			'SELECT status, COUNT(*) AS total FROM ' . $table . ' WHERE project_id = %d AND ' . $access_sql . ' GROUP BY status',
+			array_merge( array( $project_id ), $access_params )
 		);
 
 		$summary      = $this->row_to_array( $summary_row );
@@ -165,7 +161,7 @@ final class RiskIssueRepository extends AbstractRepository {
 		}
 
 		$table = $this->table( 'risks_issues' );
-		$row   = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
+		$row   = $this->prepared_row( 'SELECT * FROM ' . $table . ' WHERE id = %d', array( $id ) );
 
 		return $this->map_item( $row );
 	}
@@ -182,7 +178,7 @@ final class RiskIssueRepository extends AbstractRepository {
 		$clean       = $this->clean_data( $data, true );
 
 		if ( (int) ( $clean['project_id'] ?? 0 ) > 0 && ! $this->access->can_edit_project( (int) $clean['project_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to create a risk or issue for this project.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to create a risk or issue for this project.', 'coordina' ) );
 		}
 
 		$clean['created_by'] = get_current_user_id();
@@ -192,7 +188,7 @@ final class RiskIssueRepository extends AbstractRepository {
 		$result = $this->wpdb->insert( $table, $clean );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Risk or issue could not be created.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Risk or issue could not be created.', 'coordina' ) );
 		}
 
 		$record = $this->find( (int) $this->wpdb->insert_id );
@@ -210,14 +206,14 @@ final class RiskIssueRepository extends AbstractRepository {
 	 */
 	public function update( int $id, array $data ): array {
 		if ( ! $this->access->can_edit_risk_issue( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this risk or issue.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this risk or issue.', 'coordina' ) );
 		}
 
 		$current = $this->find( $id );
 		$target_project_id = max( 0, (int) ( $data['project_id'] ?? ( $current['project_id'] ?? 0 ) ) );
 
 		if ( $target_project_id > 0 && ! $this->access->can_edit_project( $target_project_id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to move this risk or issue into that project.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to move this risk or issue into that project.', 'coordina' ) );
 		}
 
 		$table = $this->table( 'risks_issues' );
@@ -227,7 +223,7 @@ final class RiskIssueRepository extends AbstractRepository {
 		$result = $this->wpdb->update( $table, $clean, array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Risk or issue could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Risk or issue could not be updated.', 'coordina' ) );
 		}
 
 		$record = $this->find( $id );
@@ -271,10 +267,10 @@ final class RiskIssueRepository extends AbstractRepository {
 		$params       = array_merge( array( sanitize_key( $status ), $resolved_at, $this->now() ), $ids );
 		$sql          = "UPDATE {$table} SET status = %s, resolved_at = %s, updated_at = %s WHERE id IN ({$placeholders})";
 
-		$result = $this->wpdb->query( $this->wpdb->prepare( $sql, $params ) );
+		$result = $this->prepared_query( $sql, $params );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Risk and issue statuses could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Risk and issue statuses could not be updated.', 'coordina' ) );
 		}
 
 		return (int) $result;
@@ -288,24 +284,25 @@ final class RiskIssueRepository extends AbstractRepository {
 	 */
 	public function delete( int $id ): bool {
 		if ( ! $this->access->can_delete_risk_issue( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this risk or issue.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this risk or issue.', 'coordina' ) );
 		}
 
 		$record = $this->find( $id );
 
 		if ( empty( $record ) ) {
-			throw new RuntimeException( __( 'Risk or issue could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Risk or issue could not be found.', 'coordina' ) );
 		}
 
 		$this->delete_context_relations( (string) ( $record['object_type'] ?? 'risk' ), $id );
 		$result = $this->wpdb->delete( $this->table( 'risks_issues' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Risk or issue could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Risk or issue could not be deleted.', 'coordina' ) );
 		}
 
 		if ( $result > 0 && (int) ( $record['project_id'] ?? 0 ) > 0 ) {
-			$this->log_activity( 'project', (int) $record['project_id'], 'risk_issue_deleted', sprintf( __( 'Deleted %s "%s".', 'coordina' ), (string) ( $record['object_type'] ?? __( 'record', 'coordina' ) ), (string) ( $record['title'] ?? __( 'Risk or issue', 'coordina' ) ) ) );
+			/* translators: 1: record type label, 2: record title. */
+			$this->log_activity( 'project', (int) $record['project_id'], 'risk_issue_deleted', sprintf( __( 'Deleted %1$s "%2$s".', 'coordina' ), (string) ( $record['object_type'] ?? __( 'record', 'coordina' ) ), (string) ( $record['title'] ?? __( 'Risk or issue', 'coordina' ) ) ) );
 		}
 
 		return $result > 0;
@@ -390,7 +387,7 @@ final class RiskIssueRepository extends AbstractRepository {
 		}
 
 		$projects_table = $this->table( 'projects' );
-		$title          = $this->wpdb->get_var( $this->wpdb->prepare( "SELECT title FROM {$projects_table} WHERE id = %d", $project_id ) );
+		$title          = $this->prepared_var( 'SELECT title FROM ' . $projects_table . ' WHERE id = %d', array( $project_id ) );
 
 		return $title ? (string) $title : __( 'Project exception', 'coordina' );
 	}

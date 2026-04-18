@@ -72,11 +72,11 @@ final class RequestRepository extends AbstractRepository {
 		$where_sql   = implode( ' AND ', $where );
 		$count_sql   = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
 		$list_sql    = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY {$order_by} {$order} LIMIT %d OFFSET %d";
-		$total       = (int) $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, $params ) );
+		$total       = (int) $this->prepared_var( $count_sql, $params );
 		$list_params = $params;
 		$list_params[] = $per_page;
 		$list_params[] = $offset;
-		$rows = $this->wpdb->get_results( $this->wpdb->prepare( $list_sql, $list_params ) );
+		$rows = $this->prepared_results( $list_sql, $list_params );
 
 		return array(
 			'items'      => array_map( array( $this, 'map_item' ), $rows ?: array() ),
@@ -99,7 +99,7 @@ final class RequestRepository extends AbstractRepository {
 		}
 
 		$table = $this->table( 'requests' );
-		$row   = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
+		$row   = $this->prepared_row( 'SELECT * FROM ' . $table . ' WHERE id = %d', array( $id ) );
 		return $this->map_item( $row );
 	}
 
@@ -134,7 +134,7 @@ final class RequestRepository extends AbstractRepository {
 		$result = $this->wpdb->insert( $table, $clean );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Request could not be created.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Request could not be created.', 'coordina' ) );
 		}
 
 		$request = $this->find( (int) $this->wpdb->insert_id );
@@ -152,7 +152,7 @@ final class RequestRepository extends AbstractRepository {
 	 */
 	public function update( int $id, array $data ): array {
 		if ( ! $this->can_access_request( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this request.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this request.', 'coordina' ) );
 		}
 
 		$table           = $this->table( 'requests' );
@@ -175,7 +175,7 @@ final class RequestRepository extends AbstractRepository {
 		$result = $this->wpdb->update( $table, $clean, array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Request could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Request could not be updated.', 'coordina' ) );
 		}
 
 		$request = $this->find( $id );
@@ -197,15 +197,15 @@ final class RequestRepository extends AbstractRepository {
 		$request = $this->find( $id );
 
 		if ( empty( $request ) ) {
-			throw new RuntimeException( __( 'Request could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Request could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->has_full_access() && (int) $request['triage_owner_user_id'] !== get_current_user_id() ) {
-			throw new RuntimeException( __( 'You are not allowed to convert this request.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to convert this request.', 'coordina' ) );
 		}
 
 		if ( 'approved' !== ( $request['approval_status'] ?? '' ) ) {
-			throw new RuntimeException( __( 'Only approved requests can be converted into delivery work.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Only approved requests can be converted into delivery work.', 'coordina' ) );
 		}
 
 		$created = array();
@@ -238,7 +238,7 @@ final class RequestRepository extends AbstractRepository {
 		}
 
 		if ( empty( $created ) ) {
-			throw new RuntimeException( __( 'Request conversion target is not supported.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Request conversion target is not supported.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->update(
@@ -254,7 +254,7 @@ final class RequestRepository extends AbstractRepository {
 		);
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Request could not be converted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Request could not be converted.', 'coordina' ) );
 		}
 
 		$request = $this->find( $id );
@@ -288,10 +288,10 @@ final class RequestRepository extends AbstractRepository {
 			$params[] = get_current_user_id();
 		}
 
-		$result = $this->wpdb->query( $this->wpdb->prepare( $sql, $params ) );
+		$result = $this->prepared_query( $sql, $params );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Request statuses could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Request statuses could not be updated.', 'coordina' ) );
 		}
 
 		return (int) $result;
@@ -305,20 +305,20 @@ final class RequestRepository extends AbstractRepository {
 	 */
 	public function delete( int $id ): bool {
 		if ( ! $this->access->can_delete_request( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this request.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this request.', 'coordina' ) );
 		}
 
 		$request = $this->find( $id );
 
 		if ( empty( $request ) ) {
-			throw new RuntimeException( __( 'Request could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Request could not be found.', 'coordina' ) );
 		}
 
 		$this->delete_context_relations( 'request', $id );
 		$result = $this->wpdb->delete( $this->table( 'requests' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Request could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Request could not be deleted.', 'coordina' ) );
 		}
 
 		return $result > 0;

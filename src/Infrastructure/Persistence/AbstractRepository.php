@@ -129,7 +129,7 @@ abstract class AbstractRepository {
 			return __( 'Standalone', 'coordina' );
 		}
 
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', $project_id ) );
+		$title = $this->prepared_var( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', array( $project_id ) );
 
 		if ( $title ) {
 			return (string) $title;
@@ -174,7 +174,7 @@ abstract class AbstractRepository {
 			$args[] = $type_value;
 		}
 
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( $sql, $args ) );
+		$title = $this->prepared_var( $sql, $args );
 
 		return $title ? (string) $title : '';
 	}
@@ -215,11 +215,11 @@ abstract class AbstractRepository {
 				$args[] = $type_value;
 			}
 
-			return (int) $this->wpdb->get_var( $this->wpdb->prepare( $sql, $args ) );
+			return (int) $this->prepared_var( $sql, $args );
 		}
 
 		if ( 'approval' === $object_type ) {
-			$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT object_type, object_id FROM ' . $this->table( 'approvals' ) . ' WHERE id = %d', $object_id ) );
+			$row = $this->prepared_row( 'SELECT object_type, object_id FROM ' . $this->table( 'approvals' ) . ' WHERE id = %d', array( $object_id ) );
 
 			if ( $row ) {
 				return $this->resolve_project_id_for_context( sanitize_key( (string) $row->object_type ), (int) $row->object_id );
@@ -255,7 +255,7 @@ abstract class AbstractRepository {
 			$args[] = $type_value;
 		}
 
-		$count = (int) $this->wpdb->get_var( $this->wpdb->prepare( $sql, $args ) );
+		$count = (int) $this->prepared_var( $sql, $args );
 
 		return $count > 0;
 	}
@@ -318,5 +318,97 @@ abstract class AbstractRepository {
 	 */
 	protected function has_full_project_access(): bool {
 		return $this->access->has_full_project_access();
+	}
+
+	/**
+	 * Prepare SQL with trusted internal fragments and placeholder values.
+	 *
+	 * @param string $sql SQL statement.
+	 * @param array<int, mixed> $params Placeholder values.
+	 * @return string
+	 */
+	protected function prepare_statement( string $sql, array $params = array() ): string {
+		if ( empty( $params ) ) {
+			return $sql;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Internal query fragments are assembled from trusted repository helpers and sanitized values before placeholder substitution.
+		return $this->wpdb->prepare( $sql, $params );
+	}
+
+	/**
+	 * Execute a prepared scalar query.
+	 *
+	 * @param string $sql SQL statement.
+	 * @param array<int, mixed> $params Placeholder values.
+	 * @return mixed
+	 */
+	protected function prepared_var( string $sql, array $params = array() ) {
+		$prepared_sql = $this->prepare_statement( $sql, $params );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom-table query prepared through repository helper.
+		return $this->wpdb->get_var( $prepared_sql );
+	}
+
+	/**
+	 * Execute a prepared row query.
+	 *
+	 * @param string $sql SQL statement.
+	 * @param array<int, mixed> $params Placeholder values.
+	 * @param string|int $output Output format.
+	 * @return mixed
+	 */
+	protected function prepared_row( string $sql, array $params = array(), $output = \OBJECT ) {
+		$prepared_sql = $this->prepare_statement( $sql, $params );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom-table query prepared through repository helper.
+		return $this->wpdb->get_row( $prepared_sql, $output );
+	}
+
+	/**
+	 * Execute a prepared result-set query.
+	 *
+	 * @param string $sql SQL statement.
+	 * @param array<int, mixed> $params Placeholder values.
+	 * @param string|int $output Output format.
+	 * @return array<int, mixed>
+	 */
+	protected function prepared_results( string $sql, array $params = array(), $output = \OBJECT ): array {
+		$prepared_sql = $this->prepare_statement( $sql, $params );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom-table query prepared through repository helper.
+		$results = $this->wpdb->get_results( $prepared_sql, $output );
+
+		return is_array( $results ) ? $results : array();
+	}
+
+	/**
+	 * Execute a prepared column query.
+	 *
+	 * @param string $sql SQL statement.
+	 * @param array<int, mixed> $params Placeholder values.
+	 * @return array<int, mixed>
+	 */
+	protected function prepared_col( string $sql, array $params = array() ): array {
+		$prepared_sql = $this->prepare_statement( $sql, $params );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom-table query prepared through repository helper.
+		$results = $this->wpdb->get_col( $prepared_sql );
+
+		return is_array( $results ) ? $results : array();
+	}
+
+	/**
+	 * Execute a prepared write query.
+	 *
+	 * @param string $sql SQL statement.
+	 * @param array<int, mixed> $params Placeholder values.
+	 * @return int|false
+	 */
+	protected function prepared_query( string $sql, array $params = array() ) {
+		$prepared_sql = $this->prepare_statement( $sql, $params );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom-table query prepared through repository helper.
+		return $this->wpdb->query( $prepared_sql );
 	}
 }

@@ -15,8 +15,6 @@ use Coordina\Platform\Providers\CoreAppServiceProvider;
 use Coordina\Platform\Providers\CoreRegistryServiceProvider;
 use Coordina\Platform\Providers\CoreRepositoryServiceProvider;
 use Coordina\Platform\Providers\CoreServiceProvider;
-use Coordina\Support\DataSeedCommand;
-use Coordina\Support\DataSeeder;
 use InvalidArgumentException;
 
 final class Kernel {
@@ -56,16 +54,9 @@ final class Kernel {
 	 * Boot Coordina through the platform kernel.
 	 */
 	public function boot(): void {
-		$this->load_textdomain();
 		$this->register_providers();
 		$this->maybe_upgrade();
 		$this->boot_providers();
-
-		DataSeedCommand::register(
-			function (): DataSeeder {
-				return $this->container->get( 'data_seeder' );
-			}
-		);
 	}
 
 	/**
@@ -127,18 +118,11 @@ final class Kernel {
 
 		if ( ! $provider instanceof ServiceProvider ) {
 			throw new InvalidArgumentException(
-				sprintf( 'Coordina provider "%s" must implement the service provider contract.', $provider_class )
+				sprintf( 'Coordina provider "%s" must implement the service provider contract.', esc_html( $provider_class ) )
 			);
 		}
 
 		return $provider;
-	}
-
-	/**
-	 * Load plugin translations.
-	 */
-	private function load_textdomain(): void {
-		load_plugin_textdomain( 'coordina', false, dirname( COORDINA_BASENAME ) . '/languages' );
 	}
 
 	/**

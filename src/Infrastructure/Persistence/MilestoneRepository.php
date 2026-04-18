@@ -60,12 +60,12 @@ final class MilestoneRepository extends AbstractRepository {
 		$where_sql = implode( ' AND ', $where );
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
 		$list_sql  = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY {$order_by} {$order}, id {$order} LIMIT %d OFFSET %d";
-		$total     = (int) $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, $params ) );
+		$total     = (int) $this->prepared_var( $count_sql, $params );
 
 		$list_params   = $params;
 		$list_params[] = $per_page;
 		$list_params[] = $offset;
-		$rows          = $this->wpdb->get_results( $this->wpdb->prepare( $list_sql, $list_params ) );
+		$rows          = $this->prepared_results( $list_sql, $list_params );
 
 		return array(
 			'items'      => array_map( array( $this, 'map_item' ), $rows ?: array() ),
@@ -102,24 +102,20 @@ final class MilestoneRepository extends AbstractRepository {
 	public function get_project_summary( int $project_id ): array {
 		$table = $this->table( 'milestones' );
 		list( $access_sql, $access_params ) = $this->access->project_access_where( 'project_id' );
-		$row   = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT
+		$row   = $this->prepared_row(
+			"SELECT
 					COUNT(*) AS total_count,
 					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_count,
 					SUM(CASE WHEN due_date IS NOT NULL AND due_date < %s AND status NOT IN ('completed', 'skipped') THEN 1 ELSE 0 END) AS overdue_count,
 					SUM(CASE WHEN dependency_flag = 1 THEN 1 ELSE 0 END) AS dependency_count,
 					MIN(CASE WHEN status NOT IN ('completed', 'skipped') THEN due_date ELSE NULL END) AS next_due_date
-				FROM {$table}
-				WHERE project_id = %d AND {$access_sql}",
+				FROM " . $table . "
+				WHERE project_id = %d AND " . $access_sql,
 				array_merge( array( current_time( 'mysql', true ), $project_id ), $access_params )
-			)
 		);
-		$status_rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT status, COUNT(*) AS total FROM {$table} WHERE project_id = %d AND {$access_sql} GROUP BY status",
-				array_merge( array( $project_id ), $access_params )
-			)
+		$status_rows = $this->prepared_results(
+			'SELECT status, COUNT(*) AS total FROM ' . $table . ' WHERE project_id = %d AND ' . $access_sql . ' GROUP BY status',
+			array_merge( array( $project_id ), $access_params )
 		);
 
 		$status_counts = array();
@@ -148,7 +144,7 @@ final class MilestoneRepository extends AbstractRepository {
 	 * @return array<string, mixed>
 	 */
 	public function find( int $id ): array {
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d', $id ) );
+		$row = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'milestones' ) . ' WHERE id = %d', array( $id ) );
 		$item = $this->map_item( $row );
 
 		if ( empty( $item ) || ! $this->access->can_view_project( (int) ( $item['project_id'] ?? 0 ) ) ) {
@@ -168,7 +164,7 @@ final class MilestoneRepository extends AbstractRepository {
 		$clean = $this->clean_data( $data, true );
 
 		if ( ! $this->access->can_edit_project( (int) $clean['project_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to create milestones for this project.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to create milestones for this project.', 'coordina' ) );
 		}
 
 		$now                 = $this->now();
@@ -178,10 +174,11 @@ final class MilestoneRepository extends AbstractRepository {
 		$result              = $this->wpdb->insert( $this->table( 'milestones' ), $clean );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Milestone could not be created.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Milestone could not be created.', 'coordina' ) );
 		}
 
 		$milestone_id = (int) $this->wpdb->insert_id;
+		/* translators: %s: milestone title. */
 		$this->log_activity( 'milestone', $milestone_id, 'milestone_created', sprintf( __( 'Created milestone "%s".', 'coordina' ), $clean['title'] ) );
 
 		return $this->find( $milestone_id );
@@ -197,20 +194,20 @@ final class MilestoneRepository extends AbstractRepository {
 	public function update( int $id, array $data ): array {
 		$current = $this->find( $id );
 		if ( empty( $current ) || ! $this->access->can_edit_project( (int) ( $current['project_id'] ?? 0 ) ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this milestone.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this milestone.', 'coordina' ) );
 		}
 
 		$clean = $this->clean_data( $data, false );
 
 		if ( (int) ( $clean['project_id'] ?? 0 ) > 0 && ! $this->access->can_edit_project( (int) $clean['project_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to move this milestone into that project.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to move this milestone into that project.', 'coordina' ) );
 		}
 
 		$clean['updated_at'] = $this->now();
 		$result = $this->wpdb->update( $this->table( 'milestones' ), $clean, array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Milestone could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Milestone could not be updated.', 'coordina' ) );
 		}
 
 		$this->log_update_activity( $id, $current, $clean );
@@ -250,13 +247,14 @@ final class MilestoneRepository extends AbstractRepository {
 		$placeholders = implode( ',', array_fill( 0, count( $allowed_ids ), '%d' ) );
 		$params       = array_merge( array( sanitize_key( $status ), $this->now() ), $allowed_ids );
 		$sql          = "UPDATE {$table} SET status = %s, updated_at = %s WHERE id IN ({$placeholders})";
-		$result       = $this->wpdb->query( $this->wpdb->prepare( $sql, $params ) );
+		$result       = $this->prepared_query( $sql, $params );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Milestone statuses could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Milestone statuses could not be updated.', 'coordina' ) );
 		}
 
 		foreach ( $allowed_ids as $id ) {
+			/* translators: %s: milestone status. */
 			$this->log_activity( 'milestone', $id, 'milestone_status_changed', sprintf( __( 'Changed milestone status to %s.', 'coordina' ), sanitize_key( $status ) ) );
 		}
 
@@ -273,17 +271,18 @@ final class MilestoneRepository extends AbstractRepository {
 		$current = $this->find( $id );
 
 		if ( empty( $current ) || ! $this->access->can_delete_milestone( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this milestone.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this milestone.', 'coordina' ) );
 		}
 
 		$this->delete_context_relations( 'milestone', $id );
 		$result = $this->wpdb->delete( $this->table( 'milestones' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Milestone could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Milestone could not be deleted.', 'coordina' ) );
 		}
 
 		if ( $result > 0 && (int) ( $current['project_id'] ?? 0 ) > 0 ) {
+			/* translators: %s: milestone title. */
 			$this->log_activity( 'project', (int) $current['project_id'], 'milestone_deleted', sprintf( __( 'Deleted milestone "%s".', 'coordina' ), (string) ( $current['title'] ?? __( 'Milestone', 'coordina' ) ) ) );
 		}
 
@@ -361,6 +360,7 @@ final class MilestoneRepository extends AbstractRepository {
 	 */
 	private function log_update_activity( int $id, array $current, array $clean ): void {
 		if ( (string) ( $current['status'] ?? '' ) !== (string) ( $clean['status'] ?? '' ) ) {
+			/* translators: %s: milestone status. */
 			$this->log_activity( 'milestone', $id, 'milestone_status_changed', sprintf( __( 'Changed milestone status to %s.', 'coordina' ), (string) $clean['status'] ) );
 		}
 
@@ -369,6 +369,7 @@ final class MilestoneRepository extends AbstractRepository {
 		}
 
 		if ( (int) ( $current['completion_percent'] ?? 0 ) !== (int) ( $clean['completion_percent'] ?? 0 ) ) {
+			/* translators: %d: milestone completion percentage. */
 			$this->log_activity( 'milestone', $id, 'milestone_completion_changed', sprintf( __( 'Changed milestone completion to %d%%.', 'coordina' ), (int) $clean['completion_percent'] ) );
 		}
 	}

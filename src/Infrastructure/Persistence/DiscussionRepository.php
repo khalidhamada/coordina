@@ -66,12 +66,12 @@ final class DiscussionRepository extends AbstractRepository {
 		$where_sql = implode( ' AND ', $where );
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
 		$list_sql  = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY created_at {$order}, id {$order} LIMIT %d OFFSET %d";
-		$total     = (int) $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, $params ) );
+		$total     = (int) $this->prepared_var( $count_sql, $params );
 
 		$list_params   = $params;
 		$list_params[] = $per_page;
 		$list_params[] = $offset;
-		$rows          = $this->wpdb->get_results( $this->wpdb->prepare( $list_sql, $list_params ) );
+		$rows          = $this->prepared_results( $list_sql, $list_params );
 
 		return array(
 			'items'      => array_map( array( $this, 'map_item' ), $rows ?: array() ),
@@ -89,13 +89,13 @@ final class DiscussionRepository extends AbstractRepository {
 	 * @return array<string, mixed>
 	 */
 	public function find( int $id ): array {
-		$item = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT object_type, object_id, created_by FROM ' . $this->table( 'discussions' ) . ' WHERE id = %d', $id ) );
+		$item = $this->prepared_row( 'SELECT object_type, object_id, created_by FROM ' . $this->table( 'discussions' ) . ' WHERE id = %d', array( $id ) );
 
 		if ( ! $item || ( (int) $item->created_by !== get_current_user_id() && ! $this->access->can_view_context( (string) $item->object_type, (int) $item->object_id ) ) ) {
 			return array();
 		}
 
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'discussions' ) . ' WHERE id = %d', $id ) );
+		$row = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'discussions' ) . ' WHERE id = %d', array( $id ) );
 		return $this->map_item( $row );
 	}
 
@@ -111,15 +111,15 @@ final class DiscussionRepository extends AbstractRepository {
 		$body        = trim( wp_kses_post( (string) ( $data['body'] ?? '' ) ) );
 
 		if ( ! $this->context_exists( $object_type, $object_id ) ) {
-			throw new RuntimeException( __( 'A valid parent context is required for updates.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'A valid parent context is required for updates.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_collaborate_on_context( $object_type, $object_id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to post updates to this context.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to post updates to this context.', 'coordina' ) );
 		}
 
 		if ( '' === wp_strip_all_tags( $body ) ) {
-			throw new RuntimeException( __( 'Write an update before posting it.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Write an update before posting it.', 'coordina' ) );
 		}
 
 		$now    = $this->now();
@@ -137,7 +137,7 @@ final class DiscussionRepository extends AbstractRepository {
 		);
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'The update could not be saved.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'The update could not be saved.', 'coordina' ) );
 		}
 
 		$context_label = $this->resolve_context_label( $object_type, $object_id );
@@ -176,11 +176,9 @@ final class DiscussionRepository extends AbstractRepository {
 	public function get_project_summary( int $project_id ): array {
 		$table = $this->table( 'discussions' );
 		list( $access_sql, $access_params ) = $this->access->context_access_where( 'object_type', 'object_id', 'created_by' );
-		$row   = $this->wpdb->get_row(
-			$this->wpdb->prepare(
-				"SELECT COUNT(*) AS total_count, MAX(created_at) AS latest_created_at FROM {$table} WHERE project_id = %d AND {$access_sql}",
-				array_merge( array( $project_id ), $access_params )
-			)
+		$row   = $this->prepared_row(
+			'SELECT COUNT(*) AS total_count, MAX(created_at) AS latest_created_at FROM ' . $table . ' WHERE project_id = %d AND ' . $access_sql,
+			array_merge( array( $project_id ), $access_params )
 		);
 		$item  = $this->row_to_array( $row );
 
@@ -200,17 +198,17 @@ final class DiscussionRepository extends AbstractRepository {
 		$discussion = $this->find( $id );
 
 		if ( empty( $discussion ) ) {
-			throw new RuntimeException( __( 'Update could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Update could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->can_delete_record( $discussion ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this update.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this update.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->delete( $this->table( 'discussions' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Update could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Update could not be deleted.', 'coordina' ) );
 		}
 
 		if ( $result > 0 ) {

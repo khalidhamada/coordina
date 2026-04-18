@@ -82,12 +82,12 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 		$where_sql = implode( ' AND ', $where );
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
 		$list_sql  = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY {$order_by} {$order} LIMIT %d OFFSET %d";
-		$total     = (int) $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, $params ) );
+		$total     = (int) $this->prepared_var( $count_sql, $params );
 
 		$list_params   = $params;
 		$list_params[] = $per_page;
 		$list_params[] = $offset;
-		$rows          = $this->wpdb->get_results( $this->wpdb->prepare( $list_sql, $list_params ) );
+		$rows          = $this->prepared_results( $list_sql, $list_params );
 
 		return array(
 			'items'      => array_map( array( $this, 'map_item' ), $rows ?: array() ),
@@ -110,7 +110,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 		}
 
 		$table = $this->table( 'approvals' );
-		$row   = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
+		$row   = $this->prepared_row( 'SELECT * FROM ' . $table . ' WHERE id = %d', array( $id ) );
 		return $this->map_item( $row );
 	}
 
@@ -122,7 +122,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 	 */
 	public function create( array $data ): array {
 		unset( $data );
-		throw new RuntimeException( __( 'Approvals are generated automatically from linked work items and cannot be created directly.', 'coordina' ) );
+		throw new RuntimeException( esc_html__( 'Approvals are generated automatically from linked work items and cannot be created directly.', 'coordina' ) );
 	}
 
 	/**
@@ -134,7 +134,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 	 */
 	public function update( int $id, array $data ): array {
 		if ( ! $this->access->can_edit_approval( $id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this approval.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this approval.', 'coordina' ) );
 		}
 
 		$current = $this->find( $id );
@@ -152,7 +152,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 		$result = $this->wpdb->update( $this->table( 'approvals' ), $clean, array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Approval could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Approval could not be updated.', 'coordina' ) );
 		}
 
 		$this->sync_parent_approval_state( (string) ( $current['object_type'] ?? '' ), (int) ( $current['object_id'] ?? 0 ), $status );
@@ -184,10 +184,10 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 			$params[] = get_current_user_id();
 		}
 
-		$result = $this->wpdb->query( $this->wpdb->prepare( $sql, $params ) );
+		$result = $this->prepared_query( $sql, $params );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Approvals could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Approvals could not be updated.', 'coordina' ) );
 		}
 
 		foreach ( $ids as $id ) {
@@ -209,7 +209,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 	public function get_pending_for_user( int $user_id ): array {
 		$table = $this->table( 'approvals' );
 		$sql   = "SELECT * FROM {$table} WHERE approver_user_id = %d AND status = 'pending' ORDER BY submitted_at DESC LIMIT 20";
-		$rows  = $this->wpdb->get_results( $this->wpdb->prepare( $sql, $user_id ) );
+		$rows  = $this->prepared_results( $sql, array( $user_id ) );
 		return array_map( array( $this, 'map_item' ), $rows ?: array() );
 	}
 
@@ -247,11 +247,11 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$sql_where}";
 		$list_sql  = "SELECT * FROM {$table} WHERE {$sql_where} ORDER BY submitted_at DESC LIMIT %d OFFSET %d";
-		$total     = (int) $this->wpdb->get_var( $this->wpdb->prepare( $count_sql, $params ) );
+		$total     = (int) $this->prepared_var( $count_sql, $params );
 		$list_params = $params;
 		$list_params[] = $per_page;
 		$list_params[] = $offset;
-		$rows = $this->wpdb->get_results( $this->wpdb->prepare( $list_sql, $list_params ) );
+		$rows = $this->prepared_results( $list_sql, $list_params );
 
 		return array(
 			'items'      => array_map( array( $this, 'map_item' ), $rows ?: array() ),
@@ -289,7 +289,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 	 */
 	public function get_latest_for_object( string $object_type, int $object_id ): array {
 		$table = $this->table( 'approvals' );
-		$row   = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT * FROM {$table} WHERE object_type = %s AND object_id = %d ORDER BY submitted_at DESC, id DESC LIMIT 1", sanitize_key( $object_type ), $object_id ) );
+		$row   = $this->prepared_row( 'SELECT * FROM ' . $table . ' WHERE object_type = %s AND object_id = %d ORDER BY submitted_at DESC, id DESC LIMIT 1', array( sanitize_key( $object_type ), $object_id ) );
 		return $this->map_item( $row );
 	}
 
@@ -437,7 +437,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 		$result = $this->wpdb->insert( $table, $clean );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Approval could not be created.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Approval could not be created.', 'coordina' ) );
 		}
 
 		$approval = $this->find( (int) $this->wpdb->insert_id );
@@ -477,7 +477,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 	private function sync_parent_approval_state( string $object_type, int $object_id, string $status ): void {
 		if ( 'request' === $object_type ) {
 			$request_table = $this->table( 'requests' );
-			$current       = $this->wpdb->get_row( $this->wpdb->prepare( "SELECT status, triage_owner_user_id FROM {$request_table} WHERE id = %d", $object_id ) );
+			$current       = $this->prepared_row( 'SELECT status, triage_owner_user_id FROM ' . $request_table . ' WHERE id = %d', array( $object_id ) );
 			$triage_owner  = (int) ( $current->triage_owner_user_id ?? 0 );
 			$next_status   = 'submitted';
 
@@ -494,7 +494,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 		}
 
 		if ( 'task' === $object_type ) {
-			$current = $this->wpdb->get_row( $this->wpdb->prepare( 'SELECT actual_finish_date, completed_at FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', $object_id ), ARRAY_A );
+			$current = $this->prepared_row( 'SELECT actual_finish_date, completed_at FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', array( $object_id ), \ARRAY_A );
 			$finish  = is_array( $current ) && ! empty( $current['actual_finish_date'] )
 				? (string) $current['actual_finish_date']
 				: ( ( is_array( $current ) && ! empty( $current['completed_at'] ) ) ? (string) $current['completed_at'] : $this->now() );
@@ -545,7 +545,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 	 * @return int
 	 */
 	private function get_project_manager_id( int $project_id ): int {
-		return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT manager_user_id FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', $project_id ) );
+		return (int) $this->prepared_var( 'SELECT manager_user_id FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', array( $project_id ) );
 	}
 
 	/**
@@ -591,7 +591,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 		}
 
 		$table = $this->table( $table_map[ $object_type ] );
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( "SELECT title FROM {$table} WHERE id = %d", $object_id ) );
+		$title = $this->prepared_var( 'SELECT title FROM ' . $table . ' WHERE id = %d', array( $object_id ) );
 		return $title ? (string) $title : '';
 	}
 
@@ -613,9 +613,13 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 		$object_type_label = $this->approval_object_type_label( $object_type );
 		$submitter_label  = $submitted_by_user_id > 0 ? ( get_userdata( $submitted_by_user_id )->display_name ?? '' ) : '';
 		$title            = __( 'Approval requested', 'coordina' );
-		$body             = $submitter_label
-			? sprintf( __( '%1$s submitted %2$s for your approval.', 'coordina' ), $submitter_label, $object_label ?: $object_type_label )
-			: sprintf( __( '%1$s is waiting for your approval.', 'coordina' ), $object_label ?: $object_type_label );
+		if ( $submitter_label ) {
+			/* translators: 1: submitter name, 2: approval target label. */
+			$body = sprintf( __( '%1$s submitted %2$s for your approval.', 'coordina' ), $submitter_label, $object_label ?: $object_type_label );
+		} else {
+			/* translators: %s: approval target label. */
+			$body = sprintf( __( '%1$s is waiting for your approval.', 'coordina' ), $object_label ?: $object_type_label );
+		}
 		$url              = $this->approval_admin_url( $object_type, $object_id );
 
 		$this->notifications->create( $approver_user_id, 'approval-requested', $title, $body, $url );
@@ -688,11 +692,11 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 		}
 
 		if ( 'task' === $object_type ) {
-			return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', $object_id ) );
+			return (int) $this->prepared_var( 'SELECT project_id FROM ' . $this->table( 'tasks' ) . ' WHERE id = %d', array( $object_id ) );
 		}
 
 		if ( in_array( $object_type, array( 'risk', 'issue' ), true ) ) {
-			return (int) $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT project_id FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d', $object_id ) );
+			return (int) $this->prepared_var( 'SELECT project_id FROM ' . $this->table( 'risks_issues' ) . ' WHERE id = %d', array( $object_id ) );
 		}
 
 		return 0;
@@ -709,7 +713,7 @@ final class ApprovalRepository extends AbstractRepository implements ApprovalRep
 			return __( 'Standalone', 'coordina' );
 		}
 
-		$title = $this->wpdb->get_var( $this->wpdb->prepare( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', $project_id ) );
+		$title = $this->prepared_var( 'SELECT title FROM ' . $this->table( 'projects' ) . ' WHERE id = %d', array( $project_id ) );
 		return $title ? (string) $title : __( 'Project', 'coordina' );
 	}
 }

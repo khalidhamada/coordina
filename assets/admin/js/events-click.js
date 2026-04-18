@@ -388,35 +388,6 @@ app.handleAdminClickAction = async function (button) {
 	if (button.dataset.action === 'mark-all-notifications-read') { await api('/notifications/mark-all-read', { method: 'POST', body: {} }); await loadNotifications(); if (state.page === 'coordina-my-work') { await loadMyWork(); } openNotifications(); }
 	if (button.dataset.action === 'open-notification-link') { await api(`/notifications/${button.dataset.id}`, { method: 'POST', body: { isRead: true } }); window.location.href = button.dataset.url || window.location.href; }
 	if (button.dataset.action === 'quick-status') { const task = await api(`/tasks/${button.dataset.id}`); await api(`/tasks/${button.dataset.id}`, { method: 'POST', body: Object.assign({}, task, { status: button.dataset.status }) }); await loadMyWork(); if (state.page === 'coordina-my-work') { await loadMyWorkTasks().catch(() => null); } if (hasTaskPage() && Number(state.taskContext.id || 0) === Number(button.dataset.id || 0)) { await loadTaskDetail().catch(() => null); } if (state.page === 'coordina-calendar') { await loadCalendar().catch(() => null); } if (state.page === 'coordina-workload') { await loadWorkload().catch(() => null); } notify('success', __('Task updated.', 'coordina')); render(); }
-	if (button.dataset.action === 'seed-demo-projects') {
-		const type = button.dataset.type || 'all';
-		button.disabled = true;
-		button.textContent = __('Creating...', 'coordina');
-		try {
-			const result = await api('/demo-data/seed', { method: 'POST', body: { type } });
-			notify('success', `${__('Demo projects created successfully!', 'coordina')} ${result.data.projects.length} ${__('project(s) added.', 'coordina')}`);
-			await loadCollection();
-			render();
-		} finally {
-			button.disabled = false;
-			button.innerHTML = `<strong>${escapeHtml(__('Create All Projects', 'coordina'))}</strong><span>${escapeHtml(__('Website, Mobile, Support • 20+ tasks • 10+ risks', 'coordina'))}</span>`;
-		}
-	}
-	if (button.dataset.action === 'clear-demo-projects') {
-		if (confirm(__('Are you sure you want to delete all projects and related data? This cannot be undone.', 'coordina'))) {
-			button.disabled = true;
-			button.textContent = __('Clearing...', 'coordina');
-			try {
-				await api('/demo-data/clear', { method: 'POST', body: {} });
-				notify('success', __('All projects cleared.', 'coordina'));
-				await loadCollection();
-				render();
-			} finally {
-				button.disabled = false;
-				button.textContent = __('Clear All Projects', 'coordina');
-			}
-		}
-	}
 	if (button.dataset.action === 'delete-record') {
 		if (!confirm(deletePrompt(button))) {
 			return;

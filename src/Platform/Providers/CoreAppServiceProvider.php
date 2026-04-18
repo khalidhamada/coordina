@@ -12,14 +12,9 @@ namespace Coordina\Platform\Providers;
 use Coordina\Admin\AdminApp;
 use Coordina\Core\Container;
 use Coordina\Frontend\Portal;
-use Coordina\Platform\Contracts\AccessPolicyInterface;
-use Coordina\Platform\Contracts\ApprovalRepositoryInterface;
 use Coordina\Platform\Contracts\EntitlementManagerInterface;
-use Coordina\Platform\Contracts\ProjectRepositoryInterface;
 use Coordina\Platform\Contracts\ServiceProvider;
-use Coordina\Platform\Contracts\TaskRepositoryInterface;
 use Coordina\Rest\RestRegistrar;
-use Coordina\Support\DataSeeder;
 
 final class CoreAppServiceProvider implements ServiceProvider {
 	/**
@@ -39,23 +34,6 @@ final class CoreAppServiceProvider implements ServiceProvider {
 			'frontend',
 			static function ( Container $container ): Portal {
 				return new Portal( $container->get( 'formatting' ), $container->get( 'settings' ) );
-			}
-		);
-
-		$container->set(
-			'data_seeder',
-			static function ( Container $container ): DataSeeder {
-				return new DataSeeder(
-					$container->get( ProjectRepositoryInterface::class ),
-					$container->get( TaskRepositoryInterface::class ),
-					$container->get( 'milestones' ),
-					$container->get( 'risks_issues' ),
-					$container->get( ApprovalRepositoryInterface::class ),
-					$container->get( 'discussions' ),
-					$container->get( 'activity' ),
-					$container->get( 'files' ),
-					$container->get( AccessPolicyInterface::class )
-				);
 			}
 		);
 
@@ -82,7 +60,6 @@ final class CoreAppServiceProvider implements ServiceProvider {
 					$container->get( 'discussions' ),
 					$container->get( 'access' ),
 					$container->get( EntitlementManagerInterface::class ),
-					$container->get( 'data_seeder' ),
 					$container->get( 'rest_routes' ),
 					$container->get( 'context_types' )
 				);

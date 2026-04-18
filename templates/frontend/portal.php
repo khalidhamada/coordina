@@ -15,7 +15,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<header class="coordina-portal__header">
 		<div>
 			<p class="coordina-portal__eyebrow"><?php esc_html_e( 'Coordina portal', 'coordina' ); ?></p>
+			<?php /* translators: %s: current user display name. */ ?>
 			<h2><?php echo esc_html( sprintf( __( 'Welcome back, %s', 'coordina' ), $portal_data['user']->display_name ) ); ?></h2>
+			<?php /* translators: %s: current date string. */ ?>
 			<p><?php echo esc_html( sprintf( __( 'Today: %s', 'coordina' ), $portal_data['today'] ) ); ?></p>
 		</div>
 		<a class="coordina-portal__button" href="#"><?php esc_html_e( 'Submit request', 'coordina' ); ?></a>
@@ -23,8 +25,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<nav class="coordina-portal__nav" aria-label="<?php esc_attr_e( 'Portal sections', 'coordina' ); ?>">
 		<ul>
-			<?php foreach ( $portal_data['sections'] as $section ) : ?>
-				<li><a href="#"><?php echo esc_html( $section ); ?></a></li>
+			<?php foreach ( $portal_data['sections'] as $coordina_section ) : ?>
+				<li><a href="#"><?php echo esc_html( $coordina_section ); ?></a></li>
 			<?php endforeach; ?>
 		</ul>
 	</nav>

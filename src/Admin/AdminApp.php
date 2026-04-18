@@ -9,6 +9,10 @@ declare(strict_types=1);
 
 namespace Coordina\Admin;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Coordina\Platform\Bootstrap\CoreRegistries;
 use Coordina\Platform\Contracts\AccessPolicyInterface;
 use Coordina\Platform\Contracts\ContextResolverInterface;
@@ -301,6 +305,7 @@ final class AdminApp {
 	 * @return string
 	 */
 	private function get_current_page_slug(): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin routing state from the query string.
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : 'coordina';
 
 		if ( 'coordina' === $page ) {
@@ -320,6 +325,7 @@ final class AdminApp {
 	 * @return int
 	 */
 	private function get_current_project_id(): int {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin routing state from the query string.
 		return isset( $_GET['project_id'] ) ? max( 0, absint( wp_unslash( $_GET['project_id'] ) ) ) : 0;
 	}
 
@@ -329,6 +335,7 @@ final class AdminApp {
 	 * @return int
 	 */
 	private function get_current_task_id(): int {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin routing state from the query string.
 		return isset( $_GET['task_id'] ) ? max( 0, absint( wp_unslash( $_GET['task_id'] ) ) ) : 0;
 	}
 
@@ -338,6 +345,7 @@ final class AdminApp {
 	 * @return int
 	 */
 	private function get_current_milestone_id(): int {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin routing state from the query string.
 		return isset( $_GET['milestone_id'] ) ? max( 0, absint( wp_unslash( $_GET['milestone_id'] ) ) ) : 0;
 	}
 
@@ -347,6 +355,7 @@ final class AdminApp {
 	 * @return int
 	 */
 	private function get_current_risk_issue_id(): int {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin routing state from the query string.
 		return isset( $_GET['risk_issue_id'] ) ? max( 0, absint( wp_unslash( $_GET['risk_issue_id'] ) ) ) : 0;
 	}
 
@@ -360,10 +369,12 @@ final class AdminApp {
 		$definition = $this->context_types->definition( $slug );
 		$query_arg  = (string) ( $definition['query_arg'] ?? '' );
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin routing state from the query string.
 		if ( '' === $query_arg || ! isset( $_GET[ $query_arg ] ) ) {
 			return 0;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin routing state from the query string.
 		return max( 0, absint( wp_unslash( $_GET[ $query_arg ] ) ) );
 	}
 
@@ -373,6 +384,7 @@ final class AdminApp {
 	 * @return string
 	 */
 	private function get_current_project_tab(): string {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin routing state from the query string.
 		$tab = isset( $_GET['project_tab'] ) ? sanitize_key( wp_unslash( $_GET['project_tab'] ) ) : 'overview';
 
 		return '' !== $tab ? $tab : 'overview';

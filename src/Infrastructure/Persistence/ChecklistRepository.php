@@ -36,19 +36,13 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 			'canManage' => $this->access->can_manage_checklists_on_context( $object_type, $object_id ),
 			'canToggle' => $this->access->can_toggle_checklists_on_context( $object_type, $object_id ),
 		);
-		$headers     = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				'SELECT * FROM ' . $this->table( 'checklists' ) . ' WHERE object_type = %s AND object_id = %d ORDER BY sort_order ASC, id ASC',
-				$object_type,
-				$object_id
-			)
+		$headers     = $this->prepared_results(
+			'SELECT * FROM ' . $this->table( 'checklists' ) . ' WHERE object_type = %s AND object_id = %d ORDER BY sort_order ASC, id ASC',
+			array( $object_type, $object_id )
 		);
-		$items       = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				'SELECT * FROM ' . $this->table( 'checklist_items' ) . ' WHERE object_type = %s AND object_id = %d ORDER BY sort_order ASC, id ASC',
-				$object_type,
-				$object_id
-			)
+		$items       = $this->prepared_results(
+			'SELECT * FROM ' . $this->table( 'checklist_items' ) . ' WHERE object_type = %s AND object_id = %d ORDER BY sort_order ASC, id ASC',
+			array( $object_type, $object_id )
 		);
 		$grouped     = array();
 		$flat_items  = array();
@@ -114,9 +108,7 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 	 * @return array<string, mixed>
 	 */
 	public function find( int $id ): array {
-		$row       = $this->wpdb->get_row(
-			$this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'checklists' ) . ' WHERE id = %d', $id )
-		);
+		$row       = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'checklists' ) . ' WHERE id = %d', array( $id ) );
 		$checklist = $this->map_checklist( $row );
 
 		if ( empty( $checklist ) || ! $this->access->can_view_context( (string) ( $checklist['object_type'] ?? '' ), (int) ( $checklist['object_id'] ?? 0 ) ) ) {
@@ -139,9 +131,7 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 	 * @return array<string, mixed>
 	 */
 	public function find_item( int $id ): array {
-		$row  = $this->wpdb->get_row(
-			$this->wpdb->prepare( 'SELECT * FROM ' . $this->table( 'checklist_items' ) . ' WHERE id = %d', $id )
-		);
+		$row  = $this->prepared_row( 'SELECT * FROM ' . $this->table( 'checklist_items' ) . ' WHERE id = %d', array( $id ) );
 		$item = $this->map_item( $row );
 
 		if ( empty( $item ) || ! $this->access->can_view_context( (string) ( $item['object_type'] ?? '' ), (int) ( $item['object_id'] ?? 0 ) ) ) {
@@ -163,15 +153,15 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$title       = sanitize_text_field( (string) ( $data['title'] ?? '' ) );
 
 		if ( ! $this->is_supported_context( $object_type ) || ! $this->context_exists( $object_type, $object_id ) ) {
-			throw new RuntimeException( __( 'A valid parent context is required for checklists.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'A valid parent context is required for checklists.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_manage_checklists_on_context( $object_type, $object_id ) ) {
-			throw new RuntimeException( __( 'You are not allowed to manage checklists on this record.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to manage checklists on this record.', 'coordina' ) );
 		}
 
 		if ( '' === $title ) {
-			throw new RuntimeException( __( 'Checklist name is required.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist name is required.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->insert(
@@ -189,7 +179,7 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		);
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Checklist could not be created.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist could not be created.', 'coordina' ) );
 		}
 
 		$this->log_activity( $object_type, $object_id, 'checklist_added', __( 'Added a checklist.', 'coordina' ) );
@@ -208,17 +198,17 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$current = $this->find( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Checklist could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_manage_checklists_on_context( (string) $current['object_type'], (int) $current['object_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this checklist.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this checklist.', 'coordina' ) );
 		}
 
 		$title = sanitize_text_field( (string) ( $data['title'] ?? $current['title'] ?? '' ) );
 
 		if ( '' === $title ) {
-			throw new RuntimeException( __( 'Checklist name is required.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist name is required.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->update(
@@ -231,7 +221,7 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		);
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Checklist could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist could not be updated.', 'coordina' ) );
 		}
 
 		if ( (string) $current['title'] !== $title ) {
@@ -252,11 +242,11 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$current = $this->find( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Checklist could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_manage_checklists_on_context( (string) $current['object_type'], (int) $current['object_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to reorder checklists on this record.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to reorder checklists on this record.', 'coordina' ) );
 		}
 
 		$target = $this->find_neighbor(
@@ -299,18 +289,18 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$current = $this->find( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Checklist could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_manage_checklists_on_context( (string) $current['object_type'], (int) $current['object_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this checklist.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this checklist.', 'coordina' ) );
 		}
 
 		$this->wpdb->delete( $this->table( 'checklist_items' ), array( 'checklist_id' => $id ) );
 		$result = $this->wpdb->delete( $this->table( 'checklists' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Checklist could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist could not be deleted.', 'coordina' ) );
 		}
 
 		if ( $result > 0 ) {
@@ -333,15 +323,15 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$checklist    = $this->find( $checklist_id );
 
 		if ( empty( $checklist ) ) {
-			throw new RuntimeException( __( 'A valid checklist is required for checklist items.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'A valid checklist is required for checklist items.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_manage_checklists_on_context( (string) $checklist['object_type'], (int) $checklist['object_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to manage checklist items on this record.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to manage checklist items on this record.', 'coordina' ) );
 		}
 
 		if ( '' === $item_text ) {
-			throw new RuntimeException( __( 'Checklist item text is required.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item text is required.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->insert(
@@ -361,7 +351,7 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		);
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Checklist item could not be created.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item could not be created.', 'coordina' ) );
 		}
 
 		$this->log_activity( (string) $checklist['object_type'], (int) $checklist['object_id'], 'checklist_item_added', __( 'Added a checklist item.', 'coordina' ) );
@@ -380,17 +370,17 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$current = $this->find_item( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Checklist item could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_manage_checklists_on_context( (string) $current['object_type'], (int) $current['object_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to update this checklist item.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to update this checklist item.', 'coordina' ) );
 		}
 
 		$item_text = sanitize_text_field( (string) ( $data['item_text'] ?? $current['item_text'] ?? '' ) );
 
 		if ( '' === $item_text ) {
-			throw new RuntimeException( __( 'Checklist item text is required.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item text is required.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->update(
@@ -403,7 +393,7 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		);
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Checklist item could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item could not be updated.', 'coordina' ) );
 		}
 
 		if ( (string) $current['item_text'] !== $item_text ) {
@@ -424,11 +414,11 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$current = $this->find_item( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Checklist item could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_toggle_checklists_on_context( (string) $current['object_type'], (int) $current['object_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to change this checklist item.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to change this checklist item.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->update(
@@ -441,7 +431,7 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		);
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Checklist item could not be updated.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item could not be updated.', 'coordina' ) );
 		}
 
 		if ( (int) $current['is_done'] !== ( $is_done ? 1 : 0 ) ) {
@@ -467,11 +457,11 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$current = $this->find_item( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Checklist item could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_manage_checklists_on_context( (string) $current['object_type'], (int) $current['object_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to reorder checklist items on this record.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to reorder checklist items on this record.', 'coordina' ) );
 		}
 
 		$target = $this->find_neighbor(
@@ -513,17 +503,17 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$current = $this->find_item( $id );
 
 		if ( empty( $current ) ) {
-			throw new RuntimeException( __( 'Checklist item could not be found.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item could not be found.', 'coordina' ) );
 		}
 
 		if ( ! $this->access->can_manage_checklists_on_context( (string) $current['object_type'], (int) $current['object_id'] ) ) {
-			throw new RuntimeException( __( 'You are not allowed to delete this checklist item.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'You are not allowed to delete this checklist item.', 'coordina' ) );
 		}
 
 		$result = $this->wpdb->delete( $this->table( 'checklist_items' ), array( 'id' => $id ) );
 
 		if ( false === $result ) {
-			throw new RuntimeException( $this->wpdb->last_error ?: __( 'Checklist item could not be deleted.', 'coordina' ) );
+			throw new RuntimeException( esc_html__( 'Checklist item could not be deleted.', 'coordina' ) );
 		}
 
 		if ( $result > 0 ) {
@@ -637,11 +627,9 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 			return array();
 		}
 
-		$rows = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				'SELECT * FROM ' . $this->table( 'checklist_items' ) . ' WHERE checklist_id = %d ORDER BY sort_order ASC, id ASC',
-				$checklist_id
-			)
+		$rows = $this->prepared_results(
+			'SELECT * FROM ' . $this->table( 'checklist_items' ) . ' WHERE checklist_id = %d ORDER BY sort_order ASC, id ASC',
+			array( $checklist_id )
 		);
 
 		return array_map( array( $this, 'map_item' ), $rows ?: array() );
@@ -740,13 +728,9 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 	 * @return int
 	 */
 	private function get_or_create_default_checklist_id( string $object_type, int $object_id ): int {
-		$existing_id = (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				'SELECT id FROM ' . $this->table( 'checklists' ) . ' WHERE object_type = %s AND object_id = %d AND title = %s ORDER BY sort_order ASC, id ASC LIMIT 1',
-				$object_type,
-				$object_id,
-				self::DEFAULT_TITLE
-			)
+		$existing_id = (int) $this->prepared_var(
+			'SELECT id FROM ' . $this->table( 'checklists' ) . ' WHERE object_type = %s AND object_id = %d AND title = %s ORDER BY sort_order ASC, id ASC LIMIT 1',
+			array( $object_type, $object_id, self::DEFAULT_TITLE )
 		);
 
 		if ( $existing_id > 0 ) {
@@ -778,12 +762,9 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 	 * @return int
 	 */
 	private function next_checklist_sort_order( string $object_type, int $object_id ): int {
-		return (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				'SELECT COALESCE(MAX(sort_order), 0) + 10 FROM ' . $this->table( 'checklists' ) . ' WHERE object_type = %s AND object_id = %d',
-				$object_type,
-				$object_id
-			)
+		return (int) $this->prepared_var(
+			'SELECT COALESCE(MAX(sort_order), 0) + 10 FROM ' . $this->table( 'checklists' ) . ' WHERE object_type = %s AND object_id = %d',
+			array( $object_type, $object_id )
 		);
 	}
 
@@ -794,11 +775,9 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 	 * @return int
 	 */
 	private function next_item_sort_order( int $checklist_id ): int {
-		return (int) $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				'SELECT COALESCE(MAX(sort_order), 0) + 10 FROM ' . $this->table( 'checklist_items' ) . ' WHERE checklist_id = %d',
-				$checklist_id
-			)
+		return (int) $this->prepared_var(
+			'SELECT COALESCE(MAX(sort_order), 0) + 10 FROM ' . $this->table( 'checklist_items' ) . ' WHERE checklist_id = %d',
+			array( $checklist_id )
 		);
 	}
 
@@ -832,7 +811,7 @@ final class ChecklistRepository extends AbstractRepository implements ChecklistR
 		$params[]  = $sort_order;
 
 		$sql = "SELECT * FROM {$table} WHERE " . implode( ' AND ', $clauses ) . " ORDER BY sort_order {$order}, id {$order} LIMIT 1";
-		$row = $this->wpdb->get_row( $this->wpdb->prepare( $sql, $params ), ARRAY_A );
+		$row = $this->prepared_row( $sql, $params, \ARRAY_A );
 
 		return is_array( $row ) ? $row : array();
 	}
