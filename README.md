@@ -165,13 +165,13 @@ Coordina includes a modern, cohesive design system:
 ### Q: Does Coordina have email notifications?
 **A:** Notifications are managed through WordPress. Email delivery uses your site's email configuration. You can extend with custom notification hooks.
 
-### Q: What's new in version 1.3.0?
-**A:** Version 1.3.0 includes:
-- **Dashboard Redesign** – Dashboard now works as a cleaner portfolio overview with smaller KPIs, grouped recent activity, and stronger review queues
-- **My Work Cleanup** – My Work is flatter, clearer, and better aligned with project workspace task statuses and filters
-- **Project Workspace Expansion** – Project workspaces now include `Details` and `Gantt`, plus clearer overview and record-detail patterns
-- **Project Sponsor Support** – Projects now store a sponsor and use a clearer sectioned project form for create and edit flows
-- **Schema Update** – This release includes a database update for the new project sponsor field
+### Q: What's new in version 1.3.1?
+**A:** Version 1.3.1 includes:
+- **Approval Drawer Fixes** – Linked source routing now opens the correct work item, and drawers clear the WordPress admin bar properly
+- **Calendar Reliability** – Month and week navigation now works consistently, view changes refresh instantly, and the page uses clearer contrast
+- **Gantt Refinement** – Gantt rows are more compact, longer timelines group more intelligently, and tooltips and alignment are more reliable
+- **File Experience Upgrade** – Project and record files now use clearer cards and a richer drawer with type icons, readable file labels, and direct actions
+- **No Schema Changes** – This patch does not require a database update
 
 ## Support & Documentation
 
@@ -183,7 +183,7 @@ Coordina includes a modern, cohesive design system:
 - **Requires at least:** WordPress 6.6
 - **Tested up to:** WordPress 6.6
 - **Requires PHP:** 7.4 or higher
-- **Stable tag:** 1.3.0
+- **Stable tag:** 1.3.1
 - **License:** GPLv2 or later
 - **Text Domain:** `coordina`
 
@@ -193,4 +193,4 @@ Coordina includes a modern, cohesive design system:
 
 ---
 
-**Questions?** Check [RELEASE_NOTES.md](RELEASE_NOTES.md) for the latest features and improvements, or see [documentation/](docs/) for deeper technical guidance.
+**Questions?** Check [RELEASE_NOTES.md](RELEASE_NOTES.md) for the latest features and improvements.

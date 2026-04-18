@@ -4,7 +4,7 @@ Tags: project management, task management, workflow, operations, approvals, requ
 Requires at least: 6.6
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: coordina
@@ -53,6 +53,14 @@ Yes. Coordina supports both project-linked tasks and standalone tasks.
 Yes. Visibility and edit rights are evaluated through separate settings-backed policies.
 
 == Changelog ==
+
+= 1.3.1 =
+
+* Approval drawers now route correctly back to linked work, clear the WordPress admin bar, and approvals surfaces use cleaner card-based presentation
+* Calendar navigation now works in both month and week modes, updates instantly when the view changes, and uses higher-contrast day cells
+* Project workspace Gantt is denser and more accurate, with compact one-line rows, better tooltip treatment, adaptive long-range grouping, and improved full-range alignment
+* Project and record file lists now use clearer file cards and a richer file drawer with type icons, readable file labels, and direct view, download, linked-item, and delete actions
+* No database changes; direct upgrade from 1.3.0 supported
 
 = 1.3.0 =
 
@@ -120,6 +128,10 @@ Yes. Visibility and edit rights are evaluated through separate settings-backed p
 * Task groups and task checklists
 
 == Upgrade Notice ==
+
+= 1.3.1 =
+
+Patch release focused on approval routing, calendar and Gantt polish, and the new file card plus drawer experience. No database changes required; direct upgrade from 1.3.0.
 
 = 1.3.0 =
 
